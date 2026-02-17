@@ -5,17 +5,13 @@ import { propertySchema } from '$lib/schemas';
 import { error, fail } from '@sveltejs/kit';
 import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
 import { FieldPath, FieldValue } from 'firebase-admin/firestore';
-import type { DocumentWithId, PhotoItem } from '../../../../../../../app';
+import type { DocumentWithId, PhotoItem } from '../../../../../../app';
+import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
 
 export const load = (async (event) => {
-	if (!event.locals.userID) {
-		throw error(401, 'You must be logged in to do this.');
-	}
-	const userData = (await adminDB.collection('users').doc(event.locals.userID).get()).data();
+	const userId = getUserIdOrError(event.locals.userID);
 
-	if (!userData || !userData.permissions || userData.permissions !== 'admin') {
-		throw error(401, 'You must be an admin to do this.');
-	}
+	await getAdminUserDataOrError(userId);
 
 	const propertyData = (
 		await adminDB.collection('properties').doc(event.params.propertyId).get()
@@ -73,15 +69,9 @@ export const actions = {
 	basicInfo: async (event) => {
 		const form = await superValidate(event, propertySchema);
 
-		if (!event.locals.userID) {
-			throw error(401, 'You must be logged in to do this.');
-		}
+		const userId = getUserIdOrError(event.locals.userID);
 
-		const userData = (await adminDB.collection('users').doc(event.locals.userID).get()).data();
-
-		if (!userData || !userData.permissions || userData.permissions !== 'admin') {
-			throw error(401, 'You must be an admin to do this.');
-		}
+		await getAdminUserDataOrError(userId);
 
 		if (!form.valid) {
 			return message(form, 'Invalid form');
@@ -91,15 +81,9 @@ export const actions = {
 		return message(form, 'Form submitted');
 	},
 	photos: async ({ request, locals, params }) => {
-		if (!locals.userID) {
-			throw error(401, 'You must be logged in to do this.');
-		}
+		const userId = getUserIdOrError(locals.userID);
 
-		const userData = (await adminDB.collection('users').doc(locals.userID).get()).data();
-
-		if (!userData || !userData.permissions || userData.permissions !== 'admin') {
-			throw error(401, 'You must be an admin to do this.');
-		}
+		await getAdminUserDataOrError(userId);
 
 		const data = await request.formData();
 		const files = data.getAll('photos');

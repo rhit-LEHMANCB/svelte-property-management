@@ -70,10 +70,7 @@
 	>
 	<ul class="list">
 		{#each paginatedProperties as property}
-			<a
-				href={`/admin/properties/${property.id}/edit`}
-				class="card bg-surface-200 flex p-2"
-			>
+			<a href={`/admin/properties/${property.id}/edit`} class="card bg-surface-200 flex p-2">
 				<li class="w-full">
 					{#if property.data.photos}
 						<Avatar src={property.data.photos[0].photoUrl} rounded="rounded-none" width="w-32" />

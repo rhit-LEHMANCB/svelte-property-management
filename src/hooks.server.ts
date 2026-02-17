@@ -21,4 +21,3 @@ export const handle = (async ({ event, resolve }) => {
 function isAuthenticationRequired(pathname: string) {
 	return pathname !== '/signin' && pathname !== '/reset' && !pathname.startsWith('/api');
 }
-

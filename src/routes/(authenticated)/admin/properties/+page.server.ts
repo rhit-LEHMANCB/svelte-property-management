@@ -1,19 +1,10 @@
 import { adminDB } from '$lib/server/admin';
-import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
 
 export const load = (async (event) => {
-	const usersRef = adminDB.collection('users');
-
-	if (!event.locals.userID) {
-		throw error(401, 'You must be logged in to do this.');
-	}
-
-	const userData = (await usersRef.doc(event.locals.userID).get()).data();
-
-	if (!userData || !userData.permissions || userData.permissions !== 'admin') {
-		throw redirect(303, '/');
-	}
+	const userId = getUserIdOrError(event.locals.userID);
+	await getAdminUserDataOrError(userId);
 
 	const propertiesRef = adminDB.collection('properties');
 	const properties = await propertiesRef.orderBy('title').get();

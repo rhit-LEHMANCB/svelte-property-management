@@ -3,17 +3,14 @@ import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { adminDB } from '$lib/server/admin';
 import { PUBLIC_FRONTEND_URL } from '$env/static/public';
+import { getUserDataOrError } from '$lib/server/authHelpers';
+import { getUserIdOrError } from '$lib/server/authHelpers';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	if (!locals.userID) {
-		throw error(401, 'You must be logged in to do this.');
-	}
+	const userId = getUserIdOrError(locals.userID);
 
-	const userData = (await adminDB.collection('users').doc(locals.userID).get()).data();
+	const userData = await getUserDataOrError(userId);
 
-	if (!userData) {
-		throw error(401, 'Failed to retrieve user details');
-	}
 	const { amount } = await request.json();
 
 	if (!amount || typeof amount != 'number') {

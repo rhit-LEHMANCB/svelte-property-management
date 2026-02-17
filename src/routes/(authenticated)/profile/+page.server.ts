@@ -5,12 +5,11 @@ import { error, fail } from '@sveltejs/kit';
 import { profileSchema } from '$lib/schemas';
 import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
 import { stripe } from '$lib/server/stripe';
+import { getUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
 
 export const load = (async (event) => {
-	if (!event.locals.userID) {
-		throw error(401, 'You must be logged in to do this.');
-	}
-	const userData = (await adminDB.collection('users').doc(event.locals.userID).get()).data();
+	const userId = getUserIdOrError(event.locals.userID);
+	const userData = await getUserDataOrError(userId);
 
 	const form = await superValidate(userData, profileSchema);
 	return {
@@ -22,15 +21,13 @@ export const actions = {
 	contact: async (event) => {
 		const form = await superValidate(event, profileSchema);
 
-		if (!event.locals.userID) {
-			throw error(401, 'You must be logged in to do this.');
-		}
+		const userId = getUserIdOrError(event.locals.userID);
 
 		if (!form.valid) {
 			return message(form, 'Invalid form');
 		}
 
-		const userDoc = adminDB.collection('users').doc(event.locals.userID);
+		const userDoc = adminDB.collection('users').doc(userId);
 
 		await userDoc.update(form.data);
 
@@ -48,15 +45,13 @@ export const actions = {
 			});
 		}
 
-		await adminAuth.updateUser(event.locals.userID, {
+		await adminAuth.updateUser(userId, {
 			email: form.data.email
 		});
 		return message(form, 'Form submitted');
 	},
 	photo: async ({ request, locals }) => {
-		if (!locals.userID) {
-			throw error(401, 'You must be logged in to do this.');
-		}
+		const userId = getUserIdOrError(locals.userID);
 
 		const data = await request.formData();
 		const file = data.get('photo') as File;
@@ -65,19 +60,19 @@ export const actions = {
 		}
 		const storageRef = adminStorage.bucket(`gs://${PUBLIC_FB_STORAGE_BUCKET}`);
 		await storageRef.deleteFiles({
-			prefix: `users/${locals.userID}/profile`
+			prefix: `users/${userId}/profile`
 		});
 		const ext = file.name.split('.').pop();
 		const fileName = `${Date.now().toString()}.${ext}`;
-		const blob = storageRef.file(`users/${locals.userID}/profile/${fileName}`);
-		const blobSteam = blob.createWriteStream({ resumable: false });
-		blobSteam.end(new Uint8Array(await file.arrayBuffer()));
+		const blob = storageRef.file(`users/${userId}/profile/${fileName}`);
+		const blobStream = blob.createWriteStream({ resumable: false });
+		blobStream.end(new Uint8Array(await file.arrayBuffer()));
 
 		await adminDB
 			.collection('users')
-			.doc(locals.userID)
+			.doc(userId)
 			.update({
-				photoUrl: `https://firebasestorage.googleapis.com/v0/b/${PUBLIC_FB_STORAGE_BUCKET}/o/users%2F${locals.userID}%2Fprofile%2F${fileName}?alt=media`
+				photoUrl: `https://firebasestorage.googleapis.com/v0/b/${PUBLIC_FB_STORAGE_BUCKET}/o/users%2F${userId}%2Fprofile%2F${fileName}?alt=media`
 			});
 	}
 };

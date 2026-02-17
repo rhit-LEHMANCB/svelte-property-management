@@ -1,17 +1,14 @@
-import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { message, superValidate } from 'sveltekit-superforms/server';
 import { insuranceSchema } from '$lib/schemas';
 import { adminDB } from '$lib/server/admin';
 import { formatDate } from '$lib/DatePicker/date-utils';
+import { getUserIdOrError } from '$lib/server/authHelpers';
 
 export const load = (async (event) => {
-	if (!event.locals.userID) {
-		throw error(401, 'You must be logged in to do this.');
-	}
+	const userId = getUserIdOrError(event.locals.userID);
 
-	const insuranceDataRaw = (await adminDB.collection('users').doc(event.locals.userID).get()).data()
-		?.insurance;
+	const insuranceDataRaw = (await adminDB.collection('users').doc(userId).get()).data()?.insurance;
 
 	let insuranceData:
 		| { companyName: string; policyNumber: string; startDate: Date; endDate: Date }
@@ -38,9 +35,7 @@ export const actions = {
 	default: async (event) => {
 		const form = await superValidate(event, insuranceSchema);
 
-		if (!event.locals.userID) {
-			throw error(401, 'You must be logged in to do this.');
-		}
+		const userId = getUserIdOrError(event.locals.userID);
 
 		if (!form.valid) {
 			return message(form, 'Invalid form');
@@ -48,7 +43,7 @@ export const actions = {
 
 		await adminDB
 			.collection('users')
-			.doc(event.locals.userID)
+			.doc(userId)
 			.update({
 				insurance: {
 					...form.data,
