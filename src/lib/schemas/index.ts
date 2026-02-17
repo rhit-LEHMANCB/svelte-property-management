@@ -115,7 +115,9 @@ export const leaseSchema = z
 		rent: z
 			.number({ invalid_type_error: 'Rent must be a number' })
 			.positive('Rent must be greater than 0'),
-		users: z.array(z.string()).min(1),
+		users: z.array(z.string()).min(1, "Lease must have at least one user.").refine(items => new Set(items).size === items.length, {
+			message: 'User can not exist more than once!',
+		}),
 		startDate: z.date({
 			required_error: 'Please select a date',
 			invalid_type_error: 'Please enter a date in the correct format'

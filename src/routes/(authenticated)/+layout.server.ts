@@ -25,6 +25,8 @@ export const load = (async ({ locals }) => {
 		};
 	}
 
+	const leases = await adminDB.collection('leases').where('users', 'array-contains', uid).get();
+
 	const userJunctionsQuery = await adminDB
 		.collection('junction_user_property')
 		.where('tenantId', '==', uid)

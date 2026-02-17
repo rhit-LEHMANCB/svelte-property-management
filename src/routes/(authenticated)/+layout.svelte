@@ -73,5 +73,8 @@
 	</svelte:fragment>
 	<!-- (pageHeader) -->
 	<!-- Router Slot -->
-	<slot />
+	<div class="max-w-6xl mx-auto">
+		<slot />
+	</div>
+	
 </AppShell>

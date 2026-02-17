@@ -3,9 +3,9 @@
 	import { errorToast } from '$lib/Hooks/toasts';
 	import { getModalStore, getToastStore, type ModalSettings } from '@skeletonlabs/skeleton';
 	import { ZodError, z } from 'zod';
+	import { PageData } from './$types';
 
-	let balance = 1000.0;
-	let balanceDueDate = new Date();
+	export let data: PageData;
 
 	const toastStore = getToastStore();
 	const modalStore = getModalStore();
@@ -16,7 +16,7 @@
 		}
 		const amount = parseFloat(response);
 		try {
-			const balanceSchema = z.number().gt(0).lte(balance).multipleOf(0.01);
+			const balanceSchema = z.number().gt(0).lte(data.balance).multipleOf(0.01);
 			balanceSchema.parse(amount);
 		} catch (error) {
 			errorToast((error as ZodError).errors[0].message, toastStore);
@@ -72,11 +72,11 @@
 			<div class="h-auto m-5">
 				<strong class="h3">Your current balance</strong>
 				<div class="flex flex-col gap-5">
-					{#if balance == 0}
+					{#if data.balance == 0}
 						<span>You have nothing to pay</span>
 					{:else}
 						<span
-							>You have a balance of ${balance.toLocaleString()} due on {balanceDueDate.toLocaleString(
+							>You have a balance of ${data.balance.toLocaleString()} due on {data.balanceDueDate.toLocaleString(
 								'en-us',
 								{
 									dateStyle: 'short'
