@@ -7,7 +7,7 @@
 		type ModalSettings,
 		getToastStore
 	} from '@skeletonlabs/skeleton';
-	import type { MaintenanceRequest } from '../../../../../app';
+	import type { MaintenanceRequest } from '../../../../app';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { invalidateAll } from '$app/navigation';
 

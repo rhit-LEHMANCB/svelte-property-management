@@ -1,7 +1,7 @@
 import { adminDB } from '$lib/server/admin';
 import type { Timestamp } from 'firebase-admin/firestore';
 import type { PageServerLoad } from './$types';
-import { MaintenanceRequest } from '../../../../app';
+import type { MaintenanceRequest } from '../../../../app';
 import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
 
 export const load = (async (event) => {

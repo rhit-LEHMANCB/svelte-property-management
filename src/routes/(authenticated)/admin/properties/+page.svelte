@@ -5,7 +5,7 @@
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
-	import type { DocumentWithId } from '../../../../../app';
+	import type { DocumentWithId } from '../../../../app';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();

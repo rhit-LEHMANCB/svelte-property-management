@@ -24,7 +24,7 @@
 		IconUserDollar,
 		IconLinkMinus
 	} from '@tabler/icons-svelte';
-	import type { DocumentWithId, PhotoItem } from '../../../../../../../app';
+	import type { DocumentWithId, PhotoItem } from '../../../../../../app';
 	import UsersListView from '$lib/Components/Users/UsersListView.svelte';
 
 	const toastStore = getToastStore();
