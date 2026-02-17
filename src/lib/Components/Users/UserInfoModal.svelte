@@ -153,7 +153,7 @@
 								<a
 									on:click={() => modalStore.close()}
 									class="text-secondary-500 underline"
-									href={`/manager/admin/properties/${userProperty.id}/edit`}
+									href={`/admin/properties/${userProperty.id}/edit`}
 								>
 									{formattedAddress}
 								</a>

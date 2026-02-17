@@ -1,18 +1,13 @@
 import { adminDB } from '$lib/server/admin';
 import type { Timestamp } from 'firebase-admin/firestore';
-import type { MaintenanceRequest } from '../../../../../app';
 import type { PageServerLoad } from './$types';
-import { error } from '@sveltejs/kit';
+import type { MaintenanceRequest } from '../../../../app';
+import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
 
 export const load = (async (event) => {
-	if (!event.locals.userID) {
-		throw error(401, 'You must be logged in to do this.');
-	}
-	const userData = (await adminDB.collection('users').doc(event.locals.userID).get()).data();
+	const userId = getUserIdOrError(event.locals.userID);
 
-	if (!userData || !userData.permissions || userData.permissions !== 'admin') {
-		throw error(401, 'You must be an admin to do this.');
-	}
+	await getAdminUserDataOrError(userId);
 
 	const maintenanceRequestQuery = adminDB.collection('maintenance');
 	const openMaintenanceRequests = (

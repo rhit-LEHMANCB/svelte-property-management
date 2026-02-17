@@ -4,12 +4,11 @@ import { error } from '@sveltejs/kit';
 import { maintenanceSchema } from '$lib/schemas';
 import { adminDB } from '$lib/server/admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import type { MaintenanceRequest } from '../../../../app';
+import type { MaintenanceRequest } from '../../../app';
+import { getUserIdOrError } from '$lib/server/authHelpers';
 
 export const load = (async (event) => {
-	if (!event.locals.userID) {
-		throw error(401, 'You must be logged in to do this.');
-	}
+	getUserIdOrError(event.locals.userID);
 
 	const { userProperty } = await event.parent();
 
@@ -67,9 +66,7 @@ export const actions = {
 	default: async (event) => {
 		const form = await superValidate(event, maintenanceSchema);
 
-		if (!event.locals.userID) {
-			throw error(401, 'You must be logged in to do this.');
-		}
+		const userId = getUserIdOrError(event.locals.userID);
 
 		if (!form.valid) {
 			return message(form, 'Invalid form');
@@ -77,7 +74,7 @@ export const actions = {
 
 		const userJunctionsQuery = await adminDB
 			.collection('junction_user_property')
-			.where('tenantId', '==', event.locals.userID)
+			.where('tenantId', '==', userId)
 			.get();
 
 		if (userJunctionsQuery.size !== 1) {
@@ -99,7 +96,7 @@ export const actions = {
 		}
 		const propertyAddress = `${propertyData.streetAddress}, ${propertyData.city}, ${propertyData.state}`;
 
-		const submitter = (await adminDB.collection('users').doc(event.locals.userID).get()).data();
+		const submitter = (await adminDB.collection('users').doc(userId).get()).data();
 
 		if (!submitter) {
 			throw error(500, 'Failed to find submitter data.');

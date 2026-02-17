@@ -6,7 +6,7 @@
 	import { emailSchema } from '$lib/schemas';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { invalidateAll } from '$app/navigation';
-	import type { DocumentWithId } from '../../../../../app';
+	import type { DocumentWithId } from '../../../../app';
 	import PopupMenu from '$lib/Components/PopupMenu/PopupMenu.svelte';
 	import PopupMenuItem from '$lib/Components/PopupMenu/PopupMenuItem.svelte';
 	import UsersListView from '$lib/Components/Users/UsersListView.svelte';

@@ -24,7 +24,7 @@
 		IconUserDollar,
 		IconLinkMinus
 	} from '@tabler/icons-svelte';
-	import type { DocumentWithId, PhotoItem } from '../../../../../../../app';
+	import type { DocumentWithId, PhotoItem } from '../../../../../../app';
 	import UsersListView from '$lib/Components/Users/UsersListView.svelte';
 
 	const toastStore = getToastStore();
@@ -146,9 +146,8 @@
 </script>
 
 <div class="flex flex-row justify-between py-5">
-	<button
-		on:click={() => goto('/manager/admin/properties')}
-		class="btn btn-sm variant-filled-primary ml-5"><IconArrowLeft class="mr-2" />Properties</button
+	<button on:click={() => goto('/admin/properties')} class="btn btn-sm variant-filled-primary ml-5"
+		><IconArrowLeft class="mr-2" />Properties</button
 	>
 	<strong class="h3 mx-5 truncate">{data.form.data.title}</strong>
 </div>

@@ -10,10 +10,14 @@ export const handle = (async ({ event, resolve }) => {
 		const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie ?? '');
 		event.locals.userID = decodedClaims.uid;
 	} catch (e) {
-		if (event.url.pathname.startsWith('/manager')) {
+		if (isAuthenticationRequired(event.url.pathname)) {
 			throw redirect(303, '/signin');
 		}
 	}
 
 	return resolve(event);
 }) satisfies Handle;
+
+function isAuthenticationRequired(pathname: string) {
+	return pathname !== '/signin' && pathname !== '/reset' && !pathname.startsWith('/api');
+}

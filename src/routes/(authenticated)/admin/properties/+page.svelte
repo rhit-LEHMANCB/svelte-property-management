@@ -5,7 +5,7 @@
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
-	import type { DocumentWithId } from '../../../../../app';
+	import type { DocumentWithId } from '../../../../app';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -43,7 +43,7 @@
 	}
 
 	function addPropertyClicked() {
-		goto('/manager/admin/properties/add');
+		goto('/admin/properties/add');
 	}
 
 	async function removeProperty(id: string) {
@@ -70,10 +70,7 @@
 	>
 	<ul class="list">
 		{#each paginatedProperties as property}
-			<a
-				href={`/manager/admin/properties/${property.id}/edit`}
-				class="card bg-surface-200 flex p-2"
-			>
+			<a href={`/admin/properties/${property.id}/edit`} class="card bg-surface-200 flex p-2">
 				<li class="w-full">
 					{#if property.data.photos}
 						<Avatar src={property.data.photos[0].photoUrl} rounded="rounded-none" width="w-32" />

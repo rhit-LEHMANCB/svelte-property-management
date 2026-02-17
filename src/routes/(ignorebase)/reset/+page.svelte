@@ -73,7 +73,7 @@
 							body: 'Your password was reset successfully. Press continue to proceed.',
 							buttonTextCancel: 'Continue',
 							// TRUE if confirm pressed, FALSE if cancel pressed
-							response: () => goto(continueUrl ?? `${PUBLIC_FRONTEND_URL}/manager`)
+							response: () => goto(continueUrl ?? `${PUBLIC_FRONTEND_URL}/`)
 						};
 						modalStore.trigger(modal);
 						// TODO: create a modal that confirms success and then on confirm sends user to login page
