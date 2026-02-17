@@ -87,8 +87,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		},
 		// TODO: please change these later
-		success_url: `${PUBLIC_FRONTEND_URL}/manager`,
-		cancel_url: `${PUBLIC_FRONTEND_URL}/manager/payment`
+		success_url: `${PUBLIC_FRONTEND_URL}/`,
+		cancel_url: `${PUBLIC_FRONTEND_URL}/payment`
 	});
 
 	if (session.url) {

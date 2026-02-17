@@ -12,7 +12,7 @@ export const load = (async (event) => {
 	const userData = (await usersRef.doc(event.locals.userID).get()).data();
 
 	if (!userData || !userData.permissions || userData.permissions !== 'admin') {
-		throw redirect(303, '/manager');
+		throw redirect(303, '/');
 	}
 
 	const propertiesRef = adminDB.collection('properties');

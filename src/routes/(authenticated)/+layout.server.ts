@@ -16,7 +16,7 @@ export const load = (async ({ locals }) => {
 	}
 
 	if (userData.isFirstLogin) {
-		throw redirect(303, '/manager/profile');
+		throw redirect(303, '/profile');
 	}
 
 	if (userData.permissions === 'admin') {

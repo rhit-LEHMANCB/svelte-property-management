@@ -147,7 +147,7 @@
 
 <div class="flex flex-row justify-between py-5">
 	<button
-		on:click={() => goto('/manager/admin/properties')}
+		on:click={() => goto('/admin/properties')}
 		class="btn btn-sm variant-filled-primary ml-5"><IconArrowLeft class="mr-2" />Properties</button
 	>
 	<strong class="h3 mx-5 truncate">{data.form.data.title}</strong>

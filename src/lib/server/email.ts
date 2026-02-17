@@ -52,7 +52,7 @@ export const sendPasswordResetEmail = (email: string, isWelcomeEmail: boolean) =
 		const actionCodeSettings = {
 			// URL you want to redirect back to. The domain (www.example.com) for
 			// this URL must be whitelisted in the Firebase Console.
-			url: `${PUBLIC_FRONTEND_URL}/manager`
+			url: `${PUBLIC_FRONTEND_URL}/`
 		};
 
 		adminAuth

@@ -43,7 +43,7 @@
 	}
 
 	function addPropertyClicked() {
-		goto('/manager/admin/properties/add');
+		goto('/admin/properties/add');
 	}
 
 	async function removeProperty(id: string) {
@@ -71,7 +71,7 @@
 	<ul class="list">
 		{#each paginatedProperties as property}
 			<a
-				href={`/manager/admin/properties/${property.id}/edit`}
+				href={`/admin/properties/${property.id}/edit`}
 				class="card bg-surface-200 flex p-2"
 			>
 				<li class="w-full">

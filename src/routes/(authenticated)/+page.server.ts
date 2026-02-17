@@ -16,7 +16,7 @@ export const load = (async ({ locals }) => {
 	}
 
 	if (userData.permissions === 'admin') {
-		throw redirect(303, '/manager/admin');
+		throw redirect(303, '/admin');
 	}
 	return {};
 }) satisfies PageServerLoad;

@@ -31,7 +31,7 @@
 
 	async function handleSignIn() {
 		await signIn()
-			.then(() => goto('/manager'))
+			.then(() => goto('/'))
 			.catch((error) => (loginError = error.code));
 	}
 
