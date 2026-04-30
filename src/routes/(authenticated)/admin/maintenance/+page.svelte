@@ -2,17 +2,17 @@
 	import { IconCheck, IconTool } from '@tabler/icons-svelte';
 	import type { PageData } from './$types';
 	import {
-		Paginator,
-		getModalStore,
-		type ModalSettings,
+		Pagination,
+		getDialogStore,
+		type DialogSettings,
 		getToastStore
-	} from '@skeletonlabs/skeleton';
+	} from '@skeletonlabs/skeleton-svelte';
 	import type { MaintenanceRequest } from '../../../../app';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { invalidateAll } from '$app/navigation';
 
 	export let data: PageData;
-	const modalStore = getModalStore();
+	const dialogStore = getDialogStore();
 	const toastStore = getToastStore();
 
 	let openPage = {
@@ -40,7 +40,7 @@
 	);
 
 	function confirmModal(request: MaintenanceRequest) {
-		const confirmModal: ModalSettings = {
+		const confirmModal: DialogSettings = {
 			type: 'prompt',
 			// Data
 			title: 'Close Maintenance Request',
@@ -48,7 +48,7 @@
 			// TRUE if confirm pressed, FALSE if cancel pressed
 			response: (response) => handleConfirmResponse(response, request.id)
 		};
-		modalStore.trigger(confirmModal);
+		dialogStore.trigger(confirmModal);
 	}
 
 	async function handleConfirmResponse(workDone: string, requestId: string) {
@@ -113,7 +113,7 @@
 				{:else}
 					<p class="text-center my-12 text-lg">No open maintenance requests</p>
 				{/if}
-				<Paginator
+				<Pagination
 					bind:settings={openPage}
 					showFirstLastButtons={false}
 					showPreviousNextButtons={true}
@@ -158,7 +158,7 @@
 				{:else}
 					<p class="text-center my-12 text-lg">No closed maintenance requests</p>
 				{/if}
-				<Paginator
+				<Pagination
 					bind:settings={openPage}
 					showFirstLastButtons={false}
 					showPreviousNextButtons={true}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getDrawerStore } from '@skeletonlabs/skeleton';
+	import { getDialogStore } from '@skeletonlabs/skeleton-svelte';
 	import { page } from '$app/stores';
 	import {
 		IconBuildingEstate,
@@ -13,7 +13,7 @@
 		IconUsers
 	} from '@tabler/icons-svelte';
 
-	const drawerStore = getDrawerStore();
+	const drawerStore = getDialogStore();
 
 	function drawerClose(): void {
 		drawerStore.close();

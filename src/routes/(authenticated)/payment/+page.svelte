@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { errorToast } from '$lib/Hooks/toasts';
-	import { getModalStore, getToastStore, type ModalSettings } from '@skeletonlabs/skeleton';
+	import { getDialogStore, getToastStore, type DialogSettings } from '@skeletonlabs/skeleton-svelte';
 	import { ZodError, z } from 'zod';
 
 	let balance = 1000.0;
 	let balanceDueDate = new Date();
 
 	const toastStore = getToastStore();
-	const modalStore = getModalStore();
+	const dialogStore = getDialogStore();
 
 	async function startCheckout(response: string) {
 		if (!response) {
@@ -50,7 +50,7 @@
 	}
 
 	// Provide the modal settings
-	const paymentModal: ModalSettings = {
+	const paymentModal: DialogSettings = {
 		type: 'prompt',
 		// Data
 		title: 'Enter Payment Amount',
@@ -62,7 +62,7 @@
 	};
 
 	function viewPaymentClicked() {
-		modalStore.trigger(paymentModal);
+		dialogStore.trigger(paymentModal);
 	}
 </script>
 

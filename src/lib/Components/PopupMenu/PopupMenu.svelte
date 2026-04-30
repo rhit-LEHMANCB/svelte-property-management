@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { popup, type PopupSettings } from '@skeletonlabs/skeleton';
+	import { popup, type PopupSettings } from '@skeletonlabs/skeleton-svelte';
 	import { IconDots } from '@tabler/icons-svelte';
 
 	export let id: string;

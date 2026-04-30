@@ -1,13 +1,12 @@
-import type { ModalComponent, ModalSettings, ModalStore } from '@skeletonlabs/skeleton';
+import type { DialogComponent, DialogSettings, DialogStore } from '@skeletonlabs/skeleton-svelte';
 import type { DocumentWithId } from '../../app';
 import UserInfoModal from '$lib/Components/Users/UserInfoModal.svelte';
 
-export function viewUserInfoModal(user: DocumentWithId, modalStore: ModalStore) {
-	const modalComponent: ModalComponent = { ref: UserInfoModal, props: { user } };
-	const modal: ModalSettings = {
+export function viewUserInfoModal(user: DocumentWithId, dialogStore: DialogStore) {
+	const dialogComponent: DialogComponent = { ref: UserInfoModal, props: { user } };
+	const dialog: DialogSettings = {
 		type: 'component',
-		// Data
-		component: modalComponent
+		component: dialogComponent
 	};
-	modalStore.trigger(modal);
+	dialogStore.trigger(dialog);
 }

@@ -1,0 +1,9 @@
+@import "tailwindcss";
+
+/* Write your global styles here */
+
+html,
+body {
+	height: 100%;
+	overflow: hidden;
+}

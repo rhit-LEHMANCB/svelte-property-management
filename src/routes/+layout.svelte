@@ -1,15 +1,11 @@
 <script lang="ts">
-	import '../app.postcss';
+	import '../app.css';
 
-	import { Modal, Toast, initializeStores, storePopup } from '@skeletonlabs/skeleton';
-	import { computePosition, autoUpdate, offset, shift, flip, arrow } from '@floating-ui/dom';
-
-	storePopup.set({ computePosition, autoUpdate, offset, shift, flip, arrow });
-	initializeStores();
+	import { Dialog, Toast } from '@skeletonlabs/skeleton-svelte';
 </script>
 
-<Toast />
+<Dialog.Group />
 
-<Modal />
+<Toast.Group />
 
 <slot />

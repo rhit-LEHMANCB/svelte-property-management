@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/firebase';
 	import { errorToast } from '$lib/Hooks/toasts';
-	import { getToastStore } from '@skeletonlabs/skeleton';
+	import { getToastStore } from '@skeletonlabs/skeleton-svelte';
 
 	let email: string;
 	let password: string;

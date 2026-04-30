@@ -4,12 +4,12 @@
 	import { errorToast } from '$lib/Hooks/toasts';
 	import { auth } from '$lib/firebase';
 	import {
-		getModalStore,
+		getDialogStore,
 		getToastStore,
 		popup,
-		type ModalSettings,
+		type DialogSettings,
 		type PopupSettings
-	} from '@skeletonlabs/skeleton';
+	} from '@skeletonlabs/skeleton-svelte';
 	import { error } from '@sveltejs/kit';
 	import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 	import type { PageData } from './$types';
@@ -27,7 +27,7 @@
 	});
 
 	const toastStore = getToastStore();
-	const modalStore = getModalStore();
+	const dialogStore = getDialogStore();
 
 	const mode = $page.url.searchParams.get('mode');
 
@@ -66,7 +66,7 @@
 				confirmPasswordReset(auth, actionCode, newPassword)
 					.then(() => {
 						// Password reset has been confirmed and new password updated.
-						const modal: ModalSettings = {
+						const modal: DialogSettings = {
 							type: 'alert',
 							// Data
 							title: 'Success!',
@@ -75,7 +75,7 @@
 							// TRUE if confirm pressed, FALSE if cancel pressed
 							response: () => goto(continueUrl ?? `${PUBLIC_FRONTEND_URL}/`)
 						};
-						modalStore.trigger(modal);
+						dialogStore.trigger(modal);
 						// TODO: create a modal that confirms success and then on confirm sends user to login page
 					})
 					.catch(() => {

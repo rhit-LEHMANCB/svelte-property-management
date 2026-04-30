@@ -1,9 +1,8 @@
-import type { ToastSettings, ToastStore } from '@skeletonlabs/skeleton';
+import type { ToastSettings, ToastStore } from '@skeletonlabs/skeleton-svelte';
 
 export function successToast(message: string, toastStore: ToastStore) {
 	const successToast: ToastSettings = {
 		message: message,
-		// Provide any utility or variant background style:
 		background: 'variant-filled-success'
 	};
 	toastStore.trigger(successToast);
@@ -12,7 +11,6 @@ export function successToast(message: string, toastStore: ToastStore) {
 export function errorToast(message: string, toastStore: ToastStore) {
 	const errorToast: ToastSettings = {
 		message: message,
-		// Provide any utility or variant background style:
 		background: 'variant-filled-error'
 	};
 	toastStore.trigger(errorToast);

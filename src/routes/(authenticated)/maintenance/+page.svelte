@@ -3,7 +3,7 @@
 	import type { PageData } from './$types';
 	import { maintenanceSchema } from '$lib/schemas';
 	import { successToast } from '$lib/Hooks/toasts';
-	import { Accordion, AccordionItem, getToastStore } from '@skeletonlabs/skeleton';
+	import { Accordion, AccordionItem, getToastStore } from '@skeletonlabs/skeleton-svelte';
 	import { IconTool } from '@tabler/icons-svelte';
 
 	export let data: PageData;

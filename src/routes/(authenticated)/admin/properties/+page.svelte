@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { Avatar, Paginator, getToastStore } from '@skeletonlabs/skeleton';
+	import { Avatar, Pagination, getToastStore } from '@skeletonlabs/skeleton-svelte';
 	import { IconHomeMinus, IconHomePlus, IconPhotoCancel } from '@tabler/icons-svelte';
-	import { getModalStore, type ModalSettings } from '@skeletonlabs/skeleton';
+	import { getDialogStore, type DialogSettings } from '@skeletonlabs/skeleton-svelte';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { DocumentWithId } from '../../../../app';
 
-	const modalStore = getModalStore();
+	const dialogStore = getDialogStore();
 	const toastStore = getToastStore();
 
 	export let data: PageData;
@@ -31,7 +31,7 @@
 	}
 
 	function confirmModal(property: DocumentWithId) {
-		const confirmModal: ModalSettings = {
+		const confirmModal: DialogSettings = {
 			type: 'confirm',
 			// Data
 			title: 'Please Confirm',
@@ -39,7 +39,7 @@
 			// TRUE if confirm pressed, FALSE if cancel pressed
 			response: (response) => handleConfirmResponse(response, property.id)
 		};
-		modalStore.trigger(confirmModal);
+		dialogStore.trigger(confirmModal);
 	}
 
 	function addPropertyClicked() {
@@ -89,5 +89,5 @@
 			</a>
 		{/each}
 	</ul>
-	<Paginator bind:settings={page} showFirstLastButtons={false} showPreviousNextButtons={true} />
+	<Pagination bind:settings={page} showFirstLastButtons={false} showPreviousNextButtons={true} />
 </div>

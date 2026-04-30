@@ -14,9 +14,9 @@
 		Tab,
 		TabGroup,
 		getToastStore,
-		type ModalSettings,
-		getModalStore
-	} from '@skeletonlabs/skeleton';
+		type DialogSettings,
+		getDialogStore
+	} from '@skeletonlabs/skeleton-svelte';
 	import {
 		IconArrowLeft,
 		IconInfoCircle,
@@ -28,7 +28,7 @@
 	import UsersListView from '$lib/Components/Users/UsersListView.svelte';
 
 	const toastStore = getToastStore();
-	const modalStore = getModalStore();
+	const dialogStore = getDialogStore();
 
 	export let data: PageData;
 
@@ -82,7 +82,7 @@
 	}
 
 	function confirmModal(user: DocumentWithId) {
-		const confirmModal: ModalSettings = {
+		const confirmModal: DialogSettings = {
 			type: 'confirm',
 			// Data
 			title: 'Please Confirm',
@@ -90,7 +90,7 @@
 			// TRUE if confirm pressed, FALSE if cancel pressed
 			response: (response) => handleConfirmResponse(response, user.id)
 		};
-		modalStore.trigger(confirmModal);
+		dialogStore.trigger(confirmModal);
 	}
 
 	async function handleConfirmResponse(confirmed: boolean, userId: string) {

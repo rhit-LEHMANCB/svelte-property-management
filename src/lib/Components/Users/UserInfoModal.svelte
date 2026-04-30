@@ -1,13 +1,13 @@
 <script lang="ts">
 	import {
-		getModalStore,
+		getDialogStore,
 		type CssClasses,
-		type ModalSettings,
+		type DialogSettings,
 		getToastStore,
 		Tab,
 		TabGroup,
 		Avatar
-	} from '@skeletonlabs/skeleton';
+	} from '@skeletonlabs/skeleton-svelte';
 	import type { DocumentWithId } from '../../../app';
 	import {
 		IconClipboardList,
@@ -19,7 +19,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { onMount } from 'svelte';
 
-	const modalStore = getModalStore();
+	const dialogStore = getDialogStore();
 	const toastStore = getToastStore();
 
 	export let user: DocumentWithId;
@@ -44,11 +44,11 @@
 	const cModal = 'block overflow-y-auto'; // max-h-full overflow-y-auto overflow-x-hidden
 
 	$: classesModal = `${cModal} ${background} ${width} ${height} ${padding} ${spacing} ${rounded} ${shadow} ${
-		$modalStore[0]?.modalClasses ?? ''
+		$dialogStore[0]?.modalClasses ?? ''
 	}`;
 
 	function deleteUserClicked() {
-		modalStore.close();
+		dialogStore.close();
 		confirmModal(user);
 	}
 
@@ -71,7 +71,7 @@
 	}
 
 	function confirmModal(user: DocumentWithId) {
-		const confirmModal: ModalSettings = {
+		const confirmModal: DialogSettings = {
 			type: 'confirm',
 			// Data
 			title: 'Please Confirm',
@@ -79,7 +79,7 @@
 			// TRUE if confirm pressed, FALSE if cancel pressed
 			response: (response) => handleConfirmResponse(response, user.id)
 		};
-		modalStore.trigger(confirmModal);
+		dialogStore.trigger(confirmModal);
 	}
 
 	async function getUserAssocProperty(id: string) {
@@ -107,7 +107,7 @@
 	let tabSet = 0;
 </script>
 
-{#if $modalStore[0]}
+{#if $dialogStore[0]}
 	<div class="modal card grid grid-flow-row {classesModal}">
 		<TabGroup>
 			<Tab bind:group={tabSet} name="info" value={0}>
@@ -151,7 +151,7 @@
 							<span>
 								<span>Property:</span>
 								<a
-									on:click={() => modalStore.close()}
+									on:click={() => dialogStore.close()}
 									class="text-secondary-500 underline"
 									href={`/admin/properties/${userProperty.id}/edit`}
 								>
@@ -182,7 +182,7 @@
 			<button on:click={deleteUserClicked} class="btn variant-filled-error"
 				><IconUserMinus class="mr-2" />Delete</button
 			>
-			<button type="button" class="btn {parent.buttonNeutral}" on:click={() => modalStore.close()}
+			<button type="button" class="btn {parent.buttonNeutral}" on:click={() => dialogStore.close()}
 				>Close</button
 			>
 		</footer>

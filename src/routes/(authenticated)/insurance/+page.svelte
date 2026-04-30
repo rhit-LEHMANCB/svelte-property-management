@@ -3,7 +3,7 @@
 	import type { PageData } from './$types';
 	import { insuranceSchema } from '$lib/schemas';
 	import { successToast } from '$lib/Hooks/toasts';
-	import { getToastStore } from '@skeletonlabs/skeleton';
+	import { getToastStore } from '@skeletonlabs/skeleton-svelte';
 	import DateInput from '$lib/DatePicker/DateInput.svelte';
 
 	export let data: PageData;

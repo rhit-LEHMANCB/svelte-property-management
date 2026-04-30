@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { profileSchema } from '$lib/schemas';
-	import { Avatar, getToastStore } from '@skeletonlabs/skeleton';
+	import { Avatar, getToastStore } from '@skeletonlabs/skeleton-svelte';
 	import type { PageData } from './$types';
 	import { superForm } from 'sveltekit-superforms/client';
 	import { invalidateAll } from '$app/navigation';

@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { getToastStore } from '@skeletonlabs/skeleton';
+	import { getToastStore } from '@skeletonlabs/skeleton-svelte';
 	import { IconUserMinus, IconUserPlus, IconUserShare } from '@tabler/icons-svelte';
-	import { getModalStore, type ModalSettings } from '@skeletonlabs/skeleton';
+	import { getDialogStore, type DialogSettings } from '@skeletonlabs/skeleton-svelte';
 	import { emailSchema } from '$lib/schemas';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { invalidateAll } from '$app/navigation';
@@ -12,7 +12,7 @@
 	import UsersListView from '$lib/Components/Users/UsersListView.svelte';
 	import { viewUserInfoModal } from '$lib/Hooks/modals';
 
-	const modalStore = getModalStore();
+	const dialogStore = getDialogStore();
 	const toastStore = getToastStore();
 
 	export let data: PageData;
@@ -49,7 +49,7 @@
 	}
 
 	// Provide the modal settings
-	const emailModal: ModalSettings = {
+	const emailModal: DialogSettings = {
 		type: 'prompt',
 		// Data
 		title: 'Enter User Email',
@@ -61,7 +61,7 @@
 	};
 
 	function confirmModal(user: DocumentWithId) {
-		const confirmModal: ModalSettings = {
+		const confirmModal: DialogSettings = {
 			type: 'confirm',
 			// Data
 			title: 'Please Confirm',
@@ -69,11 +69,11 @@
 			// TRUE if confirm pressed, FALSE if cancel pressed
 			response: (response) => handleConfirmResponse(response, user.id)
 		};
-		modalStore.trigger(confirmModal);
+		dialogStore.trigger(confirmModal);
 	}
 
 	function addUserClicked() {
-		modalStore.trigger(emailModal);
+		dialogStore.trigger(emailModal);
 	}
 
 	async function removeUser(id: string) {
@@ -96,7 +96,7 @@
 	<UsersListView users={data.users} paginated>
 		<svelte:fragment slot="actionButton" let:user>
 			<PopupMenu id={user.id}>
-				<PopupMenuItem text="View More" onClickFunction={() => viewUserInfoModal(user, modalStore)}>
+				<PopupMenuItem text="View More" onClickFunction={() => viewUserInfoModal(user, dialogStore)}>
 					<svelte:fragment slot="icon"><IconUserShare /></svelte:fragment>
 				</PopupMenuItem>
 				<PopupMenuItem text="Delete" onClickFunction={() => confirmModal(user)} isDelete>

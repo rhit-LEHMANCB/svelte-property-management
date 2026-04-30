@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { Avatar, Paginator, getModalStore } from '@skeletonlabs/skeleton';
+	import { Avatar, Pagination, getDialogStore } from '@skeletonlabs/skeleton-svelte';
 	import type { DocumentWithId } from '../../../app';
 	import { viewUserInfoModal } from '$lib/Hooks/modals';
 
 	export let users: DocumentWithId[];
 	export let paginated = false;
-	const modalStore = getModalStore();
+	const dialogStore = getDialogStore();
 
 	$: page = {
 		page: 0,
@@ -25,7 +25,7 @@
 		{#each paginated ? paginatedUsers : users as user}
 			<li class="hover:bg-surface-hover-token p-2">
 				<button
-					on:click={() => viewUserInfoModal(user, modalStore)}
+					on:click={() => viewUserInfoModal(user, dialogStore)}
 					class="flex flex-row w-full gap-2 flex-wrap items-center"
 				>
 					<div class="group relative">
@@ -50,6 +50,6 @@
 		{/each}
 	</ul>
 	{#if paginated}
-		<Paginator bind:settings={page} showFirstLastButtons={false} showPreviousNextButtons={true} />
+		<Pagination bind:settings={page} showFirstLastButtons={false} showPreviousNextButtons={true} />
 	{/if}
 </div>
