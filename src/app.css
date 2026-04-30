@@ -1,6 +1,8 @@
-@import "tailwindcss";
-@import "@skeletonlabs/skeleton-svelte";
-@import "@skeletonlabs/skeleton/themes/hamlindigo";
+@import 'tailwindcss';
+@import '@skeletonlabs/skeleton-svelte';
+@import '@skeletonlabs/skeleton';
+@import '@skeletonlabs/skeleton/themes/hamlindigo';
+@import '@skeletonlabs/skeleton/optional/presets';
 
 /* Write your global styles here */
 

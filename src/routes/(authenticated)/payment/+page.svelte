@@ -2,14 +2,15 @@
 	import { goto } from '$app/navigation';
 	import { errorToast } from '$lib/Hooks/toasts';
 	import { ZodError, z } from 'zod';
+	import { getDialogStore, type DialogSettings } from '$lib/Hooks/dialogCompat';
 
 	let balance = 1000.0;
 	let balanceDueDate = new Date();
 
 	const dialogStore = getDialogStore();
 
-	async function startCheckout(response: string) {
-		if (!response) {
+	async function startCheckout(response: string | boolean) {
+		if (typeof response !== 'string' || !response) {
 			return;
 		}
 		const amount = parseFloat(response);
@@ -83,10 +84,10 @@
 						>
 					{/if}
 					<div class="flex flex-row gap-2 items-center">
-						<button class="btn variant-filled-secondary" on:click={viewPaymentClicked}
+						<button class="btn variant-filled-secondary" onclick={viewPaymentClicked}
 							>Make a Payment</button
 						>
-						<button class="btn variant-filled-primary" on:click={viewPaymentClicked}
+						<button class="btn variant-filled-primary" onclick={viewPaymentClicked}
 							>Set up auto pay</button
 						>
 					</div>
@@ -99,7 +100,7 @@
 			<div class="h-auto m-5">
 				<strong class="h3">Transaction History</strong>
 				<div>
-					<button class="btn variant-filled-secondary mt-5" on:click={startCustomerPortal}
+					<button class="btn variant-filled-secondary mt-5" onclick={startCustomerPortal}
 						>View Portal</button
 					>
 				</div>

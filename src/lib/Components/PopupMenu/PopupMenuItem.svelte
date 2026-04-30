@@ -9,7 +9,7 @@
 </script>
 
 <button
-	on:click={(event) => {
+	onclick={(event) => {
 		event.stopPropagation();
 		onClickFunction();
 	}}

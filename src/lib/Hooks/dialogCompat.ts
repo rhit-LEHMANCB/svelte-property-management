@@ -2,20 +2,24 @@
 // In Skeleton v4, dialogs are managed through component state using Zag.js
 // This provides a compatibility shim for the old store-based API
 
-import { writable } from 'svelte/store';
+import { writable, type Readable } from 'svelte/store';
+import type { Component } from 'svelte';
 
 export type DialogSettings = {
-	type: 'component' | 'confirm' | 'alert';
-	component?: any;
+	type: 'component' | 'confirm' | 'alert' | 'prompt';
+	component?: Component;
 	title?: string;
 	body?: string;
 	callback?: (result: boolean) => void;
+	response?: (result: string | boolean) => void;
+	valueAttr?: Record<string, unknown>;
+	buttonTextCancel?: string;
 };
 
 export type DialogStore = {
 	trigger: (settings: DialogSettings) => void;
 	close: () => void;
-	subscribe: any;
+	subscribe: Readable<DialogSettings | null>['subscribe'];
 };
 
 // Create a writable store to hold dialog state

@@ -8,7 +8,6 @@
 	import type { SuperValidated } from 'sveltekit-superforms';
 	import { getGoogle } from '$lib/google';
 
-
 	export let data: SuperValidated<PropertySchema>;
 
 	const { form, errors, enhance } = superForm(data, {
@@ -137,7 +136,7 @@
 					class="textarea"
 					class:input-error={$errors.description}
 					title="Description"
-				/></label
+				></textarea></label
 			>
 		</div>
 		<div class="grid grid-cols-3 gap-4">

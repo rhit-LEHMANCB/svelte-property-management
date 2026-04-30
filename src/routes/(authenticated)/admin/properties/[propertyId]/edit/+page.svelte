@@ -11,10 +11,9 @@
 		Combobox,
 		Portal,
 		type ComboboxRootProps,
-		useListCollection,
-		type DialogSettings
+		useListCollection
 	} from '@skeletonlabs/skeleton-svelte';
-	import { getDialogStore } from '$lib/Hooks/dialogCompat';
+	import { getDialogStore, type DialogSettings } from '$lib/Hooks/dialogCompat';
 	import {
 		IconArrowLeft,
 		IconInfoCircle,
@@ -27,15 +26,21 @@
 
 	const dialogStore = getDialogStore();
 
-	export let data: PageData;
+	let { data } = $props<{ data: PageData }>();
 
-	let photos = $state(data.photos);
+	let photos = $state<PhotoItem[]>([]);
+	$effect(() => {
+		photos = [...data.photos];
+	});
 	let selectedTenantId = '';
 	let tabSet = $state('info');
 
 	// Combobox setup for tenant selection
 	const tenantOptions = $derived(data.usersOptions ?? []);
-	let filteredTenants = $state(tenantOptions);
+	let filteredTenants = $state<(typeof tenantOptions)[number][]>([]);
+	$effect(() => {
+		filteredTenants = [...(data.usersOptions ?? [])];
+	});
 
 	const tenantCollection = $derived(
 		useListCollection({
@@ -50,7 +55,7 @@
 	};
 
 	const onTenantInputValueChange: ComboboxRootProps['onInputValueChange'] = (event) => {
-		const filtered = tenantOptions.filter((item) =>
+		const filtered = tenantOptions.filter((item: (typeof tenantOptions)[number]) =>
 			item.label.toLowerCase().includes(event.inputValue.toLowerCase())
 		);
 		if (filtered.length > 0) {
@@ -113,7 +118,7 @@
 			title: 'Please Confirm',
 			body: `Are you sure you wish to remove ${user.data.firstName} ${user.data.lastName} from this property?`,
 			// TRUE if confirm pressed, FALSE if cancel pressed
-			response: (response) => handleConfirmResponse(response, user.id)
+			response: (response: string | boolean) => handleConfirmResponse(response as boolean, user.id)
 		};
 		dialogStore.trigger(confirmModal);
 	}
@@ -159,40 +164,16 @@
 			errorToast('Error adding tenant.');
 		}
 	}
-		const response = await fetch(`/api/property/${$page.params.propertyId}/tenants`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({ tenantId: selectedTenantId })
-		});
-		if (response.ok) {
-			successToast('Successfully added tenant.');
-			selectedTenantId = '';
-			selectedTenantName = '';
-			invalidateAll();
-		} else {
-			errorToast('Error adding tenant.');
-		}
-	}
-
-	let popupSettings: PopupSettings = {
-		event: 'focus-click',
-		target: 'popupAutocomplete',
-		placement: 'bottom'
-	};
-
-	let tabSet = 0;
 </script>
 
 <div class="flex flex-row justify-between py-5">
-	<button on:click={() => goto('/admin/properties')} class="btn btn-sm variant-filled-primary ml-5"
+	<button onclick={() => goto('/admin/properties')} class="btn btn-sm variant-filled-primary ml-5"
 		><IconArrowLeft class="mr-2" />Properties</button
 	>
 	<strong class="h3 mx-5 truncate">{data.form.data.title}</strong>
 </div>
 <hr />
-<Tabs value={tabSet} onValueChange={(details) => tabSet = details.value}>
+<Tabs value={tabSet} onValueChange={(details) => (tabSet = details.value)}>
 	<Tabs.List>
 		<Tabs.Trigger value="info">
 			<div class="flex gap-2">
@@ -242,10 +223,10 @@
 			<SortablePhotos list={photos} on:sort={sortList} let:item let:index>
 				<div class="group relative">
 					<div class="w-40 h-40 overflow-hidden flex items-center justify-center">
-						<img src={item.photoUrl} alt={item.id} on:error={(ev) => handleError(ev, item)} />
+						<img src={item.photoUrl} alt={item.id} onerror={(ev) => handleError(ev, item)} />
 					</div>
 					<button
-						on:click={() => deleteLink(item)}
+						onclick={() => deleteLink(item)}
 						class="chip variant-filled-error invisible group-hover:visible transition-all absolute -right-2 -bottom-4"
 						>Delete</button
 					>
@@ -274,7 +255,7 @@
 							<Combobox.Positioner>
 								<Combobox.Content class="z-50">
 									{#each filteredTenants as item (item.value)}
-										<Combobox.Item item={item}>
+										<Combobox.Item {item}>
 											<Combobox.ItemText>{item.label}</Combobox.ItemText>
 											<Combobox.ItemIndicator />
 										</Combobox.Item>
@@ -285,7 +266,7 @@
 					</Combobox>
 				</div>
 				<div class="justify-self-start">
-					<button on:click={addTenant} class="btn variant-filled-secondary">Add</button>
+					<button onclick={addTenant} class="btn variant-filled-secondary">Add</button>
 				</div>
 			</div>
 		</div>
@@ -293,12 +274,11 @@
 			<strong class="h4">Current</strong>
 			{#if data.tenants.length > 0}
 				<UsersListView users={data.tenants} class="pt-2">
-					<svelte:fragment slot="actionButton" let:user>
-						<button
-							on:click={() => confirmModal(user)}
-							class="btn-icon btn-sm variant-filled-error"><IconLinkMinus /></button
+					{#snippet actionButton({ user })}
+						<button onclick={() => confirmModal(user)} class="btn-icon btn-sm variant-filled-error"
+							><IconLinkMinus /></button
 						>
-					</svelte:fragment>
+					{/snippet}
 				</UsersListView>
 			{:else}
 				<div>No tenants</div>

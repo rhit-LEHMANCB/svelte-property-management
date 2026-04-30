@@ -59,10 +59,16 @@
 				data-index={index}
 				data-id={item.id}
 				draggable="true"
-				on:dragstart={onDragStart}
-				on:dragover|preventDefault={onDragOver}
-				on:dragleave={onDragLeave}
-				on:drop|preventDefault={onDrop}
+				ondragstart={onDragStart}
+				ondragover={(e) => {
+					e.preventDefault();
+					onDragOver(e);
+				}}
+				ondragleave={onDragLeave}
+				ondrop={(e) => {
+					e.preventDefault();
+					onDrop(e);
+				}}
 				animate:flip={{ duration: 300 }}
 			>
 				<slot {item} {index} />

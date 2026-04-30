@@ -4,38 +4,54 @@
 	import { viewUserInfoModal } from '$lib/Hooks/modals';
 	import { Avatar, Pagination } from '@skeletonlabs/skeleton-svelte';
 
-	export let users: DocumentWithId[];
-	export let paginated = false;
+	let {
+		users,
+		paginated = false,
+		class: className = '',
+		actionButton
+	} = $props<{
+		users: DocumentWithId[];
+		paginated?: boolean;
+		class?: string;
+		actionButton?: (props: { user: DocumentWithId }) => import('svelte').Snippet;
+	}>();
 	const dialogStore = getDialogStore();
 
 	let page = $state({
 		page: 1,
 		limit: 5,
-		size: users.length,
+		size: 0,
 		amounts: [1, 2, 5, 10]
 	});
 
-	let paginatedUsers = $derived(users.slice(
-		(page.page - 1) * page.limit, // start
-		(page.page - 1) * page.limit + page.limit // end
-	));
+	let paginatedUsers = $derived(
+		users.slice(
+			(page.page - 1) * page.limit, // start
+			(page.page - 1) * page.limit + page.limit // end
+		)
+	);
 </script>
 
-<div class={`flex flex-col gap-5 ${$$props.class ?? ''}`}>
+<div class={`flex flex-col gap-5 ${className}`}>
 	<ul class="list">
 		{#each paginated ? paginatedUsers : users as user}
 			<li class="hover:bg-surface-hover-token p-2">
 				<button
-					on:click={() => viewUserInfoModal(user, dialogStore)}
+					onclick={() => viewUserInfoModal(user, dialogStore)}
 					class="flex flex-row w-full gap-2 flex-wrap items-center"
 				>
 					<div class="group relative">
-						<Avatar.Root>
+						<Avatar>
 							{#if user.data.photoUrl}
-								<Avatar.Image src={user.data.photoUrl} alt={`${user.data.firstName} ${user.data.lastName}`} />
+								<Avatar.Image
+									src={user.data.photoUrl}
+									alt={`${user.data.firstName} ${user.data.lastName}`}
+								/>
 							{/if}
-							<Avatar.Fallback>{`${user.data.firstName[0]}${user.data.lastName[0]}`}</Avatar.Fallback>
-						</Avatar.Root>
+							<Avatar.Fallback
+								>{`${user.data.firstName[0]}${user.data.lastName[0]}`}</Avatar.Fallback
+							>
+						</Avatar>
 						{#if !user.data.insurance && user.data.permissions == 'user'}
 							<span class="badge-icon variant-filled-warning absolute -left-1 -top-1">!</span>
 						{/if}
@@ -46,14 +62,21 @@
 						<p>Phone Number: {user.data.phoneNumber}</p>
 					</div>
 					<div class="flex grow justify-end">
-						<slot name="actionButton" {user} />
+						{#if actionButton}
+							{@render actionButton({ user })}
+						{/if}
 					</div>
 				</button>
 			</li>
 		{/each}
 	</ul>
 	{#if paginated}
-		<Pagination count={users.length} pageSize={page.limit} page={page.page} onPageChange={(event) => page.page = event.page}>
+		<Pagination
+			count={users.length}
+			pageSize={page.limit}
+			page={page.page}
+			onPageChange={(event) => (page.page = event.page)}
+		>
 			<Pagination.PrevTrigger />
 			<Pagination.Context>
 				{#snippet children(pagination)}

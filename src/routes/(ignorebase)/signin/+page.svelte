@@ -8,7 +8,7 @@
 	let password: string;
 	let loginError: string;
 
-	$: email, password, (loginError = '');
+	$: (email, password, (loginError = ''));
 	$: if (loginError) {
 		errorToast('Your email or password is incorrect.');
 	}
@@ -65,11 +65,11 @@
 			>
 		</div>
 		<div>
-			<button type="button" on:click={handleSignIn} class="btn variant-filled-primary mt-5"
+			<button type="button" onclick={handleSignIn} class="btn variant-filled-primary mt-5"
 				>Sign in</button
 			>
 		</div>
 	</div>
 </div>
 
-<svelte:window on:keydown={onKeyDown} />
+<svelte:window onkeydown={onKeyDown} />

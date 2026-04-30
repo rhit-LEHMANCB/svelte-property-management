@@ -50,7 +50,6 @@
 						>
 					</div>
 					<div>
-						<!-- svelte-ignore a11y-label-has-associated-control -->
 						<label class="label"
 							><span>Start Date</span>
 							<DateInput
@@ -62,7 +61,6 @@
 						</label>
 					</div>
 					<div>
-						<!-- svelte-ignore a11y-label-has-associated-control -->
 						<label class="label"
 							><span>End Date</span>
 							<DateInput

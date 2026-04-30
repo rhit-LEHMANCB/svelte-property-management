@@ -3,12 +3,8 @@
 	import { page } from '$app/stores';
 	import { errorToast } from '$lib/Hooks/toasts';
 	import { auth } from '$lib/firebase';
-	import {
-		getDialogStore,
-		popup,
-		type DialogSettings,
-		type PopupSettings
-	} from '@skeletonlabs/skeleton-svelte';
+	import { Popover, Portal } from '@skeletonlabs/skeleton-svelte';
+	import { getDialogStore, type DialogSettings } from '$lib/Hooks/dialogCompat';
 	import { error } from '@sveltejs/kit';
 	import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 	import type { PageData } from './$types';
@@ -17,8 +13,10 @@
 	import { IconQuestionMark } from '@tabler/icons-svelte';
 	import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 
-	export let data: PageData;
+	let { data } = $props<{ data: PageData }>();
 
+	// superForm only needs the initial value, not reactivity
+	// svelte-ignore state_referenced_locally
 	const { form, errors, validate, enhance } = superForm(data.form, {
 		customValidity: true,
 		validators: passwordChangeSchema,
@@ -36,12 +34,6 @@
 	if (mode !== 'resetPassword') {
 		throw error(400, 'Invalid action');
 	}
-
-	const popupHover: PopupSettings = {
-		event: 'hover',
-		target: 'popupHover',
-		placement: 'top'
-	};
 
 	async function handleVerifyPasswordReset(event: Event) {
 		event.preventDefault();
@@ -93,22 +85,29 @@
 			<p>Please fill out the information below<br /> to create your new password.</p>
 			<div class="grid grid-rows-2 gap-2 mt-2">
 				<div>
-					<label class="label"
-						><div class="flex flex-row gap-2">
-							<span>New Password</span><button
-								class="badge-icon variant-outline-primary [&>*]:pointer-events-none"
-								use:popup={popupHover}><IconQuestionMark /></button
-							>
-							<div class="card p-4 variant-filled-primary w-64" data-popup="popupHover">
-								<ul>
-									<li>- At least 8 characters</li>
-									<li>- Less than 32 characters</li>
-									<li>- One uppercase letter</li>
-									<li>- One lowercase letter</li>
-									<li>- A number or special character</li>
-								</ul>
-								<div class="arrow variant-filled-primary" />
-							</div>
+					<label class="label">
+						<div class="flex flex-row gap-2 items-center">
+							<span>New Password</span>
+							<Popover>
+								<Popover.Trigger
+									class="badge-icon variant-outline-primary [&>*]:pointer-events-none"
+								>
+									<IconQuestionMark />
+								</Popover.Trigger>
+								<Portal>
+									<Popover.Positioner>
+										<Popover.Content class="card p-4 variant-filled-primary w-64">
+											<ul>
+												<li>- At least 8 characters</li>
+												<li>- Less than 32 characters</li>
+												<li>- One uppercase letter</li>
+												<li>- One lowercase letter</li>
+												<li>- A number or special character</li>
+											</ul>
+										</Popover.Content>
+									</Popover.Positioner>
+								</Portal>
+							</Popover>
 						</div>
 						<input
 							name="newPassword"
@@ -134,7 +133,7 @@
 				</div>
 			</div>
 			<button
-				on:click={(event) => handleVerifyPasswordReset(event)}
+				onclick={(event) => handleVerifyPasswordReset(event)}
 				class="btn variant-filled-primary mt-5">Change Password</button
 			>
 		</form>

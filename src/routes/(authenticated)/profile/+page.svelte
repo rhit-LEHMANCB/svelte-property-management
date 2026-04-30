@@ -9,7 +9,6 @@
 	import { onMount } from 'svelte';
 	import { Avatar } from '@skeletonlabs/skeleton-svelte';
 
-
 	export let data: PageData;
 	let phoneInput: HTMLInputElement;
 
@@ -121,12 +120,12 @@
 			>
 				<strong class="h3">Profile Picture</strong>
 				<div class="flex flex-col gap-5">
-					<Avatar.Root class="w-32 self-center">
+					<Avatar class="w-32 self-center">
 						{#if photoUrl}
 							<Avatar.Image src={photoUrl} alt={`${data.user.firstName} ${data.user.lastName}`} />
 						{/if}
 						<Avatar.Fallback>{`${data.user.firstName[0]}${data.user.lastName[0]}`}</Avatar.Fallback>
-					</Avatar.Root>
+					</Avatar>
 					<div class="flex flex-row gap-2">
 						<input
 							name="photo"
@@ -136,7 +135,7 @@
 						/>
 						<button
 							type="submit"
-							on:click={() => {
+							onclick={() => {
 								invalidateAll();
 							}}
 							class="btn btn-sm variant-filled-secondary">Upload</button
@@ -149,7 +148,7 @@
 			<div class="h-auto m-5">
 				<strong class="h3">Password</strong>
 				<div>
-					<button on:click={handleResetPasswordClicked} class="btn variant-filled-secondary mt-5"
+					<button onclick={handleResetPasswordClicked} class="btn variant-filled-secondary mt-5"
 						>Reset</button
 					>
 				</div>
