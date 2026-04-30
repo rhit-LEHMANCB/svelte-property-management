@@ -36,6 +36,20 @@
 ### Component Updates
 All major components have been updated to v4 API:
 
+#### Popup Menu Component ✅
+- **Files Updated:**
+  - src/lib/Components/PopupMenu/PopupMenu.svelte
+- **Changes:**
+  - v2: `<button use:popup={popupMenu}>` with `data-popup` target div
+  - v4: `<Popover><Popover.Trigger><Popover.Positioner><Popover.Content>` with Portal
+
+#### Autocomplete/Combobox Component ✅
+- **Files Updated:**
+  - src/routes/(authenticated)/admin/properties/[propertyId]/edit/+page.svelte
+- **Changes:**
+  - v2: `<Autocomplete bind:input on:selection={callback} />`
+  - v4: `<Combobox collection={...} onInputValueChange={...} onValueChange={...}>` with useListCollection hook
+
 #### Avatar Component ✅
 - **Files Updated:**
   - src/routes/(authenticated)/admin/properties/+page.svelte
@@ -82,19 +96,6 @@ All major components have been updated to v4 API:
 
 ## Remaining Tasks 🚧
 
-### Minor Component Updates
-1. **Popup Menu Action** (Medium Priority)
-   - File: src/lib/Components/PopupMenu/PopupMenu.svelte
-   - v2 API: `use:popup` action
-   - v4 API: Use new Popover component instead
-   - Impact: Used in property edit page for tenant selection
-
-2. **Autocomplete Component** (Medium Priority)
-   - File: src/routes/(authenticated)/admin/properties/[propertyId]/edit/+page.svelte
-   - v2 API: Old Autocomplete component
-   - v4 API: Use new Combobox component
-   - Impact: Tenant search functionality
-
 ### Testing Needed
 - [ ] Run `npm run dev` and test all pages
 - [ ] Verify all components render correctly
@@ -139,8 +140,8 @@ npm run format
 | Modal | `<Modal />` + stores | `<Dialog.Group />` + compatibility layer | ✅ Complete |
 | Toast | `<Toast />` + stores | `<Toast.Group />` + simplified helpers | ✅ Complete |
 | AppShell | `<AppShell>` | Custom flexbox layout | ✅ Complete |
-| Popup | `use:popup` action | Popover component | ⏳ Pending |
-| Autocomplete | `<Autocomplete>` | Combobox component | ⏳ Pending |
+| Popup | `use:popup` action | Popover component | ✅ Complete |
+| Autocomplete | `<Autocomplete>` | Combobox component | ✅ Complete |
 
 ## Notes
 
