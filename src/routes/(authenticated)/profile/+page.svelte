@@ -7,6 +7,7 @@
 	import { enhance } from '$app/forms';
 	import { MaskedTextChangedListener } from 'ts-input-mask';
 	import { onMount } from 'svelte';
+	import { Avatar } from '@skeletonlabs/skeleton-svelte';
 
 
 	export let data: PageData;
@@ -120,12 +121,12 @@
 			>
 				<strong class="h3">Profile Picture</strong>
 				<div class="flex flex-col gap-5">
-					<Avatar
-						src={photoUrl}
-						initials={`${data.user.firstName[0]}${data.user.lastName[0]}`}
-						width="w-32"
-						class="self-center"
-					/>
+					<Avatar.Root class="w-32 self-center">
+						{#if photoUrl}
+							<Avatar.Image src={photoUrl} alt={`${data.user.firstName} ${data.user.lastName}`} />
+						{/if}
+						<Avatar.Fallback>{`${data.user.firstName[0]}${data.user.lastName[0]}`}</Avatar.Fallback>
+					</Avatar.Root>
 					<div class="flex flex-row gap-2">
 						<input
 							name="photo"

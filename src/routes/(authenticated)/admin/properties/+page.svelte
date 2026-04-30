@@ -1,26 +1,30 @@
-<script lang="ts">
+<script lang="ts" module>
 	import { IconHomeMinus, IconHomePlus, IconPhotoCancel } from '@tabler/icons-svelte';
 	import { getDialogStore } from '$lib/Hooks/dialogCompat';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { DocumentWithId } from '../../../../app';
+	import { Avatar, Pagination } from '@skeletonlabs/skeleton-svelte';
+</script>
+
+<script lang="ts">
 
 	const dialogStore = getDialogStore();
 
 	export let data: PageData;
 
-	let page = {
-		page: 0,
+	let page = $state({
+		page: 1,
 		limit: 5,
 		size: data.properties.length,
 		amounts: [1, 2, 5, 10]
-	};
+	});
 
-	$: paginatedProperties = data.properties.slice(
-		page.page * page.limit, // start
-		page.page * page.limit + page.limit // end
-	);
+	let paginatedProperties = $derived(data.properties.slice(
+		(page.page - 1) * page.limit, // start
+		(page.page - 1) * page.limit + page.limit // end
+	));
 
 	async function handleConfirmResponse(confirmed: boolean, userId: string) {
 		if (confirmed) {
@@ -71,7 +75,10 @@
 			<a href={`/admin/properties/${property.id}/edit`} class="card bg-surface-200 flex p-2">
 				<li class="w-full">
 					{#if property.data.photos}
-						<Avatar src={property.data.photos[0].photoUrl} rounded="rounded-none" width="w-32" />
+						<Avatar.Root class="rounded-none w-32">
+							<Avatar.Image src={property.data.photos[0].photoUrl} alt={property.data.title} />
+							<Avatar.Fallback>{property.data.title.charAt(0)}</Avatar.Fallback>
+						</Avatar.Root>
 					{:else}
 						<IconPhotoCancel size={128} />
 					{/if}
@@ -87,5 +94,21 @@
 			</a>
 		{/each}
 	</ul>
-	<Pagination bind:settings={page} showFirstLastButtons={false} showPreviousNextButtons={true} />
+	<Pagination count={data.properties.length} pageSize={page.limit} {page} onPageChange={(event) => page.page = event.page}>
+		<Pagination.PrevTrigger />
+		<Pagination.Context>
+			{#snippet children(pagination)}
+				{#each pagination().pages as p, index (p)}
+					{#if p.type === 'page'}
+						<Pagination.Item {...p}>
+							{p.value}
+						</Pagination.Item>
+					{:else}
+						<Pagination.Ellipsis {index}>&#8230;</Pagination.Ellipsis>
+					{/if}
+				{/each}
+			{/snippet}
+		</Pagination.Context>
+		<Pagination.NextTrigger />
+	</Pagination>
 </div>

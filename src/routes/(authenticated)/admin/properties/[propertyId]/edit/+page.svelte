@@ -7,15 +7,10 @@
 	import { page } from '$app/stores';
 	import { goto, invalidateAll } from '$app/navigation';
 	import {
-		Autocomplete,
-		popup,
-		type AutocompleteOption,
-		type PopupSettings,
-		Tab,
-		TabGroup,
-		type DialogSettings,
-		getDialogStore
+		Tabs,
+		type DialogSettings
 	} from '@skeletonlabs/skeleton-svelte';
+	import { getDialogStore } from '$lib/Hooks/dialogCompat';
 	import {
 		IconArrowLeft,
 		IconInfoCircle,
@@ -30,9 +25,10 @@
 
 	export let data: PageData;
 
-	$: photos = data.photos;
+	let photos = $state(data.photos);
 	let selectedTenantName = '';
 	let selectedTenantId = '';
+	let tabSet = $state('info');
 
 	async function sortList(e: CustomEvent) {
 		const newList = e.detail;
@@ -150,106 +146,98 @@
 	<strong class="h3 mx-5 truncate">{data.form.data.title}</strong>
 </div>
 <hr />
-<TabGroup>
-	<Tab bind:group={tabSet} name="info" value={0}>
-		<div class="flex gap-2">
-			<IconInfoCircle />
-			<span>Info</span>
-		</div>
-	</Tab>
-	<Tab bind:group={tabSet} name="photos" value={1}
-		><div class="flex gap-2">
-			<IconPhoto />
-			<span>Photos</span>
-		</div></Tab
-	>
-	<Tab bind:group={tabSet} name="tenants" value={2}
-		><div class="flex gap-2">
-			<IconUserDollar />
-			<span>Tenants</span>
-		</div></Tab
-	>
-	<!-- Tab Panels --->
-	<svelte:fragment slot="panel">
-		{#if tabSet === 0}
-			<PropertyForm data={data.form} />
-		{:else if tabSet === 1}
-			<form
-				class="flex flex-col gap-4 m-5 pb-5"
-				use:enhance
-				method="POST"
-				action="?/photos"
-				enctype="multipart/form-data"
-			>
-				<strong class="h4">Photos</strong>
-				<div class="grid grid-cols-4 lg:grid-cols-8 gap-4">
-					<input
-						name="photos"
-						class="input col-span-3"
-						type="file"
-						multiple
-						accept="image/png, image/jpeg, image/gif, image/webp"
-					/>
-					<div>
-						<button type="submit" class="btn variant-filled-secondary">Add</button>
-					</div>
-				</div>
-				<SortablePhotos list={photos} on:sort={sortList} let:item let:index>
-					<div class="group relative">
-						<div class="w-40 h-40 overflow-hidden flex items-center justify-center">
-							<img src={item.photoUrl} alt={item.id} on:error={(ev) => handleError(ev, item)} />
-						</div>
-						<button
-							on:click={() => deleteLink(item)}
-							class="chip variant-filled-error invisible group-hover:visible transition-all absolute -right-2 -bottom-4"
-							>Delete</button
-						>
-						<span class="badge-icon variant-filled absolute -left-3 -top-3">{index + 1}</span>
-					</div>
-				</SortablePhotos>
-			</form>
-		{:else if tabSet === 2}
-			<form class="flex flex-col gap-4 mx-5 mt-5">
-				<strong class="h4">Tenants</strong>
-				<div class="grid grid-cols-4 lg:grid-cols-8 gap-4">
-					<input
-						class="input autocomplete col-span-3"
-						type="search"
-						name="tenants"
-						bind:value={selectedTenantName}
-						placeholder="Search..."
-						use:popup={popupSettings}
-					/>
-					<div class="justify-self-start">
-						<button on:click={addTenant} class="btn variant-filled-secondary">Add</button>
-					</div>
-				</div>
-				<div class="card w-full max-w-sm shadow-xl" data-popup="popupAutocomplete">
-					<div class="max-h-96 overflow-auto">
-						<Autocomplete
-							bind:input={selectedTenantName}
-							options={data.usersOptions}
-							on:selection={onTenantSelect}
-						/>
-					</div>
-					<div class="arrow bg-surface-100-800-token" />
-				</div>
-			</form>
-			<div class="p-5">
-				<strong class="h4">Current</strong>
-				{#if data.tenants.length > 0}
-					<UsersListView users={data.tenants} class="pt-2">
-						<svelte:fragment slot="actionButton" let:user>
-							<button
-								on:click={() => confirmModal(user)}
-								class="btn-icon btn-sm variant-filled-error"><IconLinkMinus /></button
-							>
-						</svelte:fragment>
-					</UsersListView>
-				{:else}
-					<div>No tenants</div>
-				{/if}
+<Tabs value={tabSet} onValueChange={(details) => tabSet = details.value}>
+	<Tabs.List>
+		<Tabs.Trigger value="info">
+			<div class="flex gap-2">
+				<IconInfoCircle />
+				<span>Info</span>
 			</div>
-		{/if}
-	</svelte:fragment>
-</TabGroup>
+		</Tabs.Trigger>
+		<Tabs.Trigger value="photos">
+			<div class="flex gap-2">
+				<IconPhoto />
+				<span>Photos</span>
+			</div>
+		</Tabs.Trigger>
+		<Tabs.Trigger value="tenants">
+			<div class="flex gap-2">
+				<IconUserDollar />
+				<span>Tenants</span>
+			</div>
+		</Tabs.Trigger>
+		<Tabs.Indicator />
+	</Tabs.List>
+	<!-- Tab Panels --->
+	<Tabs.Content value="info">
+		<PropertyForm data={data.form} />
+	</Tabs.Content>
+	<Tabs.Content value="photos">
+		<form
+			class="flex flex-col gap-4 m-5 pb-5"
+			use:enhance
+			method="POST"
+			action="?/photos"
+			enctype="multipart/form-data"
+		>
+			<strong class="h4">Photos</strong>
+			<div class="grid grid-cols-4 lg:grid-cols-8 gap-4">
+				<input
+					name="photos"
+					class="input col-span-3"
+					type="file"
+					multiple
+					accept="image/png, image/jpeg, image/gif, image/webp"
+				/>
+				<div>
+					<button type="submit" class="btn variant-filled-secondary">Add</button>
+				</div>
+			</div>
+			<SortablePhotos list={photos} on:sort={sortList} let:item let:index>
+				<div class="group relative">
+					<div class="w-40 h-40 overflow-hidden flex items-center justify-center">
+						<img src={item.photoUrl} alt={item.id} on:error={(ev) => handleError(ev, item)} />
+					</div>
+					<button
+						on:click={() => deleteLink(item)}
+						class="chip variant-filled-error invisible group-hover:visible transition-all absolute -right-2 -bottom-4"
+						>Delete</button
+					>
+					<span class="badge-icon variant-filled absolute -left-3 -top-3">{index + 1}</span>
+				</div>
+			</SortablePhotos>
+		</form>
+	</Tabs.Content>
+	<Tabs.Content value="tenants">
+		<form class="flex flex-col gap-4 mx-5 mt-5">
+			<strong class="h4">Tenants</strong>
+			<div class="grid grid-cols-4 lg:grid-cols-8 gap-4">
+				<input
+					class="input autocomplete col-span-3"
+					type="search"
+					name="tenants"
+					bind:value={selectedTenantName}
+					placeholder="Search..."
+				/>
+				<div class="justify-self-start">
+					<button on:click={addTenant} class="btn variant-filled-secondary">Add</button>
+				</div>
+			</div>
+		</form>
+		<div class="p-5">
+			<strong class="h4">Current</strong>
+			{#if data.tenants.length > 0}
+				<UsersListView users={data.tenants} class="pt-2">
+					<svelte:fragment slot="actionButton" let:user>
+						<button
+							on:click={() => confirmModal(user)}
+							class="btn-icon btn-sm variant-filled-error"><IconLinkMinus /></button
+						>
+					</svelte:fragment>
+				</UsersListView>
+			{:else}
+				<div>No tenants</div>
+			{/if}
+		</div>
+	</Tabs.Content>
+</Tabs>

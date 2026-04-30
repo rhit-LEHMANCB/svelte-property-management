@@ -1,11 +1,8 @@
 <script lang="ts">
 	import { IconCheck, IconTool } from '@tabler/icons-svelte';
 	import type { PageData } from './$types';
-	import {
-		Pagination,
-		getDialogStore,
-		type DialogSettings,
-	} from '@skeletonlabs/skeleton-svelte';
+	import { Pagination } from '@skeletonlabs/skeleton-svelte';
+	import { getDialogStore, type DialogSettings } from '$lib/Hooks/dialogCompat';
 	import type { MaintenanceRequest } from '../../../../app';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { invalidateAll } from '$app/navigation';
@@ -13,29 +10,29 @@
 	export let data: PageData;
 	const dialogStore = getDialogStore();
 
-	let openPage = {
-		page: 0,
+	let openPage = $state({
+		page: 1,
 		limit: 5,
 		size: data.openMaintenanceRequests.length,
 		amounts: [1, 2, 5, 10]
-	};
+	});
 
-	let closedPage = {
-		page: 0,
+	let closedPage = $state({
+		page: 1,
 		limit: 5,
 		size: data.closedMaintenanceRequests.length,
 		amounts: [1, 2, 5, 10]
-	};
+	});
 
-	$: paginatedOpenRequests = data.openMaintenanceRequests.slice(
-		openPage.page * openPage.limit, // start
-		openPage.page * openPage.limit + openPage.limit // end
-	);
+	let paginatedOpenRequests = $derived(data.openMaintenanceRequests.slice(
+		(openPage.page - 1) * openPage.limit, // start
+		(openPage.page - 1) * openPage.limit + openPage.limit // end
+	));
 
-	$: paginatedClosedRequests = data.closedMaintenanceRequests.slice(
-		closedPage.page * closedPage.limit, // start
-		closedPage.page * closedPage.limit + closedPage.limit // end
-	);
+	let paginatedClosedRequests = $derived(data.closedMaintenanceRequests.slice(
+		(closedPage.page - 1) * closedPage.limit, // start
+		(closedPage.page - 1) * closedPage.limit + closedPage.limit // end
+	));
 
 	function confirmModal(request: MaintenanceRequest) {
 		const confirmModal: DialogSettings = {
@@ -111,11 +108,23 @@
 				{:else}
 					<p class="text-center my-12 text-lg">No open maintenance requests</p>
 				{/if}
-				<Pagination
-					bind:settings={openPage}
-					showFirstLastButtons={false}
-					showPreviousNextButtons={true}
-				/>
+				<Pagination count={data.openMaintenanceRequests.length} pageSize={openPage.limit} page={openPage.page} onPageChange={(event) => openPage.page = event.page}>
+					<Pagination.PrevTrigger />
+					<Pagination.Context>
+						{#snippet children(pagination)}
+							{#each pagination().pages as p, index (p)}
+								{#if p.type === 'page'}
+									<Pagination.Item {...p}>
+										{p.value}
+									</Pagination.Item>
+								{:else}
+									<Pagination.Ellipsis {index}>&#8230;</Pagination.Ellipsis>
+								{/if}
+							{/each}
+						{/snippet}
+					</Pagination.Context>
+					<Pagination.NextTrigger />
+				</Pagination>
 			</div>
 		</div>
 	</div>
@@ -156,11 +165,23 @@
 				{:else}
 					<p class="text-center my-12 text-lg">No closed maintenance requests</p>
 				{/if}
-				<Pagination
-					bind:settings={openPage}
-					showFirstLastButtons={false}
-					showPreviousNextButtons={true}
-				/>
+				<Pagination count={data.closedMaintenanceRequests.length} pageSize={closedPage.limit} page={closedPage.page} onPageChange={(event) => closedPage.page = event.page}>
+					<Pagination.PrevTrigger />
+					<Pagination.Context>
+						{#snippet children(pagination)}
+							{#each pagination().pages as p, index (p)}
+								{#if p.type === 'page'}
+									<Pagination.Item {...p}>
+										{p.value}
+									</Pagination.Item>
+								{:else}
+									<Pagination.Ellipsis {index}>&#8230;</Pagination.Ellipsis>
+								{/if}
+							{/each}
+						{/snippet}
+					</Pagination.Context>
+					<Pagination.NextTrigger />
+				</Pagination>
 			</div>
 		</div>
 	</div>

@@ -4,6 +4,7 @@
 	import { maintenanceSchema } from '$lib/schemas';
 	import { successToast } from '$lib/Hooks/toasts';
 	import { IconTool } from '@tabler/icons-svelte';
+	import { Accordion } from '@skeletonlabs/skeleton-svelte';
 
 	export let data: PageData;
 
@@ -55,13 +56,13 @@
 			</form>
 		</div>
 	</div>
-	<Accordion padding="p-5 pt-0" spacing="space-y-2">
+	<Accordion multiple class="p-5 pt-0 space-y-2">
 		<div class="card">
-			<AccordionItem open>
-				<svelte:fragment slot="summary"
-					><div class="pt-5"><strong class="h3">Open Maintenance Requests</strong></div>
-				</svelte:fragment>
-				<svelte:fragment slot="content">
+			<Accordion.Item value="open">
+				<Accordion.ItemTrigger>
+					<div class="pt-5"><strong class="h3">Open Maintenance Requests</strong></div>
+				</Accordion.ItemTrigger>
+				<Accordion.ItemContent>
 					{#if data.openMaintenanceRequests.length > 0}
 						<dl class="list-dl">
 							{#each data.openMaintenanceRequests as request}
@@ -89,15 +90,15 @@
 					{:else}
 						<p class="text-center my-12 text-lg">No open maintenance requests</p>
 					{/if}
-				</svelte:fragment>
-			</AccordionItem>
+				</Accordion.ItemContent>
+			</Accordion.Item>
 		</div>
 		<div class="card">
-			<AccordionItem open>
-				<svelte:fragment slot="summary"
-					><div class="pt-5"><strong class="h3">Closed Maintenance Requests</strong></div>
-				</svelte:fragment>
-				<svelte:fragment slot="content">
+			<Accordion.Item value="closed">
+				<Accordion.ItemTrigger>
+					<div class="pt-5"><strong class="h3">Closed Maintenance Requests</strong></div>
+				</Accordion.ItemTrigger>
+				<Accordion.ItemContent>
 					{#if data.closedMaintenanceRequests.length > 0}
 						<dl class="list-dl">
 							{#each data.closedMaintenanceRequests as request}
@@ -125,8 +126,8 @@
 					{:else}
 						<p class="text-center my-12 text-lg">No closed maintenance requests</p>
 					{/if}
-				</svelte:fragment>
-			</AccordionItem>
+				</Accordion.ItemContent>
+			</Accordion.Item>
 		</div>
 	</Accordion>
 </div>
