@@ -8,6 +8,10 @@
 	import { goto, invalidateAll } from '$app/navigation';
 	import {
 		Tabs,
+		Combobox,
+		Portal,
+		type ComboboxRootProps,
+		useListCollection,
 		type DialogSettings
 	} from '@skeletonlabs/skeleton-svelte';
 	import { getDialogStore } from '$lib/Hooks/dialogCompat';
@@ -26,9 +30,41 @@
 	export let data: PageData;
 
 	let photos = $state(data.photos);
-	let selectedTenantName = '';
 	let selectedTenantId = '';
 	let tabSet = $state('info');
+
+	// Combobox setup for tenant selection
+	const tenantOptions = $derived(data.usersOptions ?? []);
+	let filteredTenants = $state(tenantOptions);
+
+	const tenantCollection = $derived(
+		useListCollection({
+			items: filteredTenants,
+			itemToString: (item) => item.label,
+			itemToValue: (item) => item.value
+		})
+	);
+
+	const onTenantOpenChange = () => {
+		filteredTenants = tenantOptions;
+	};
+
+	const onTenantInputValueChange: ComboboxRootProps['onInputValueChange'] = (event) => {
+		const filtered = tenantOptions.filter((item) =>
+			item.label.toLowerCase().includes(event.inputValue.toLowerCase())
+		);
+		if (filtered.length > 0) {
+			filteredTenants = filtered;
+		} else {
+			filteredTenants = tenantOptions;
+		}
+	};
+
+	const onTenantValueChange: ComboboxRootProps['onValueChange'] = (event) => {
+		if (event.value && event.value.length > 0) {
+			selectedTenantId = event.value[0];
+		}
+	};
 
 	async function sortList(e: CustomEvent) {
 		const newList = e.detail;
@@ -70,11 +106,6 @@
 		}
 	}
 
-	function onTenantSelect(event: CustomEvent<AutocompleteOption>): void {
-		selectedTenantName = event.detail.label;
-		selectedTenantId = event.detail.value as string;
-	}
-
 	function confirmModal(user: DocumentWithId) {
 		const confirmModal: DialogSettings = {
 			type: 'confirm',
@@ -110,9 +141,24 @@
 	}
 
 	async function addTenant() {
-		if (!selectedTenantName || !selectedTenantId) {
+		if (!selectedTenantId) {
 			return;
 		}
+		const response = await fetch(`/api/property/${$page.params.propertyId}/tenants`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({ tenantId: selectedTenantId })
+		});
+		if (response.ok) {
+			successToast('Tenant successfully added.');
+			invalidateAll();
+			selectedTenantId = '';
+		} else {
+			errorToast('Error adding tenant.');
+		}
+	}
 		const response = await fetch(`/api/property/${$page.params.propertyId}/tenants`, {
 			method: 'POST',
 			headers: {
@@ -209,21 +255,40 @@
 		</form>
 	</Tabs.Content>
 	<Tabs.Content value="tenants">
-		<form class="flex flex-col gap-4 mx-5 mt-5">
-			<strong class="h4">Tenants</strong>
+		<div class="flex flex-col gap-4 mx-5 mt-5">
+			<strong class="h4">Add Tenant</strong>
 			<div class="grid grid-cols-4 lg:grid-cols-8 gap-4">
-				<input
-					class="input autocomplete col-span-3"
-					type="search"
-					name="tenants"
-					bind:value={selectedTenantName}
-					placeholder="Search..."
-				/>
+				<div class="col-span-3">
+					<Combobox
+						placeholder="Search tenants..."
+						collection={tenantCollection}
+						onOpenChange={onTenantOpenChange}
+						onInputValueChange={onTenantInputValueChange}
+						onValueChange={onTenantValueChange}
+					>
+						<Combobox.Control>
+							<Combobox.Input />
+							<Combobox.Trigger />
+						</Combobox.Control>
+						<Portal>
+							<Combobox.Positioner>
+								<Combobox.Content class="z-50">
+									{#each filteredTenants as item (item.value)}
+										<Combobox.Item item={item}>
+											<Combobox.ItemText>{item.label}</Combobox.ItemText>
+											<Combobox.ItemIndicator />
+										</Combobox.Item>
+									{/each}
+								</Combobox.Content>
+							</Combobox.Positioner>
+						</Portal>
+					</Combobox>
+				</div>
 				<div class="justify-self-start">
 					<button on:click={addTenant} class="btn variant-filled-secondary">Add</button>
 				</div>
 			</div>
-		</form>
+		</div>
 		<div class="p-5">
 			<strong class="h4">Current</strong>
 			{#if data.tenants.length > 0}
