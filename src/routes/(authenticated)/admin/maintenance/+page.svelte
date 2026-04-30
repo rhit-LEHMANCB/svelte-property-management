@@ -5,7 +5,6 @@
 		Pagination,
 		getDialogStore,
 		type DialogSettings,
-		getToastStore
 	} from '@skeletonlabs/skeleton-svelte';
 	import type { MaintenanceRequest } from '../../../../app';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
@@ -13,7 +12,6 @@
 
 	export let data: PageData;
 	const dialogStore = getDialogStore();
-	const toastStore = getToastStore();
 
 	let openPage = {
 		page: 0,
@@ -66,10 +64,10 @@
 			body: JSON.stringify({ workDone })
 		});
 		if (response.ok) {
-			successToast('Successfully closed request.', toastStore);
+			successToast('Successfully closed request.');
 			invalidateAll();
 		} else {
-			errorToast('Error closing request.', toastStore);
+			errorToast('Error closing request.');
 		}
 	}
 </script>

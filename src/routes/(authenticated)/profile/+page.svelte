@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { profileSchema } from '$lib/schemas';
-	import { Avatar, getToastStore } from '@skeletonlabs/skeleton-svelte';
 	import type { PageData } from './$types';
 	import { superForm } from 'sveltekit-superforms/client';
 	import { invalidateAll } from '$app/navigation';
@@ -9,7 +8,6 @@
 	import { MaskedTextChangedListener } from 'ts-input-mask';
 	import { onMount } from 'svelte';
 
-	const toastStore = getToastStore();
 
 	export let data: PageData;
 	let phoneInput: HTMLInputElement;
@@ -28,7 +26,7 @@
 		onUpdated({ form }) {
 			if (form.message === 'Form submitted') {
 				// Display the message using a toast library
-				successToast('Successfully updated user info.', toastStore);
+				successToast('Successfully updated user info.');
 			}
 		}
 	});
@@ -44,9 +42,9 @@
 			body: JSON.stringify({ email: data.user.email })
 		});
 		if (response.ok) {
-			successToast('Reset email successfully sent.', toastStore);
+			successToast('Reset email successfully sent.');
 		} else {
-			errorToast('Error sending reset email.', toastStore);
+			errorToast('Error sending reset email.');
 		}
 	}
 </script>

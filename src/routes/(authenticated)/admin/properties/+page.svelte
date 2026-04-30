@@ -1,14 +1,12 @@
 <script lang="ts">
-	import { Avatar, Pagination, getToastStore } from '@skeletonlabs/skeleton-svelte';
 	import { IconHomeMinus, IconHomePlus, IconPhotoCancel } from '@tabler/icons-svelte';
-	import { getDialogStore, type DialogSettings } from '@skeletonlabs/skeleton-svelte';
+	import { getDialogStore } from '$lib/Hooks/dialogCompat';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { DocumentWithId } from '../../../../app';
 
 	const dialogStore = getDialogStore();
-	const toastStore = getToastStore();
 
 	export let data: PageData;
 
@@ -51,10 +49,10 @@
 			method: 'DELETE'
 		});
 		if (response.ok) {
-			successToast('Property Successfully Removed.', toastStore);
+			successToast('Property Successfully Removed.');
 			invalidateAll();
 		} else {
-			errorToast('Error removing property.', toastStore);
+			errorToast('Error removing property.');
 		}
 	}
 

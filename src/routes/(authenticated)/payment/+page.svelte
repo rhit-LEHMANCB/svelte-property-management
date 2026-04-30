@@ -1,13 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { errorToast } from '$lib/Hooks/toasts';
-	import { getDialogStore, getToastStore, type DialogSettings } from '@skeletonlabs/skeleton-svelte';
 	import { ZodError, z } from 'zod';
 
 	let balance = 1000.0;
 	let balanceDueDate = new Date();
 
-	const toastStore = getToastStore();
 	const dialogStore = getDialogStore();
 
 	async function startCheckout(response: string) {
@@ -19,7 +17,7 @@
 			const balanceSchema = z.number().gt(0).lte(balance).multipleOf(0.01);
 			balanceSchema.parse(amount);
 		} catch (error) {
-			errorToast((error as ZodError).errors[0].message, toastStore);
+			errorToast((error as ZodError).errors[0].message);
 			return;
 		}
 		const fetchResponse = await fetch(`/api/stripe/create-checkout-session/payment`, {
@@ -33,7 +31,7 @@
 			const body = await fetchResponse.json();
 			goto(body.url);
 		} else {
-			errorToast('Error starting payment process.', toastStore);
+			errorToast('Error starting payment process.');
 		}
 	}
 
@@ -45,7 +43,7 @@
 			const body = await response.json();
 			goto(body.url);
 		} else {
-			errorToast('Error starting customer portal.', toastStore);
+			errorToast('Error starting customer portal.');
 		}
 	}
 

@@ -2,7 +2,6 @@
 	import {
 		AppBar,
 		Dialog,
-		getToastStore,
 		type DialogStore
 	} from '@skeletonlabs/skeleton-svelte';
 	import Navigation from '$lib/Components/Navigation/Navigation.svelte';
@@ -11,7 +10,6 @@
 	import { IconLogout } from '@tabler/icons-svelte';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 
-	const toastStore = getToastStore();
 	export let data: LayoutData;
 
 	$: ({ user } = data);
@@ -25,10 +23,10 @@
 	async function signOutSSR() {
 		const response = await fetch('/api/signin', { method: 'DELETE' });
 		if (response.ok) {
-			successToast('Successfully signed out', toastStore);
+			successToast('Successfully signed out');
 			goto('/signin');
 		} else {
-			errorToast('There was a problem signing out.', toastStore);
+			errorToast('There was a problem signing out.');
 		}
 	}
 </script>

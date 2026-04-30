@@ -1,12 +1,27 @@
-import type { DialogComponent, DialogSettings, DialogStore } from '@skeletonlabs/skeleton-svelte';
-import type { DocumentWithId } from '../../app';
-import UserInfoModal from '$lib/Components/Users/UserInfoModal.svelte';
+// Dialog/Modal helper - In Skeleton v4, dialogs are managed differently
+// This is a simplified version that will need to be refactored to use the new Dialog component API
 
-export function viewUserInfoModal(user: DocumentWithId, dialogStore: DialogStore) {
-	const dialogComponent: DialogComponent = { ref: UserInfoModal, props: { user } };
-	const dialog: DialogSettings = {
-		type: 'component',
-		component: dialogComponent
+export type DialogSettings = {
+	type: 'component' | 'confirm' | 'alert';
+	component?: any;
+	title?: string;
+	body?: string;
+	callback?: (result: boolean) => void;
+};
+
+export type DialogStore = {
+	trigger: (settings: DialogSettings) => void;
+	close: () => void;
+};
+
+// Placeholder store - in a real v4 implementation, you'd use the useDialog hook in components
+export function createDialogStore(): DialogStore {
+	return {
+		trigger: (settings: DialogSettings) => {
+			console.warn('Dialog trigger called:', settings);
+		},
+		close: () => {
+			console.warn('Dialog close called');
+		}
 	};
-	dialogStore.trigger(dialog);
 }

@@ -13,7 +13,6 @@
 		type PopupSettings,
 		Tab,
 		TabGroup,
-		getToastStore,
 		type DialogSettings,
 		getDialogStore
 	} from '@skeletonlabs/skeleton-svelte';
@@ -27,7 +26,6 @@
 	import type { DocumentWithId, PhotoItem } from '../../../../../../app';
 	import UsersListView from '$lib/Components/Users/UsersListView.svelte';
 
-	const toastStore = getToastStore();
 	const dialogStore = getDialogStore();
 
 	export let data: PageData;
@@ -49,7 +47,7 @@
 		if (response.ok) {
 			invalidateAll();
 		} else {
-			errorToast('Error reordering photos.', toastStore);
+			errorToast('Error reordering photos.');
 		}
 	}
 
@@ -63,10 +61,10 @@
 		});
 
 		if (response.ok) {
-			successToast('Photo successfully deleted.', toastStore);
+			successToast('Photo successfully deleted.');
 			invalidateAll();
 		} else {
-			errorToast('Error deleting photo.', toastStore);
+			errorToast('Error deleting photo.');
 		}
 	}
 
@@ -108,10 +106,10 @@
 			body: JSON.stringify({ tenantId: id })
 		});
 		if (response.ok) {
-			successToast('User successfully removed from property.', toastStore);
+			successToast('User successfully removed from property.');
 			invalidateAll();
 		} else {
-			errorToast('Error removing user.', toastStore);
+			errorToast('Error removing user.');
 		}
 	}
 
@@ -127,12 +125,12 @@
 			body: JSON.stringify({ tenantId: selectedTenantId })
 		});
 		if (response.ok) {
-			successToast('Successfully added tenant.', toastStore);
+			successToast('Successfully added tenant.');
 			selectedTenantId = '';
 			selectedTenantName = '';
 			invalidateAll();
 		} else {
-			errorToast('Error adding tenant.', toastStore);
+			errorToast('Error adding tenant.');
 		}
 	}
 

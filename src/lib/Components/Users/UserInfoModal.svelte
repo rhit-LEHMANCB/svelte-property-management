@@ -3,7 +3,6 @@
 		getDialogStore,
 		type CssClasses,
 		type DialogSettings,
-		getToastStore,
 		Tab,
 		TabGroup,
 		Avatar
@@ -20,7 +19,6 @@
 	import { onMount } from 'svelte';
 
 	const dialogStore = getDialogStore();
-	const toastStore = getToastStore();
 
 	export let user: DocumentWithId;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,10 +61,10 @@
 			method: 'DELETE'
 		});
 		if (response.ok) {
-			successToast('User Successfully Removed.', toastStore);
+			successToast('User Successfully Removed.');
 			invalidateAll();
 		} else {
-			errorToast('Error removing user.', toastStore);
+			errorToast('Error removing user.');
 		}
 	}
 
@@ -89,7 +87,7 @@
 		if (response.ok) {
 			return (await response.json()) as DocumentWithId;
 		} else {
-			errorToast('Error getting user assoc.', toastStore);
+			errorToast('Error getting user assoc.');
 		}
 	}
 

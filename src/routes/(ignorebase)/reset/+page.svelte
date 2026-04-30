@@ -5,7 +5,6 @@
 	import { auth } from '$lib/firebase';
 	import {
 		getDialogStore,
-		getToastStore,
 		popup,
 		type DialogSettings,
 		type PopupSettings
@@ -26,7 +25,6 @@
 		validationMethod: 'onblur'
 	});
 
-	const toastStore = getToastStore();
 	const dialogStore = getDialogStore();
 
 	const mode = $page.url.searchParams.get('mode');
@@ -79,11 +77,11 @@
 						// TODO: create a modal that confirms success and then on confirm sends user to login page
 					})
 					.catch(() => {
-						errorToast('Error resetting password. Please try again.', toastStore);
+						errorToast('Error resetting password. Please try again.');
 					});
 			})
 			.catch(() => {
-				errorToast('Error resetting password. Please try again.', toastStore);
+				errorToast('Error resetting password. Please try again.');
 			});
 	}
 </script>

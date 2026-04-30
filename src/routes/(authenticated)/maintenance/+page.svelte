@@ -3,11 +3,9 @@
 	import type { PageData } from './$types';
 	import { maintenanceSchema } from '$lib/schemas';
 	import { successToast } from '$lib/Hooks/toasts';
-	import { Accordion, AccordionItem, getToastStore } from '@skeletonlabs/skeleton-svelte';
 	import { IconTool } from '@tabler/icons-svelte';
 
 	export let data: PageData;
-	const toastStore = getToastStore();
 
 	const { form, errors, enhance } = superForm(data.form, {
 		customValidity: true,
@@ -16,7 +14,7 @@
 		onUpdated({ form }) {
 			if (form.message === 'Form submitted') {
 				// Display the message using a toast library
-				successToast('Successfully added maintenance request.', toastStore);
+				successToast('Successfully added maintenance request.');
 			}
 		}
 	});

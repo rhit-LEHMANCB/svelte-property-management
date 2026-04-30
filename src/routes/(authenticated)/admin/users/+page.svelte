@@ -1,8 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { getToastStore } from '@skeletonlabs/skeleton-svelte';
 	import { IconUserMinus, IconUserPlus, IconUserShare } from '@tabler/icons-svelte';
-	import { getDialogStore, type DialogSettings } from '@skeletonlabs/skeleton-svelte';
+	import { getDialogStore } from '$lib/Hooks/dialogCompat';
 	import { emailSchema } from '$lib/schemas';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { invalidateAll } from '$app/navigation';
@@ -13,7 +12,6 @@
 	import { viewUserInfoModal } from '$lib/Hooks/modals';
 
 	const dialogStore = getDialogStore();
-	const toastStore = getToastStore();
 
 	export let data: PageData;
 
@@ -24,7 +22,7 @@
 		try {
 			emailSchema.parse(response);
 		} catch (error) {
-			errorToast('Please enter a valid email.', toastStore);
+			errorToast('Please enter a valid email.');
 			return;
 		}
 		const fetchResponse = await fetch('/api/user/add', {
@@ -36,9 +34,9 @@
 		});
 		if (fetchResponse.ok) {
 			invalidateAll();
-			successToast('User Successfully Created.', toastStore);
+			successToast('User Successfully Created.');
 		} else {
-			errorToast('Error creating user.', toastStore);
+			errorToast('Error creating user.');
 		}
 	}
 
@@ -81,10 +79,10 @@
 			method: 'DELETE'
 		});
 		if (response.ok) {
-			successToast('User Successfully Removed.', toastStore);
+			successToast('User Successfully Removed.');
 			invalidateAll();
 		} else {
-			errorToast('Error removing user.', toastStore);
+			errorToast('Error removing user.');
 		}
 	}
 </script>

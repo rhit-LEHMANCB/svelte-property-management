@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getDialogStore } from '@skeletonlabs/skeleton-svelte';
+	import { getDialogStore } from '$lib/Hooks/dialogCompat';
 	import { page } from '$app/stores';
 	import {
 		IconBuildingEstate,

@@ -44,6 +44,7 @@
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
 		"@tabler/icons-svelte": "^2.40.0",
 		"@tailwindcss/vite": "^4.2.4",
+		"@zag-js/toast": "^1.40.0",
 		"firebase-admin": "^11.10.1",
 		"google-maps": "^4.3.3",
 		"stripe": "^14.11.0",

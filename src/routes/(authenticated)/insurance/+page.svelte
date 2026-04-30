@@ -3,11 +3,9 @@
 	import type { PageData } from './$types';
 	import { insuranceSchema } from '$lib/schemas';
 	import { successToast } from '$lib/Hooks/toasts';
-	import { getToastStore } from '@skeletonlabs/skeleton-svelte';
 	import DateInput from '$lib/DatePicker/DateInput.svelte';
 
 	export let data: PageData;
-	const toastStore = getToastStore();
 
 	const { form, errors, enhance } = superForm(data.form, {
 		customValidity: true,
@@ -15,7 +13,7 @@
 		onUpdated({ form }) {
 			if (form.message === 'Form submitted') {
 				// Display the message using a toast library
-				successToast('Successfully updated user info.', toastStore);
+				successToast('Successfully updated user info.');
 			}
 		}
 	});

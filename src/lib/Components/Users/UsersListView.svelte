@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Avatar, Pagination, getDialogStore } from '@skeletonlabs/skeleton-svelte';
+	import { getDialogStore } from '$lib/Hooks/dialogCompat';
 	import type { DocumentWithId } from '../../../app';
 	import { viewUserInfoModal } from '$lib/Hooks/modals';
 

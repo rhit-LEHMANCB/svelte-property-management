@@ -3,16 +3,14 @@
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/firebase';
 	import { errorToast } from '$lib/Hooks/toasts';
-	import { getToastStore } from '@skeletonlabs/skeleton-svelte';
 
 	let email: string;
 	let password: string;
 	let loginError: string;
-	const toastStore = getToastStore();
 
 	$: email, password, (loginError = '');
 	$: if (loginError) {
-		errorToast('Your email or password is incorrect.', toastStore);
+		errorToast('Your email or password is incorrect.');
 	}
 
 	async function signIn() {
