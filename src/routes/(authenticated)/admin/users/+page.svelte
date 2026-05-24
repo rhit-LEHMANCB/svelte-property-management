@@ -1,8 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { getToastStore } from '@skeletonlabs/skeleton';
 	import { IconUserMinus, IconUserPlus, IconUserShare } from '@tabler/icons-svelte';
-	import { getModalStore, type ModalSettings } from '@skeletonlabs/skeleton';
+	import { Modal } from '@skeletonlabs/skeleton-svelte';
 	import { emailSchema } from '$lib/schemas';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { invalidateAll } from '$app/navigation';
@@ -10,21 +9,27 @@
 	import PopupMenu from '$lib/Components/PopupMenu/PopupMenu.svelte';
 	import PopupMenuItem from '$lib/Components/PopupMenu/PopupMenuItem.svelte';
 	import UsersListView from '$lib/Components/Users/UsersListView.svelte';
-	import { viewUserInfoModal } from '$lib/Hooks/modals';
+	import { openUserInfoModal } from '$lib/Hooks/modals';
 
-	const modalStore = getModalStore();
-	const toastStore = getToastStore();
+	interface Props {
+		data: PageData;
+	}
 
-	export let data: PageData;
+	let { data }: Props = $props();
 
-	async function handleResponse(response: string) {
-		if (!response) {
+	let emailModalOpen = $state(false);
+	let confirmModalOpen = $state(false);
+	let emailInput = $state('');
+	let selectedUser: DocumentWithId | null = $state(null);
+
+	async function handleResponse() {
+		if (!emailInput) {
 			return;
 		}
 		try {
-			emailSchema.parse(response);
+			emailSchema.parse(emailInput);
 		} catch (error) {
-			errorToast('Please enter a valid email.', toastStore);
+			errorToast('Please enter a valid email.');
 			return;
 		}
 		const fetchResponse = await fetch('/api/user/add', {
@@ -32,48 +37,33 @@
 			headers: {
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify({ email: response })
+			body: JSON.stringify({ email: emailInput })
 		});
 		if (fetchResponse.ok) {
 			invalidateAll();
-			successToast('User Successfully Created.', toastStore);
+			successToast('User Successfully Created.');
+			emailModalOpen = false;
+			emailInput = '';
 		} else {
-			errorToast('Error creating user.', toastStore);
+			errorToast('Error creating user.');
 		}
 	}
 
-	async function handleConfirmResponse(confirmed: boolean, userId: string) {
-		if (confirmed) {
-			await removeUser(userId);
+	async function handleConfirmResponse(confirmed: boolean) {
+		if (confirmed && selectedUser) {
+			await removeUser(selectedUser.id);
 		}
+		confirmModalOpen = false;
+		selectedUser = null;
 	}
-
-	// Provide the modal settings
-	const emailModal: ModalSettings = {
-		type: 'prompt',
-		// Data
-		title: 'Enter User Email',
-		body: 'Provide the email to be used for the new user.',
-		// Populates the input value and attributes
-		valueAttr: { type: 'text', minlength: 1, maxlength: 200, required: true },
-		// Returns the updated response value
-		response: handleResponse
-	};
 
 	function confirmModal(user: DocumentWithId) {
-		const confirmModal: ModalSettings = {
-			type: 'confirm',
-			// Data
-			title: 'Please Confirm',
-			body: `Are you sure you wish to delete ${user.data.firstName} ${user.data.lastName}?`,
-			// TRUE if confirm pressed, FALSE if cancel pressed
-			response: (response) => handleConfirmResponse(response, user.id)
-		};
-		modalStore.trigger(confirmModal);
+		selectedUser = user;
+		confirmModalOpen = true;
 	}
 
 	function addUserClicked() {
-		modalStore.trigger(emailModal);
+		emailModalOpen = true;
 	}
 
 	async function removeUser(id: string) {
@@ -81,28 +71,104 @@
 			method: 'DELETE'
 		});
 		if (response.ok) {
-			successToast('User Successfully Removed.', toastStore);
+			successToast('User Successfully Removed.');
 			invalidateAll();
 		} else {
-			errorToast('Error removing user.', toastStore);
+			errorToast('Error removing user.');
 		}
 	}
 </script>
 
+{#snippet actionButton(user: DocumentWithId)}
+	<PopupMenu>
+		<PopupMenuItem
+			text="View More"
+			onClickFunction={() => openUserInfoModal(user, { open: true, user })}
+		>
+			{#snippet icon()}
+				<IconUserShare />
+			{/snippet}
+		</PopupMenuItem>
+		<PopupMenuItem text="Delete" onClickFunction={() => confirmModal(user)} isDelete>
+			{#snippet icon()}
+				<IconUserMinus />
+			{/snippet}
+		</PopupMenuItem>
+	</PopupMenu>
+{/snippet}
+
+{#snippet emailModalContent()}
+	<div class="card p-4 space-y-4 w-[400px] max-w-[90vw]">
+		<header class="text-xl font-bold">Enter User Email</header>
+		<p>Provide the email to be used for the new user.</p>
+		<input
+			type="text"
+			bind:value={emailInput}
+			class="input"
+			minlength="1"
+			maxlength="200"
+			required
+		/>
+		<footer class="flex justify-end gap-2">
+			<button
+				type="button"
+				class="btn preset-tonal-surface"
+				onclick={() => (emailModalOpen = false)}
+			>
+				Cancel
+			</button>
+			<button type="button" class="btn preset-filled-primary-500" onclick={handleResponse}>
+				Create
+			</button>
+		</footer>
+	</div>
+{/snippet}
+
+{#snippet confirmModalContent()}
+	<div class="card p-4 space-y-4 w-[400px] max-w-[90vw]">
+		<header class="text-xl font-bold">Please Confirm</header>
+		<p>
+			Are you sure you wish to delete {selectedUser?.data.firstName}
+			{selectedUser?.data.lastName}?
+		</p>
+		<footer class="flex justify-end gap-2">
+			<button
+				type="button"
+				class="btn preset-tonal-surface"
+				onclick={() => (confirmModalOpen = false)}
+			>
+				Cancel
+			</button>
+			<button
+				type="button"
+				class="btn preset-filled-error-500"
+				onclick={() => handleConfirmResponse(true)}
+			>
+				Delete
+			</button>
+		</footer>
+	</div>
+{/snippet}
+
 <div class="card m-5 grid grid-flow-row p-5 gap-5">
-	<button on:click={addUserClicked} class="btn btn-sm variant-filled-primary justify-self-start"
-		><IconUserPlus class="mr-2" />Add User</button
-	>
-	<UsersListView users={data.users} paginated>
-		<svelte:fragment slot="actionButton" let:user>
-			<PopupMenu id={user.id}>
-				<PopupMenuItem text="View More" onClickFunction={() => viewUserInfoModal(user, modalStore)}>
-					<svelte:fragment slot="icon"><IconUserShare /></svelte:fragment>
-				</PopupMenuItem>
-				<PopupMenuItem text="Delete" onClickFunction={() => confirmModal(user)} isDelete>
-					<svelte:fragment slot="icon"><IconUserMinus /></svelte:fragment>
-				</PopupMenuItem>
-			</PopupMenu>
-		</svelte:fragment>
-	</UsersListView>
+	<button onclick={addUserClicked} class="btn btn-sm preset-filled-primary-500 justify-self-start">
+		<IconUserPlus class="mr-2" />Add User
+	</button>
+	<UsersListView users={data.users} paginated {actionButton} />
 </div>
+
+{#if emailModalOpen}
+	<Modal
+		open={emailModalOpen}
+		onOpenChange={(details) => (emailModalOpen = details.open)}
+		content={emailModalContent}
+	/>
+{/if}
+
+{#if confirmModalOpen}
+	<Modal
+		open={confirmModalOpen}
+		onOpenChange={(details) => (confirmModalOpen = details.open)}
+		content={confirmModalContent}
+	/>
+{/if}

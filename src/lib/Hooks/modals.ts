@@ -1,13 +1,9 @@
-import type { ModalComponent, ModalSettings, ModalStore } from '@skeletonlabs/skeleton';
 import type { DocumentWithId } from '../../app';
-import UserInfoModal from '$lib/Components/Users/UserInfoModal.svelte';
 
-export function viewUserInfoModal(user: DocumentWithId, modalStore: ModalStore) {
-	const modalComponent: ModalComponent = { ref: UserInfoModal, props: { user } };
-	const modal: ModalSettings = {
-		type: 'component',
-		// Data
-		component: modalComponent
-	};
-	modalStore.trigger(modal);
+export function openUserInfoModal(
+	user: DocumentWithId,
+	modalState: { open: boolean; user: DocumentWithId | null }
+) {
+	modalState.user = user;
+	modalState.open = true;
 }

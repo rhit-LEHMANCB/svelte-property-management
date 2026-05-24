@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { profileSchema } from '$lib/schemas';
-	import { Avatar, getToastStore } from '@skeletonlabs/skeleton';
+	import { Avatar } from '@skeletonlabs/skeleton-svelte';
 	import type { PageData } from './$types';
 	import { superForm } from 'sveltekit-superforms/client';
 	import { invalidateAll } from '$app/navigation';
@@ -9,9 +9,11 @@
 	import { MaskedTextChangedListener } from 'ts-input-mask';
 	import { onMount } from 'svelte';
 
-	const toastStore = getToastStore();
+	interface Props {
+		data: PageData;
+	}
 
-	export let data: PageData;
+	let { data }: Props = $props();
 	let phoneInput: HTMLInputElement;
 
 	onMount(async () => {
@@ -27,13 +29,12 @@
 		validators: profileSchema,
 		onUpdated({ form }) {
 			if (form.message === 'Form submitted') {
-				// Display the message using a toast library
-				successToast('Successfully updated user info.', toastStore);
+				successToast('Successfully updated user info.');
 			}
 		}
 	});
 
-	$: photoUrl = data.user.photoUrl;
+	let photoUrl = $derived(data.user.photoUrl);
 
 	async function handleResetPasswordClicked() {
 		const response = await fetch('/api/signin/reset', {
@@ -44,9 +45,9 @@
 			body: JSON.stringify({ email: data.user.email })
 		});
 		if (response.ok) {
-			successToast('Reset email successfully sent.', toastStore);
+			successToast('Reset email successfully sent.');
 		} else {
-			errorToast('Error sending reset email.', toastStore);
+			errorToast('Error sending reset email.');
 		}
 	}
 </script>
@@ -107,7 +108,7 @@
 						>
 					</div>
 				</div>
-				<button type="submit" class="btn variant-filled-secondary mt-5">Save</button>
+				<button type="submit" class="btn preset-filled-secondary-500 mt-5">Save</button>
 			</form>
 		</div>
 	</div>
@@ -122,12 +123,15 @@
 			>
 				<strong class="h3">Profile Picture</strong>
 				<div class="flex flex-col gap-5">
-					<Avatar
-						src={photoUrl}
-						initials={`${data.user.firstName[0]}${data.user.lastName[0]}`}
-						width="w-32"
-						class="self-center"
-					/>
+					<div class="self-center">
+						<Avatar
+							src={photoUrl}
+							name={`${data.user.firstName} ${data.user.lastName}`}
+							size="size-32"
+						>
+							{data.user.firstName[0]}{data.user.lastName[0]}
+						</Avatar>
+					</div>
 					<div class="flex flex-row gap-2">
 						<input
 							name="photo"
@@ -137,10 +141,10 @@
 						/>
 						<button
 							type="submit"
-							on:click={() => {
+							onclick={() => {
 								invalidateAll();
 							}}
-							class="btn btn-sm variant-filled-secondary">Upload</button
+							class="btn btn-sm preset-filled-secondary-500">Upload</button
 						>
 					</div>
 				</div>
@@ -150,7 +154,7 @@
 			<div class="h-auto m-5">
 				<strong class="h3">Password</strong>
 				<div>
-					<button on:click={handleResetPasswordClicked} class="btn variant-filled-secondary mt-5"
+					<button onclick={handleResetPasswordClicked} class="btn preset-filled-secondary-500 mt-5"
 						>Reset</button
 					>
 				</div>

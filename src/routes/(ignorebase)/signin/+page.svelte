@@ -3,16 +3,14 @@
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/firebase';
 	import { errorToast } from '$lib/Hooks/toasts';
-	import { getToastStore } from '@skeletonlabs/skeleton';
 
 	let email: string;
 	let password: string;
 	let loginError: string;
-	const toastStore = getToastStore();
 
-	$: email, password, (loginError = '');
+	$: (email, password, (loginError = ''));
 	$: if (loginError) {
-		errorToast('Your email or password is incorrect.', toastStore);
+		errorToast('Your email or password is incorrect.');
 	}
 
 	async function signIn() {
@@ -49,27 +47,19 @@
 		<strong class="h3">Lehman Family Realty</strong>
 		<p>Please sign in to continue.</p>
 		<div class="grid grid-cols-1 gap-2 mt-2">
-			<label class="label"
-				><span>Email</span><input
-					bind:value={email}
-					class="input"
-					title="Email"
-					type="email"
-				/></label
-			>
-			<label class="label"
-				><span>Password</span><input
-					bind:value={password}
-					class="input"
-					title="Password"
-					type="password"
-				/></label
-			>
+			<label class="label">
+				<span>Email</span>
+				<input bind:value={email} class="input" title="Email" type="email" />
+			</label>
+			<label class="label">
+				<span>Password</span>
+				<input bind:value={password} class="input" title="Password" type="password" />
+			</label>
 		</div>
 		<div>
-			<button type="button" on:click={handleSignIn} class="btn variant-filled-primary mt-5"
-				>Sign in</button
-			>
+			<button type="button" on:click={handleSignIn} class="btn preset-filled-primary-500 mt-5">
+				Sign in
+			</button>
 		</div>
 	</div>
 </div>

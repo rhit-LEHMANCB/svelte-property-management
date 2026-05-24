@@ -1,40 +1,47 @@
 <script lang="ts">
-	import { Avatar, Paginator, getModalStore } from '@skeletonlabs/skeleton';
+	import { Avatar, Pagination } from '@skeletonlabs/skeleton-svelte';
 	import type { DocumentWithId } from '../../../app';
-	import { viewUserInfoModal } from '$lib/Hooks/modals';
+	import { openUserInfoModal } from '$lib/Hooks/modals';
+	import UserInfoModal from './UserInfoModal.svelte';
 
-	export let users: DocumentWithId[];
-	export let paginated = false;
-	const modalStore = getModalStore();
+	interface Props {
+		users: DocumentWithId[];
+		paginated?: boolean;
+		class?: string;
+		actionButton?: import('svelte').Snippet<[user: DocumentWithId]>;
+	}
 
-	$: page = {
-		page: 0,
-		limit: 5,
-		size: users.length,
-		amounts: [1, 2, 5, 10]
-	};
+	let { users, paginated = false, class: className = '', actionButton }: Props = $props();
 
-	$: paginatedUsers = users.slice(
-		page.page * page.limit, // start
-		page.page * page.limit + page.limit // end
-	);
+	let modalState = $state({
+		open: false,
+		user: null as DocumentWithId | null
+	});
+
+	let currentPage = $state(1);
+	let pageSize = $state(5);
+
+	let paginatedUsers = $derived(users.slice((currentPage - 1) * pageSize, currentPage * pageSize));
+
+	function handleUserClick(user: DocumentWithId) {
+		openUserInfoModal(user, modalState);
+	}
 </script>
 
-<div class={`flex flex-col gap-5 ${$$props.class ?? ''}`}>
+<div class={`flex flex-col gap-5 ${className}`}>
 	<ul class="list">
 		{#each paginated ? paginatedUsers : users as user}
-			<li class="hover:bg-surface-hover-token p-2">
+			<li class="hover:bg-surface-100-900 p-2">
 				<button
-					on:click={() => viewUserInfoModal(user, modalStore)}
+					onclick={() => handleUserClick(user)}
 					class="flex flex-row w-full gap-2 flex-wrap items-center"
 				>
 					<div class="group relative">
-						<Avatar
-							src={user.data.photoUrl}
-							initials={`${user.data.firstName[0]}${user.data.lastName[0]}`}
-						/>
+						<Avatar src={user.data.photoUrl} name={`${user.data.firstName} ${user.data.lastName}`}>
+							{user.data.firstName[0]}{user.data.lastName[0]}
+						</Avatar>
 						{#if !user.data.insurance && user.data.permissions == 'user'}
-							<span class="badge-icon variant-filled-warning absolute -left-1 -top-1">!</span>
+							<span class="badge-icon preset-filled-warning-500 absolute -left-1 -top-1">!</span>
 						{/if}
 					</div>
 					<div class="flex flex-col flex-wrap text-left">
@@ -43,13 +50,26 @@
 						<p>Phone Number: {user.data.phoneNumber}</p>
 					</div>
 					<div class="flex grow justify-end">
-						<slot name="actionButton" {user} />
+						{#if actionButton}
+							{@render actionButton(user)}
+						{/if}
 					</div>
 				</button>
 			</li>
 		{/each}
 	</ul>
 	{#if paginated}
-		<Paginator bind:settings={page} showFirstLastButtons={false} showPreviousNextButtons={true} />
+		<Pagination
+			data={users}
+			page={currentPage}
+			{pageSize}
+			onPageChange={(details) => (currentPage = details.page)}
+		/>
 	{/if}
 </div>
+
+<UserInfoModal
+	open={modalState.open}
+	user={modalState.user}
+	onOpenChange={(open) => (modalState.open = open)}
+/>

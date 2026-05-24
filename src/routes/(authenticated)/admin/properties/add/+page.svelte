@@ -11,7 +11,7 @@
 	<div class="flex flex-row justify-between mb-4">
 		<button
 			on:click={() => goto('/admin/properties')}
-			class="btn btn-sm variant-filled-primary ml-5"
+			class="btn btn-sm preset-filled-primary-500 ml-5"
 			><IconArrowLeft class="mr-2" />Properties</button
 		>
 		<strong class="h3 mx-5 truncate"

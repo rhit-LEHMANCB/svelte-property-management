@@ -3,19 +3,16 @@
 	import type { PageData } from './$types';
 	import { insuranceSchema } from '$lib/schemas';
 	import { successToast } from '$lib/Hooks/toasts';
-	import { getToastStore } from '@skeletonlabs/skeleton';
 	import DateInput from '$lib/DatePicker/DateInput.svelte';
 
 	export let data: PageData;
-	const toastStore = getToastStore();
 
 	const { form, errors, enhance } = superForm(data.form, {
 		customValidity: true,
 		validators: insuranceSchema,
 		onUpdated({ form }) {
 			if (form.message === 'Form submitted') {
-				// Display the message using a toast library
-				successToast('Successfully updated user info.', toastStore);
+				successToast('Successfully updated user info.');
 			}
 		}
 	});
@@ -52,7 +49,6 @@
 						>
 					</div>
 					<div>
-						<!-- svelte-ignore a11y-label-has-associated-control -->
 						<label class="label"
 							><span>Start Date</span>
 							<DateInput
@@ -64,7 +60,6 @@
 						</label>
 					</div>
 					<div>
-						<!-- svelte-ignore a11y-label-has-associated-control -->
 						<label class="label"
 							><span>End Date</span>
 							<DateInput
@@ -76,7 +71,7 @@
 						</label>
 					</div>
 				</div>
-				<button type="submit" class="btn variant-filled-secondary mt-5">Save</button>
+				<button type="submit" class="btn preset-filled-secondary-500 mt-5">Save</button>
 			</form>
 		</div>
 	</div>

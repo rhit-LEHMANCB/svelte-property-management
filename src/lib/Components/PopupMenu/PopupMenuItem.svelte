@@ -1,17 +1,25 @@
 <script lang="ts">
-	export let onClickFunction: () => void;
-	export let text: string;
-	export let isDelete = false;
+	interface Props {
+		onClickFunction: () => void;
+		text: string;
+		isDelete?: boolean;
+		icon?: import('svelte').Snippet;
+	}
 
-	const variant = isDelete
-		? 'variant-filled-error'
-		: 'variant-filled-surface bg-surface-100-800-token text-base-token hover:bg-surface-hover-token';
+	let { onClickFunction, text, isDelete = false, icon }: Props = $props();
+
+	const variant = isDelete ? 'preset-filled-error-500' : 'preset-tonal-surface';
 </script>
 
 <button
-	on:click={(event) => {
+	onclick={(event) => {
 		event.stopPropagation();
 		onClickFunction();
 	}}
-	class={`btn btn-sm ${variant}`}><span><slot name="icon" /></span><span>{text}</span></button
+	class={`btn btn-sm ${variant}`}
 >
+	<span
+		>{#if icon}{@render icon()}{/if}</span
+	>
+	<span>{text}</span>
+</button>

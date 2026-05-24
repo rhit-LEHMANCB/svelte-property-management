@@ -3,13 +3,7 @@
 	import { page } from '$app/stores';
 	import { errorToast } from '$lib/Hooks/toasts';
 	import { auth } from '$lib/firebase';
-	import {
-		getModalStore,
-		getToastStore,
-		popup,
-		type ModalSettings,
-		type PopupSettings
-	} from '@skeletonlabs/skeleton';
+	import { Popover, Modal } from '@skeletonlabs/skeleton-svelte';
 	import { error } from '@sveltejs/kit';
 	import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 	import type { PageData } from './$types';
@@ -17,8 +11,13 @@
 	import { passwordChangeSchema } from '$lib/schemas';
 	import { IconQuestionMark } from '@tabler/icons-svelte';
 	import { PUBLIC_FRONTEND_URL } from '$env/static/public';
+	import { get } from 'svelte/store';
 
-	export let data: PageData;
+	interface Props {
+		data: PageData;
+	}
+
+	let { data }: Props = $props();
 
 	const { form, errors, validate, enhance } = superForm(data.form, {
 		customValidity: true,
@@ -26,24 +25,21 @@
 		validationMethod: 'onblur'
 	});
 
-	const toastStore = getToastStore();
-	const modalStore = getModalStore();
+	let popupOpen = $state(false);
+	let successModalOpen = $state(false);
 
-	const mode = $page.url.searchParams.get('mode');
-
-	const actionCode = $page.url.searchParams.get('oobCode');
-
-	const continueUrl = $page.url.searchParams.get('continueUrl');
+	const currentPage = get(page);
+	const mode = currentPage.url.searchParams.get('mode');
+	const actionCode = currentPage.url.searchParams.get('oobCode');
+	const continueUrl = currentPage.url.searchParams.get('continueUrl');
 
 	if (mode !== 'resetPassword') {
 		throw error(400, 'Invalid action');
 	}
 
-	const popupHover: PopupSettings = {
-		event: 'hover',
-		target: 'popupHover',
-		placement: 'top'
-	};
+	function handleSuccess() {
+		goto(continueUrl ?? `${PUBLIC_FRONTEND_URL}/`);
+	}
 
 	async function handleVerifyPasswordReset(event: Event) {
 		event.preventDefault();
@@ -66,27 +62,50 @@
 				confirmPasswordReset(auth, actionCode, newPassword)
 					.then(() => {
 						// Password reset has been confirmed and new password updated.
-						const modal: ModalSettings = {
-							type: 'alert',
-							// Data
-							title: 'Success!',
-							body: 'Your password was reset successfully. Press continue to proceed.',
-							buttonTextCancel: 'Continue',
-							// TRUE if confirm pressed, FALSE if cancel pressed
-							response: () => goto(continueUrl ?? `${PUBLIC_FRONTEND_URL}/`)
-						};
-						modalStore.trigger(modal);
-						// TODO: create a modal that confirms success and then on confirm sends user to login page
+						successModalOpen = true;
 					})
 					.catch(() => {
-						errorToast('Error resetting password. Please try again.', toastStore);
+						errorToast('Error resetting password. Please try again.');
 					});
 			})
 			.catch(() => {
-				errorToast('Error resetting password. Please try again.', toastStore);
+				errorToast('Error resetting password. Please try again.');
 			});
 	}
 </script>
+
+{#snippet popoverTrigger()}
+	<button
+		class="badge-icon preset-outlined-primary-500 [&>*]:pointer-events-none"
+		onclick={() => (popupOpen = !popupOpen)}
+	>
+		<IconQuestionMark />
+	</button>
+{/snippet}
+
+{#snippet popoverContent()}
+	<div class="card p-4 preset-filled-primary-500 w-64">
+		<ul>
+			<li>- At least 8 characters</li>
+			<li>- Less than 32 characters</li>
+			<li>- One uppercase letter</li>
+			<li>- One lowercase letter</li>
+			<li>- A number or special character</li>
+		</ul>
+	</div>
+{/snippet}
+
+{#snippet successModalContent()}
+	<div class="card p-4 space-y-4 w-[400px] max-w-[90vw]">
+		<header class="text-xl font-bold">Success!</header>
+		<p>Your password was reset successfully. Press continue to proceed.</p>
+		<footer class="flex justify-end">
+			<button type="button" class="btn preset-filled-primary-500" onclick={handleSuccess}>
+				Continue
+			</button>
+		</footer>
+	</div>
+{/snippet}
 
 <div class="h-screen flex items-center justify-center">
 	<div class="card p-3">
@@ -95,22 +114,13 @@
 			<p>Please fill out the information below<br /> to create your new password.</p>
 			<div class="grid grid-rows-2 gap-2 mt-2">
 				<div>
-					<label class="label"
-						><div class="flex flex-row gap-2">
-							<span>New Password</span><button
-								class="badge-icon variant-outline-primary [&>*]:pointer-events-none"
-								use:popup={popupHover}><IconQuestionMark /></button
-							>
-							<div class="card p-4 variant-filled-primary w-64" data-popup="popupHover">
-								<ul>
-									<li>- At least 8 characters</li>
-									<li>- Less than 32 characters</li>
-									<li>- One uppercase letter</li>
-									<li>- One lowercase letter</li>
-									<li>- A number or special character</li>
-								</ul>
-								<div class="arrow variant-filled-primary" />
-							</div>
+					<label class="label">
+						<div class="flex flex-row gap-2">
+							<span>New Password</span>
+							<Popover open={popupOpen} onOpenChange={(details) => (popupOpen = details.open)}>
+								{#snippet trigger()}{@render popoverTrigger()}{/snippet}
+								{#snippet content()}{@render popoverContent()}{/snippet}
+							</Popover>
 						</div>
 						<input
 							name="newPassword"
@@ -119,26 +129,35 @@
 							class:input-error={$errors.newPassword}
 							title="New Password"
 							type="password"
-						/></label
-					>
+						/>
+					</label>
 				</div>
 				<div>
-					<label class="label"
-						><span>Verify Password</span><input
+					<label class="label">
+						<span>Verify Password</span>
+						<input
 							name="verifyPassword"
 							bind:value={$form.verifyPassword}
 							class="input"
 							class:input-error={$errors.verifyPassword}
 							title="Verify Password"
 							type="password"
-						/></label
-					>
+						/>
+					</label>
 				</div>
 			</div>
 			<button
-				on:click={(event) => handleVerifyPasswordReset(event)}
-				class="btn variant-filled-primary mt-5">Change Password</button
+				onclick={(event) => handleVerifyPasswordReset(event)}
+				class="btn preset-filled-primary-500 mt-5">Change Password</button
 			>
 		</form>
 	</div>
 </div>
+
+{#if successModalOpen}
+	<Modal
+		open={successModalOpen}
+		onOpenChange={(details) => (successModalOpen = details.open)}
+		content={successModalContent}
+	/>
+{/if}

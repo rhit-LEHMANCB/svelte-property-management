@@ -1,0 +1,8 @@
+@import 'tailwindcss';
+@import '@skeletonlabs/skeleton';
+@import '@skeletonlabs/skeleton/themes/hamlindigo';
+
+html,
+body {
+	@apply h-full overflow-hidden;
+}

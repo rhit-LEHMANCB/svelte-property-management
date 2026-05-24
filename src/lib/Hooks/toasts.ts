@@ -1,19 +1,27 @@
-import type { ToastSettings, ToastStore } from '@skeletonlabs/skeleton';
+import type * as toast from '@zag-js/toast';
 
-export function successToast(message: string, toastStore: ToastStore) {
-	const successToast: ToastSettings = {
-		message: message,
-		// Provide any utility or variant background style:
-		background: 'variant-filled-success'
-	};
-	toastStore.trigger(successToast);
+let toaster: toast.Store<any> | null = null;
+
+export function setToaster(t: toast.Store<any>) {
+	toaster = t;
 }
 
-export function errorToast(message: string, toastStore: ToastStore) {
-	const errorToast: ToastSettings = {
-		message: message,
-		// Provide any utility or variant background style:
-		background: 'variant-filled-error'
-	};
-	toastStore.trigger(errorToast);
+export function successToast(message: string) {
+	if (toaster) {
+		toaster.create({
+			title: 'Success',
+			description: message,
+			type: 'success'
+		});
+	}
+}
+
+export function errorToast(message: string) {
+	if (toaster) {
+		toaster.create({
+			title: 'Error',
+			description: message,
+			type: 'error'
+		});
+	}
 }
