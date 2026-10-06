@@ -43,10 +43,23 @@ jobs:
             --title "Archive OpenSpec changes (release ${GITHUB_SHA::7})" \
             --body-file "$RUNNER_TEMP/summary.md")"
           echo "Opened $url"
-          # develop requires the tests and build_and_preview checks. A pull request opened with the
-          # built-in token does not start them, but a workflow_dispatch run does, and its check runs
-          # attach to the branch head under the same names.
-          gh workflow run firebase-hosting-pull-request.yml --ref "$branch"
+          # develop requires the tests and build_and_preview checks. GitHub starts the pull_request run for
+          # a PR opened with the built-in token but holds it at "action_required" until someone approves
+          # it, so approve it here. Without that the required checks never run and the PR cannot merge.
+          run_id=""
+          for _ in $(seq 1 24); do
+            run_id="$(gh run list --workflow firebase-hosting-pull-request.yml --branch "$branch" \
+              --event pull_request --json databaseId,conclusion \
+              --jq '[.[] | select(.conclusion == "action_required")][0].databaseId // empty')"
+            [ -n "$run_id" ] && break
+            sleep 5
+          done
+          if [ -n "$run_id" ]; then
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/approve" ||
+              echo "::warning::Could not approve the checks run for $url. Open the pull request and click Approve and run workflows."
+          else
+            echo "::warning::No pending checks run found for $url. If its checks do not start, click Approve and run workflows on the pull request."
+          fi
           # Merge as soon as the required checks pass.
           if ! gh pr merge "$url" --auto --merge; then
             echo "::warning::Could not turn on auto-merge for $url. Once its checks pass, merge it by hand."
