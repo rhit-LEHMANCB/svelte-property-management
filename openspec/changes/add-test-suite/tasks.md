@@ -22,10 +22,10 @@
 
 ## 4. Layer 2: handler tests per capability
 
-- [ ] 4.1 authentication: `POST/DELETE /api/signin` (cookie options, stale token 401, sign-out) and `PUT /api/signin/reset` (sent, failed); verify `npm run test:handlers` passes for these scenarios
-- [ ] 4.2 access-control: the `(authenticated)` layout load (first-login redirect, one property, wrong junction count) and the `/` redirect for admins; verify each scenario passes and the 500 message matches
-- [ ] 4.3 user-management and tenant-assignment: user add and delete, assoc lookup, property tenants POST and DELETE, each with an admin and a non-admin caller; verify the 401 and 400 cases
-- [ ] 4.4 property-management: property delete cascade, photo POST reorder and DELETE, the create and edit actions and the edit-page tenant options; verify each requirement has a passing test
+- [x] 4.1 authentication: `POST/DELETE /api/signin` (cookie options, stale token 401, sign-out) and `PUT /api/signin/reset` (sent, failed); verify `npm run test:handlers` passes for these scenarios
+- [x] 4.2 access-control: the `(authenticated)` layout load (first-login redirect, one property, wrong junction count) and the `/` redirect for admins; verify each scenario passes and the 500 message matches
+- [x] 4.3 user-management and tenant-assignment: user add and delete, assoc lookup, property tenants POST and DELETE, each with an admin and a non-admin caller; verify the 401 and 400 cases
+- [x] 4.4 property-management: property delete cascade, photo POST reorder and DELETE, the create and edit actions and the edit-page tenant options; verify each requirement has a passing test
 - [ ] 4.5 maintenance-requests: submit action, tenant and admin loads (5 per status, own property only), and close endpoint (400 without `workDone`); verify the stored fields match the spec
 - [ ] 4.6 user-profile and renters-insurance: contact update (Firestore, Stripe and Auth updates), photo action, insurance save and prefill, date-order rule; verify against the specs
 - [ ] 4.7 rent-payments: checkout session (rent line, fee `round(amount*100*0.029+30)`, metadata, bad amount), portal (with and without `stripeID`), and webhook (bad signature, first payment, later payment, unrelated event, awaiting writes with `vi.waitFor`); verify the balance arithmetic against the spec

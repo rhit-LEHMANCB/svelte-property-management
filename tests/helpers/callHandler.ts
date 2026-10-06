@@ -129,6 +129,11 @@ export async function call(
 			}
 			return { status: result.status, json, cookies };
 		}
+		// fail() returns an ActionFailure (status plus data); anything else is the load or action data.
+		if (result && (result as object).constructor?.name === 'ActionFailure') {
+			const failure = result as { status: number; data: unknown };
+			return { status: failure.status, data: failure.data, cookies };
+		}
 		return { status: 200, data: result, cookies };
 	} catch (e) {
 		if (isHttpError(e)) return { status: e.status, error: e.body.message, cookies };

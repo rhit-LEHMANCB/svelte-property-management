@@ -7,6 +7,8 @@ const path = (relative: string) => fileURLToPath(new URL(relative, import.meta.u
 // need the aliases below, which keeps them independent of the SvelteKit version.
 export default defineConfig({
 	resolve: {
+		// sveltekit-superforms exposes its server entry only under the `svelte` condition.
+		conditions: ['svelte'],
 		alias: [
 			{ find: '$env/static/private', replacement: path('./tests/fixtures/env-private.ts') },
 			{ find: '$env/static/public', replacement: path('./tests/fixtures/env-public.ts') },
@@ -17,6 +19,7 @@ export default defineConfig({
 	test: {
 		environment: 'node',
 		include: ['tests/unit/**/*.test.ts', 'tests/handlers/**/*.test.ts'],
+		server: { deps: { inline: ['sveltekit-superforms'] } },
 		setupFiles: ['./tests/helpers/setup.ts']
 	}
 });

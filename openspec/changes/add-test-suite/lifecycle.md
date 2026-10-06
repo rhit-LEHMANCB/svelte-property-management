@@ -51,7 +51,7 @@ Accepted preflight gaps: local `.env` out of date for develop (does not affect t
 (none yet)
 
 ## Deferred findings
-(none yet)
+- `POST /api/signin` sets the cookie with `maxAge: expiresIn`, and `expiresIn` is 5 days in milliseconds. SvelteKit cookie `maxAge` is in seconds, so the browser cookie lives about 13.7 years. The session itself still expires after 5 days at Firebase, so the practical effect is limited, but the value is wrong. Not in the specs' Known Gaps; tests assert only httpOnly, secure and path. File an issue at wrap-up.
 
 ## QA report
 (stage 6)
