@@ -1,8 +1,8 @@
 # Lifecycle: upgrade-to-latest-versions
 
 - Branch: `upgrade-to-latest-versions`
-- Stage: 4 Review (PR 1, Node 22)
-- Review round: 0 of 3
+- Stage: 5 Ship PR 1 to develop
+- Review round: 1 of 3 (PR 1)
 - QA cycle: 0 of 3
 - Started: 2026-10-06
 
@@ -71,7 +71,7 @@ Delivery: PR 1 (Node 22, tasks group 1, includes these change docs) from branch 
 
 
 ## Review rounds
-(none yet; one line per round: blockers, majors, fixed, rejected with reason)
+PR 1, round 1: blockers 0, majors 0, minors 4, nits 1. Fixed the test-related minors (config load test, engines equals .nvmrc, regex parse). Deferred: ESM tailwind.config.js needs Node 22.12+ for native require(esm) (fine on current 22.x used by CI; consider .cjs if a runtime pins older 22.x); nit: dev deploy log evidence goes in the PR description.
 
 ## Deferred findings
 (minors, nits and known gaps to turn into issues at wrap-up)
