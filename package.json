@@ -13,8 +13,11 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
+		"pretest:unit": "svelte-kit sync",
 		"test:unit": "vitest run tests/unit",
+		"pretest:handlers": "svelte-kit sync",
 		"test:handlers": "vitest run tests/handlers",
+		"pretest": "svelte-kit sync",
 		"test": "vitest run",
 		"test:e2e": "firebase emulators:exec --config firebase.emulators.json --project demo-lehman-realty --only auth,firestore,storage \"playwright test --project=e2e\"",
 		"test:qa": "PLAYWRIGHT_QA=1 playwright test --project=qa"
