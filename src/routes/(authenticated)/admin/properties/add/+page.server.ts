@@ -1,9 +1,9 @@
 import type { PageServerLoad } from './$types';
 import { message, superValidate } from 'sveltekit-superforms/server';
 import { zod4 as zod } from 'sveltekit-superforms/adapters';
-import { adminDB } from '$lib/server/admin';
-import { propertySchema } from '$lib/schemas';
-import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
+import { adminDB } from '#lib/server/admin';
+import { propertySchema } from '#lib/schemas';
+import { getAdminUserDataOrError, getUserIdOrError } from '#lib/server/authHelpers';
 
 export const load = (async (event) => {
 	const userId = getUserIdOrError(event.locals.userID);

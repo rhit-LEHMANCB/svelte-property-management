@@ -1,12 +1,12 @@
 import type { PageServerLoad } from './$types';
 import { message, superValidate } from 'sveltekit-superforms/server';
 import { zod4 as zod } from 'sveltekit-superforms/adapters';
-import { adminAuth, adminDB, adminStorage } from '$lib/server/admin';
+import { adminAuth, adminDB, adminStorage } from '#lib/server/admin';
 import { error, fail } from '@sveltejs/kit';
-import { profileSchema } from '$lib/schemas';
-import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
-import { stripe } from '$lib/server/stripe';
-import { getUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
+import { profileSchema } from '#lib/schemas';
+import { PUBLIC_FB_STORAGE_BUCKET } from '$app/env/public';
+import { stripe } from '#lib/server/stripe';
+import { getUserDataOrError, getUserIdOrError } from '#lib/server/authHelpers';
 
 export const load = (async (event) => {
 	const userId = getUserIdOrError(event.locals.userID);

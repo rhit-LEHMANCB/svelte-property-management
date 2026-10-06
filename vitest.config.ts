@@ -10,10 +10,11 @@ export default defineConfig({
 		// sveltekit-superforms exposes its server entry only under the `svelte` condition.
 		conditions: ['svelte'],
 		alias: [
-			{ find: '$env/static/private', replacement: path('./tests/fixtures/env-private.ts') },
-			{ find: '$env/static/public', replacement: path('./tests/fixtures/env-public.ts') },
-			{ find: /^\$lib\/(.*)$/, replacement: path('./src/lib') + '/$1' },
-			{ find: '$lib', replacement: path('./src/lib') }
+			{ find: '$app/env/private', replacement: path('./tests/fixtures/env-private.ts') },
+			{ find: '$app/env/public', replacement: path('./tests/fixtures/env-public.ts') },
+			{ find: '$app/server', replacement: path('./tests/fixtures/app-server.ts') },
+			{ find: /^#lib\/(.*)$/, replacement: path('./src/lib') + '/$1' },
+			{ find: '#lib', replacement: path('./src/lib') }
 		]
 	},
 	test: {

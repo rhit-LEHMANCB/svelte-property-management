@@ -1,3 +1,4 @@
+// @ts-nocheck -- a plain Node script run by Playwright, not part of the app
 // A tiny stand-in for api.stripe.com, started by Playwright. The app's Stripe client is pointed
 // here through STRIPE_API_BASE_URL, so payment flows run without any network or credentials.
 //

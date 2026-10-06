@@ -1,4 +1,4 @@
-// Fake values for `$env/static/private` in unit and handler tests. Never real secrets.
+// Fake values for `$app/env/private` in unit and handler tests. Never real secrets.
 export const FB_CLIENT_EMAIL = 'test@demo-lehman-realty.iam.gserviceaccount.com';
 export const FB_PRIVATE_KEY = JSON.stringify({ privateKey: 'not-a-real-key' });
 export const SENDGRID_API_KEY = 'SG.test';

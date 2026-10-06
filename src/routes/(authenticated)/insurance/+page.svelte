@@ -2,10 +2,10 @@
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
 	import type { PageData } from './$types';
-	import { insuranceSchema } from '$lib/schemas';
-	import { successToast } from '$lib/Hooks/toasts';
-	import { getToastStore } from '$lib/ui';
-	import DateInput from '$lib/DatePicker/DateInput.svelte';
+	import { insuranceSchema } from '#lib/schemas';
+	import { successToast } from '#lib/Hooks/toasts';
+	import { getToastStore } from '#lib/ui';
+	import DateInput from '#lib/DatePicker/DateInput.svelte';
 
 	export let data: PageData;
 	const toastStore = getToastStore();

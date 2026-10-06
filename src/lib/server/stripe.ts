@@ -1,4 +1,4 @@
-import { STRIPE_API_KEY } from '$env/static/private';
+import { STRIPE_API_KEY } from '$app/env/private';
 import Stripe from 'stripe';
 
 // STRIPE_API_BASE_URL is set only by the end-to-end tests, which point the client at a local fake

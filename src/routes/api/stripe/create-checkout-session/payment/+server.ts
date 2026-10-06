@@ -1,10 +1,10 @@
-import { stripe } from '$lib/server/stripe';
+import { stripe } from '#lib/server/stripe';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { adminDB } from '$lib/server/admin';
-import { PUBLIC_FRONTEND_URL } from '$env/static/public';
-import { getUserDataOrError } from '$lib/server/authHelpers';
-import { getUserIdOrError } from '$lib/server/authHelpers';
+import { adminDB } from '#lib/server/admin';
+import { PUBLIC_FRONTEND_URL } from '$app/env/public';
+import { getUserDataOrError } from '#lib/server/authHelpers';
+import { getUserIdOrError } from '#lib/server/authHelpers';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const userId = getUserIdOrError(locals.userID);

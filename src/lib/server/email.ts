@@ -1,5 +1,5 @@
-import { SENDGRID_API_KEY } from '$env/static/private';
-import { PUBLIC_FRONTEND_URL } from '$env/static/public';
+import { SENDGRID_API_KEY } from '$app/env/private';
+import { PUBLIC_FRONTEND_URL } from '$app/env/public';
 import { adminAuth } from './admin';
 import sgMail from '@sendgrid/mail';
 

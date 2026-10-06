@@ -5,7 +5,7 @@ import {
 	passwordChangeSchema,
 	profileSchema,
 	propertySchema
-} from '$lib/schemas';
+} from '#lib/schemas';
 
 const messages = (result: { success: boolean; error?: { issues: { message: string }[] } }) =>
 	result.error?.issues.map((issue) => issue.message) ?? [];

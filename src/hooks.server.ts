@@ -1,5 +1,6 @@
-import { adminAuth } from '$lib/server/admin';
-import { redirect, type Handle } from '@sveltejs/kit';
+import { adminAuth } from '#lib/server/admin';
+import { redirect } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit/hooks';
 
 export const handle = (async ({ event, resolve }) => {
 	const sessionCookie = event.cookies.get('__session');

@@ -1,7 +1,7 @@
-import { adminDB, adminAuth, adminStorage } from '$lib/server/admin';
+import { adminDB, adminAuth, adminStorage } from '#lib/server/admin';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
+import { PUBLIC_FB_STORAGE_BUCKET } from '$app/env/public';
 
 export const DELETE: RequestHandler = async ({ params, locals }) => {
 	if (!locals.userID) {

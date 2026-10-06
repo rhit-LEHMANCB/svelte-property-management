@@ -1,8 +1,8 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { adminAuth, adminDB } from '$lib/server/admin';
-import { sendPasswordResetEmail } from '$lib/server/email';
-import { stripe } from '$lib/server/stripe';
+import { adminAuth, adminDB } from '#lib/server/admin';
+import { sendPasswordResetEmail } from '#lib/server/email';
+import { stripe } from '#lib/server/stripe';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.userID) {

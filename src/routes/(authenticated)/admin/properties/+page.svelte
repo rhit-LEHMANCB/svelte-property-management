@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { Avatar, Paginator, getToastStore } from '$lib/ui';
+	import { Avatar, Paginator, getToastStore } from '#lib/ui';
 	import { IconHomeMinus, IconHomePlus, IconPhotoCancel } from '@tabler/icons-svelte';
-	import { getModalStore, type ModalSettings } from '$lib/ui';
-	import { errorToast, successToast } from '$lib/Hooks/toasts';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { getModalStore, type ModalSettings } from '#lib/ui';
+	import { errorToast, successToast } from '#lib/Hooks/toasts';
+	import { goto, refreshAll } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { DocumentWithId } from '../../../../app';
 
@@ -52,7 +52,7 @@
 		});
 		if (response.ok) {
 			successToast('Property Successfully Removed.', toastStore);
-			invalidateAll();
+			refreshAll();
 		} else {
 			errorToast('Error removing property.', toastStore);
 		}

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getModalStore, type ModalSettings, getToastStore, Tab, TabGroup, Avatar } from '$lib/ui';
+	import { getModalStore, type ModalSettings, getToastStore, Tab, TabGroup, Avatar } from '#lib/ui';
 	import type { DocumentWithId } from '../../../app';
 	import {
 		IconClipboardList,
@@ -7,8 +7,8 @@
 		IconUserExclamation,
 		IconUserMinus
 	} from '@tabler/icons-svelte';
-	import { errorToast, successToast } from '$lib/Hooks/toasts';
-	import { invalidateAll } from '$app/navigation';
+	import { errorToast, successToast } from '#lib/Hooks/toasts';
+	import { refreshAll } from '$app/navigation';
 	import { onMount } from 'svelte';
 
 	const modalStore = getModalStore();
@@ -33,7 +33,7 @@
 		});
 		if (response.ok) {
 			successToast('User Successfully Removed.', toastStore);
-			invalidateAll();
+			refreshAll();
 		} else {
 			errorToast('Error removing user.', toastStore);
 		}

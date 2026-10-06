@@ -1,4 +1,4 @@
-// Fake values for `$env/static/public` in unit and handler tests.
+// Fake values for `$app/env/public` in unit and handler tests.
 export const PUBLIC_FB_API_KEY = 'test-api-key';
 export const PUBLIC_FB_APP_ID = 'test-app-id';
 export const PUBLIC_FB_AUTH_DOMAIN = 'demo-lehman-realty.firebaseapp.com';

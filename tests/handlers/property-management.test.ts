@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
+import { PUBLIC_FB_STORAGE_BUCKET } from '$app/env/public';
 import { DELETE as deleteProperty } from '../../src/routes/api/property/[propertyId]/+server';
 import {
 	DELETE as deletePhoto,

@@ -1,9 +1,9 @@
 import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { STRIPE_ENDPOINT_SECRET } from '$env/static/private';
-import { stripe } from '$lib/server/stripe';
+import { STRIPE_ENDPOINT_SECRET } from '$app/env/private';
+import { stripe } from '#lib/server/stripe';
 import type { Stripe } from 'stripe';
-import { adminDB } from '$lib/server/admin';
+import { adminDB } from '#lib/server/admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 export const POST: RequestHandler = async ({ request }) => {

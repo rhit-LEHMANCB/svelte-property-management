@@ -2,9 +2,9 @@
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
 	import type { PageData } from './$types';
-	import { maintenanceSchema } from '$lib/schemas';
-	import { successToast } from '$lib/Hooks/toasts';
-	import { getToastStore } from '$lib/ui';
+	import { maintenanceSchema } from '#lib/schemas';
+	import { successToast } from '#lib/Hooks/toasts';
+	import { getToastStore } from '#lib/ui';
 	import { IconTool } from '@tabler/icons-svelte';
 
 	export let data: PageData;

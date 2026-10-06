@@ -1,22 +1,22 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	import { errorToast } from '$lib/Hooks/toasts';
-	import { auth } from '$lib/firebase';
+	import { page } from '$app/state';
+	import { errorToast } from '#lib/Hooks/toasts';
+	import { auth } from '#lib/firebase';
 	import {
 		getModalStore,
 		getToastStore,
 		popup,
 		type ModalSettings,
 		type PopupSettings
-	} from '$lib/ui';
+	} from '#lib/ui';
 	import { error } from '@sveltejs/kit';
 	import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 	import type { PageData } from './$types';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
-	import { passwordChangeSchema } from '$lib/schemas';
+	import { passwordChangeSchema } from '#lib/schemas';
 	import { IconQuestionMark } from '@tabler/icons-svelte';
-	import { PUBLIC_FRONTEND_URL } from '$env/static/public';
+	import { PUBLIC_FRONTEND_URL } from '$app/env/public';
 
 	export let data: PageData;
 
@@ -29,11 +29,11 @@
 	const toastStore = getToastStore();
 	const modalStore = getModalStore();
 
-	const mode = $page.url.searchParams.get('mode');
+	const mode = page.url.searchParams.get('mode');
 
-	const actionCode = $page.url.searchParams.get('oobCode');
+	const actionCode = page.url.searchParams.get('oobCode');
 
-	const continueUrl = $page.url.searchParams.get('continueUrl');
+	const continueUrl = page.url.searchParams.get('continueUrl');
 
 	if (mode !== 'resetPassword') {
 		throw error(400, 'Invalid action');

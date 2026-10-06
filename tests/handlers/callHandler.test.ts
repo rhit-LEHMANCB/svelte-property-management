@@ -2,7 +2,7 @@ import http from 'node:http';
 import https from 'node:https';
 import { describe, expect, it } from 'vitest';
 import { error, json, redirect } from '@sveltejs/kit';
-import { adminDB } from '$lib/server/admin';
+import { adminDB } from '#lib/server/admin';
 import { call } from '../helpers/callHandler';
 import { services } from '../helpers/services';
 

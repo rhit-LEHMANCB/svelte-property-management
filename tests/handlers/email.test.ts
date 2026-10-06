@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // This file tests the real email module and the reset endpoint on top of it; only SendGrid and the
 // Firebase Admin double stay replaced. The global setup replaces the whole email module, so undo that here.
-vi.unmock('$lib/server/email');
+vi.unmock('#lib/server/email');
 
 const sendgrid = vi.hoisted(() => ({
 	setApiKey: vi.fn(),
@@ -10,8 +10,8 @@ const sendgrid = vi.hoisted(() => ({
 }));
 vi.mock('@sendgrid/mail', () => ({ default: sendgrid }));
 
-import { PUBLIC_FRONTEND_URL } from '$env/static/public';
-import { sendPasswordResetEmail } from '$lib/server/email';
+import { PUBLIC_FRONTEND_URL } from '$app/env/public';
+import { sendPasswordResetEmail } from '#lib/server/email';
 import { PUT as requestReset } from '../../src/routes/api/signin/reset/+server';
 import { call } from '../helpers/callHandler';
 import { services } from '../helpers/services';

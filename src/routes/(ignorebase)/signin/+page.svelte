@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { signInWithEmailAndPassword } from 'firebase/auth';
 	import { goto } from '$app/navigation';
-	import { auth } from '$lib/firebase';
-	import { errorToast } from '$lib/Hooks/toasts';
-	import { getToastStore } from '$lib/ui';
+	import { auth } from '#lib/firebase';
+	import { errorToast } from '#lib/Hooks/toasts';
+	import { getToastStore } from '#lib/ui';
 
 	let email: string;
 	let password: string;

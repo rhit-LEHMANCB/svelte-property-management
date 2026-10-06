@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { Drawer, getDrawerStore, getToastStore } from '$lib/ui';
-	import Navigation from '$lib/Components/Navigation/Navigation.svelte';
+	import { Drawer, getDrawerStore, getToastStore } from '#lib/ui';
+	import Navigation from '#lib/Components/Navigation/Navigation.svelte';
 	import { goto } from '$app/navigation';
 	import type { LayoutData } from './$types';
 	import { IconLogout } from '@tabler/icons-svelte';
-	import { errorToast, successToast } from '$lib/Hooks/toasts';
+	import { errorToast, successToast } from '#lib/Hooks/toasts';
 
 	const drawerStore = getDrawerStore();
 	const toastStore = getToastStore();

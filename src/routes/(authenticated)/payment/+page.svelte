@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { errorToast } from '$lib/Hooks/toasts';
-	import { getModalStore, getToastStore, type ModalSettings } from '$lib/ui';
+	import { errorToast } from '#lib/Hooks/toasts';
+	import { getModalStore, getToastStore, type ModalSettings } from '#lib/ui';
 	import { type ZodError, z } from 'zod';
 
 	let balance = 1000.0;

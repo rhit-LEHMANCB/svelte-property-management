@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import PropertyForm from '$lib/Components/Forms/PropertyForm.svelte';
+	import PropertyForm from '#lib/Components/Forms/PropertyForm.svelte';
 	import { goto } from '$app/navigation';
 	import { IconArrowLeft } from '@tabler/icons-svelte';
 

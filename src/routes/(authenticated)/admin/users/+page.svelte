@@ -1,16 +1,16 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { getToastStore } from '$lib/ui';
+	import { getToastStore } from '#lib/ui';
 	import { IconUserMinus, IconUserPlus, IconUserShare } from '@tabler/icons-svelte';
-	import { getModalStore, type ModalSettings } from '$lib/ui';
-	import { emailSchema } from '$lib/schemas';
-	import { errorToast, successToast } from '$lib/Hooks/toasts';
-	import { invalidateAll } from '$app/navigation';
+	import { getModalStore, type ModalSettings } from '#lib/ui';
+	import { emailSchema } from '#lib/schemas';
+	import { errorToast, successToast } from '#lib/Hooks/toasts';
+	import { refreshAll } from '$app/navigation';
 	import type { DocumentWithId } from '../../../../app';
-	import PopupMenu from '$lib/Components/PopupMenu/PopupMenu.svelte';
-	import PopupMenuItem from '$lib/Components/PopupMenu/PopupMenuItem.svelte';
-	import UsersListView from '$lib/Components/Users/UsersListView.svelte';
-	import { viewUserInfoModal } from '$lib/Hooks/modals';
+	import PopupMenu from '#lib/Components/PopupMenu/PopupMenu.svelte';
+	import PopupMenuItem from '#lib/Components/PopupMenu/PopupMenuItem.svelte';
+	import UsersListView from '#lib/Components/Users/UsersListView.svelte';
+	import { viewUserInfoModal } from '#lib/Hooks/modals';
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -35,7 +35,7 @@
 			body: JSON.stringify({ email: response })
 		});
 		if (fetchResponse.ok) {
-			invalidateAll();
+			refreshAll();
 			successToast('User Successfully Created.', toastStore);
 		} else {
 			errorToast('Error creating user.', toastStore);
@@ -82,7 +82,7 @@
 		});
 		if (response.ok) {
 			successToast('User Successfully Removed.', toastStore);
-			invalidateAll();
+			refreshAll();
 		} else {
 			errorToast('Error removing user.', toastStore);
 		}

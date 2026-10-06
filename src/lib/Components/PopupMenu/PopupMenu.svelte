@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { popup, type PopupSettings } from '$lib/ui';
+	import { popup, type PopupSettings } from '#lib/ui';
 	import { IconDots } from '@tabler/icons-svelte';
 
 	export let id: string;

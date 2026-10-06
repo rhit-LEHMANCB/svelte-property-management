@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { FB_CLIENT_EMAIL } from '$env/static/private';
-import { PUBLIC_FRONTEND_URL } from '$env/static/public';
+import { FB_CLIENT_EMAIL } from '$app/env/private';
+import { PUBLIC_FRONTEND_URL } from '$app/env/public';
 
 describe('test tooling', () => {
 	it('resolves the env fixtures through the $env aliases', () => {

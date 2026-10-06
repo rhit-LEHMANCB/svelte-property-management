@@ -1,10 +1,10 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { adminDB, adminStorage } from '$lib/server/admin';
+import { adminDB, adminStorage } from '#lib/server/admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
+import { PUBLIC_FB_STORAGE_BUCKET } from '$app/env/public';
 import type { PhotoItem } from '../../../../../app';
-import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
+import { getAdminUserDataOrError, getUserIdOrError } from '#lib/server/authHelpers';
 
 export const POST: RequestHandler = async ({ params, locals, request }) => {
 	const userId = getUserIdOrError(locals.userID);

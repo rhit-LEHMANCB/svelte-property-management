@@ -1,10 +1,10 @@
 import type { PageServerLoad } from './$types';
 import { message, superValidate } from 'sveltekit-superforms/server';
 import { zod4 as zod } from 'sveltekit-superforms/adapters';
-import { insuranceSchema } from '$lib/schemas';
-import { adminDB } from '$lib/server/admin';
-import { formatDate } from '$lib/DatePicker/date-utils';
-import { getUserIdOrError } from '$lib/server/authHelpers';
+import { insuranceSchema } from '#lib/schemas';
+import { adminDB } from '#lib/server/admin';
+import { formatDate } from '#lib/DatePicker/date-utils';
+import { getUserIdOrError } from '#lib/server/authHelpers';
 
 export const load = (async (event) => {
 	const userId = getUserIdOrError(event.locals.userID);

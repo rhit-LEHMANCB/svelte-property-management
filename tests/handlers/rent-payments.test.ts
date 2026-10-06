@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { PUBLIC_FRONTEND_URL } from '$env/static/public';
+import { PUBLIC_FRONTEND_URL } from '$app/env/public';
 import { POST as startPayment } from '../../src/routes/api/stripe/create-checkout-session/payment/+server';
 import { GET as openPortal } from '../../src/routes/api/stripe/create-customer-portal/+server';
 import { POST as webhook } from '../../src/routes/api/stripe/webhook/+server';

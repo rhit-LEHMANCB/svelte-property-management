@@ -9,7 +9,7 @@ import {
 	PUBLIC_FB_MESSAGING_SENDER_ID,
 	PUBLIC_FB_PROJECT_ID,
 	PUBLIC_FB_STORAGE_BUCKET
-} from '$env/static/public';
+} from '$app/env/public';
 
 // Your web app's Firebase configuration
 export const firebaseConfig = {

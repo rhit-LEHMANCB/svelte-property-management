@@ -1,5 +1,5 @@
 import { Loader, type LoaderOptions, type google } from 'google-maps';
-import { PUBLIC_FB_API_KEY } from '$env/static/public';
+import { PUBLIC_FB_API_KEY } from '$app/env/public';
 
 let googleApi: google | undefined;
 

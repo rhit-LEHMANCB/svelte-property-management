@@ -1,8 +1,8 @@
-import { adminDB } from '$lib/server/admin';
+import { adminDB } from '#lib/server/admin';
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { FieldValue } from 'firebase-admin/firestore';
-import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
+import { getAdminUserDataOrError, getUserIdOrError } from '#lib/server/authHelpers';
 
 export const POST: RequestHandler = async ({ locals, params, request }) => {
 	const userId = getUserIdOrError(locals.userID);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
+import { PUBLIC_FB_STORAGE_BUCKET } from '$app/env/public';
 import { actions, load } from '../../src/routes/(authenticated)/profile/+page.server';
 import { call } from '../helpers/callHandler';
 import { services } from '../helpers/services';

@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { FakeFirestore } from './fakeFirestore';
-import { STRIPE_ENDPOINT_SECRET } from '$env/static/private';
+import { STRIPE_ENDPOINT_SECRET } from '$app/env/private';
 
 /**
  * The doubles that replace Firebase Admin, Stripe and SendGrid in handler tests. They are

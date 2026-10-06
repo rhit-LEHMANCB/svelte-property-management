@@ -1,7 +1,7 @@
-import { adminDB } from '$lib/server/admin';
+import { adminDB } from '#lib/server/admin';
 import { error, redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
-import { getUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
+import { getUserDataOrError, getUserIdOrError } from '#lib/server/authHelpers';
 
 export const load = (async ({ locals }) => {
 	const uid = getUserIdOrError(locals.userID);

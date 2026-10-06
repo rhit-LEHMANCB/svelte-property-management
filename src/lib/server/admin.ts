@@ -1,7 +1,7 @@
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { FB_CLIENT_EMAIL, FB_PRIVATE_KEY } from '$env/static/private';
-import { PUBLIC_FB_PROJECT_ID } from '$env/static/public';
+import { FB_CLIENT_EMAIL, FB_PRIVATE_KEY } from '$app/env/private';
+import { PUBLIC_FB_PROJECT_ID } from '$app/env/public';
 import pkg from 'firebase-admin';
 import { getStorage } from 'firebase-admin/storage';
 

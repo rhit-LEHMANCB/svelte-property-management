@@ -2,11 +2,11 @@ import { message, superValidate } from 'sveltekit-superforms/server';
 import { zod4 as zod } from 'sveltekit-superforms/adapters';
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
-import { maintenanceSchema } from '$lib/schemas';
-import { adminDB } from '$lib/server/admin';
+import { maintenanceSchema } from '#lib/schemas';
+import { adminDB } from '#lib/server/admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import type { MaintenanceRequest } from '../../../app';
-import { getUserIdOrError } from '$lib/server/authHelpers';
+import { getUserIdOrError } from '#lib/server/authHelpers';
 
 export const load = (async (event) => {
 	getUserIdOrError(event.locals.userID);

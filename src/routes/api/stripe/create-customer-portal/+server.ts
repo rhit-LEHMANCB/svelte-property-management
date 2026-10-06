@@ -1,8 +1,8 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { stripe } from '$lib/server/stripe';
-import { PUBLIC_FRONTEND_URL } from '$env/static/public';
-import { getUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
+import { stripe } from '#lib/server/stripe';
+import { PUBLIC_FRONTEND_URL } from '$app/env/public';
+import { getUserDataOrError, getUserIdOrError } from '#lib/server/authHelpers';
 
 export const GET: RequestHandler = async ({ locals }) => {
 	const userId = getUserIdOrError(locals.userID);

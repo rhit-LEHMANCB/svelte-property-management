@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { errorToast, successToast } from '$lib/Hooks/toasts';
-	import { profileSchema } from '$lib/schemas';
-	import { Avatar, getToastStore } from '$lib/ui';
+	import { errorToast, successToast } from '#lib/Hooks/toasts';
+	import { profileSchema } from '#lib/schemas';
+	import { Avatar, getToastStore } from '#lib/ui';
 	import type { PageData } from './$types';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
-	import { invalidateAll } from '$app/navigation';
+	import { refreshAll } from '$app/navigation';
 	import { enhance } from '$app/forms';
 	import { MaskedTextChangedListener } from 'ts-input-mask';
 	import { onMount } from 'svelte';
@@ -139,7 +139,7 @@
 						<button
 							type="submit"
 							on:click={() => {
-								invalidateAll();
+								refreshAll();
 							}}
 							class="btn btn-sm preset-filled-secondary-500">Upload</button
 						>

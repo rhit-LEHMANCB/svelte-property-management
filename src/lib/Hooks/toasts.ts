@@ -1,4 +1,4 @@
-import type { ToastSettings, ToastStore } from '$lib/ui';
+import type { ToastSettings, ToastStore } from '#lib/ui';
 
 export function successToast(message: string, toastStore: ToastStore) {
 	const successToast: ToastSettings = {

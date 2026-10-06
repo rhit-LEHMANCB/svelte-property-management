@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
-	import { propertySchema, type PropertySchema } from '$lib/schemas';
-	import { successToast } from '$lib/Hooks/toasts';
+	import { propertySchema, type PropertySchema } from '#lib/schemas';
+	import { successToast } from '#lib/Hooks/toasts';
 	import { IconCurrencyDollar } from '@tabler/icons-svelte';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import type { SuperValidated } from 'sveltekit-superforms';
-	import { getToastStore } from '$lib/ui';
-	import { getGoogle } from '$lib/google';
+	import { getToastStore } from '#lib/ui';
+	import { getGoogle } from '#lib/google';
 
 	const toastStore = getToastStore();
 

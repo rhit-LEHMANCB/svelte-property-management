@@ -1,11 +1,11 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import PropertyForm from '$lib/Components/Forms/PropertyForm.svelte';
+	import PropertyForm from '#lib/Components/Forms/PropertyForm.svelte';
 	import { enhance } from '$app/forms';
-	import SortablePhotos from '$lib/Components/SortablePhotos.svelte';
-	import { errorToast, successToast } from '$lib/Hooks/toasts';
-	import { page } from '$app/stores';
-	import { goto, invalidateAll } from '$app/navigation';
+	import SortablePhotos from '#lib/Components/SortablePhotos.svelte';
+	import { errorToast, successToast } from '#lib/Hooks/toasts';
+	import { page } from '$app/state';
+	import { goto, refreshAll } from '$app/navigation';
 	import {
 		Autocomplete,
 		popup,
@@ -16,7 +16,7 @@
 		getToastStore,
 		type ModalSettings,
 		getModalStore
-	} from '$lib/ui';
+	} from '#lib/ui';
 	import {
 		IconArrowLeft,
 		IconInfoCircle,
@@ -25,7 +25,7 @@
 		IconLinkMinus
 	} from '@tabler/icons-svelte';
 	import type { DocumentWithId, PhotoItem } from '../../../../../../app';
-	import UsersListView from '$lib/Components/Users/UsersListView.svelte';
+	import UsersListView from '#lib/Components/Users/UsersListView.svelte';
 
 	const toastStore = getToastStore();
 	const modalStore = getModalStore();
@@ -39,7 +39,7 @@
 	async function sortList(e: CustomEvent) {
 		const newList = e.detail;
 		photos = newList;
-		const response = await fetch(`/api/property/${$page.params.propertyId}/photos`, {
+		const response = await fetch(`/api/property/${page.params.propertyId}/photos`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
@@ -47,14 +47,14 @@
 			body: JSON.stringify({ photos: newList })
 		});
 		if (response.ok) {
-			invalidateAll();
+			refreshAll();
 		} else {
 			errorToast('Error reordering photos.', toastStore);
 		}
 	}
 
 	async function deleteLink(item: PhotoItem) {
-		const response = await fetch(`/api/property/${$page.params.propertyId}/photos`, {
+		const response = await fetch(`/api/property/${page.params.propertyId}/photos`, {
 			method: 'DELETE',
 			headers: {
 				'Content-Type': 'application/json'
@@ -64,7 +64,7 @@
 
 		if (response.ok) {
 			successToast('Photo successfully deleted.', toastStore);
-			invalidateAll();
+			refreshAll();
 		} else {
 			errorToast('Error deleting photo.', toastStore);
 		}
@@ -100,7 +100,7 @@
 	}
 
 	async function removeJunction(id: string) {
-		const response = await fetch(`/api/property/${$page.params.propertyId}/tenants`, {
+		const response = await fetch(`/api/property/${page.params.propertyId}/tenants`, {
 			method: 'DELETE',
 			headers: {
 				'Content-Type': 'application/json'
@@ -109,7 +109,7 @@
 		});
 		if (response.ok) {
 			successToast('User successfully removed from property.', toastStore);
-			invalidateAll();
+			refreshAll();
 		} else {
 			errorToast('Error removing user.', toastStore);
 		}
@@ -119,7 +119,7 @@
 		if (!selectedTenantName || !selectedTenantId) {
 			return;
 		}
-		const response = await fetch(`/api/property/${$page.params.propertyId}/tenants`, {
+		const response = await fetch(`/api/property/${page.params.propertyId}/tenants`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
@@ -130,7 +130,7 @@
 			successToast('Successfully added tenant.', toastStore);
 			selectedTenantId = '';
 			selectedTenantName = '';
-			invalidateAll();
+			refreshAll();
 		} else {
 			errorToast('Error adding tenant.', toastStore);
 		}

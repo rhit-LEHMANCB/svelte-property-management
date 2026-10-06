@@ -1,7 +1,7 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { adminDB } from '$lib/server/admin';
-import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
+import { adminDB } from '#lib/server/admin';
+import { getAdminUserDataOrError, getUserIdOrError } from '#lib/server/authHelpers';
 
 export const POST: RequestHandler = async ({ params, locals, request }) => {
 	const userId = getUserIdOrError(locals.userID);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
+import { PUBLIC_FB_STORAGE_BUCKET } from '$app/env/public';
 import { POST as addUser } from '../../src/routes/api/user/add/+server';
 import { DELETE as deleteUser } from '../../src/routes/api/user/[userId]/+server';
 import { load as usersLoad } from '../../src/routes/(authenticated)/admin/users/+page.server';

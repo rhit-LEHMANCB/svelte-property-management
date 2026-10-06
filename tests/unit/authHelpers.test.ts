@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const userDocs = new Map<string, Record<string, unknown> | undefined>();
 
-vi.mock('$lib/server/admin', () => ({
+vi.mock('#lib/server/admin', () => ({
 	adminDB: {
 		collection: (name: string) => ({
 			doc: (id: string) => ({
@@ -16,7 +16,7 @@ import {
 	getAdminUserDataOrError,
 	getUserDataOrError,
 	getUserIdOrError
-} from '$lib/server/authHelpers';
+} from '#lib/server/authHelpers';
 
 // SvelteKit's `error()` throws an HttpError carrying `status` and `body.message`.
 const thrown = async (promiseOrFn: Promise<unknown> | (() => unknown)) => {

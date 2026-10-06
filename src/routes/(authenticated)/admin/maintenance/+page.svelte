@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { IconCheck, IconTool } from '@tabler/icons-svelte';
 	import type { PageData } from './$types';
-	import { Paginator, getModalStore, type ModalSettings, getToastStore } from '$lib/ui';
+	import { Paginator, getModalStore, type ModalSettings, getToastStore } from '#lib/ui';
 	import type { MaintenanceRequest } from '../../../../app';
-	import { errorToast, successToast } from '$lib/Hooks/toasts';
-	import { invalidateAll } from '$app/navigation';
+	import { errorToast, successToast } from '#lib/Hooks/toasts';
+	import { refreshAll } from '$app/navigation';
 
 	export let data: PageData;
 	const modalStore = getModalStore();
@@ -62,7 +62,7 @@
 		});
 		if (response.ok) {
 			successToast('Successfully closed request.', toastStore);
-			invalidateAll();
+			refreshAll();
 		} else {
 			errorToast('Error closing request.', toastStore);
 		}

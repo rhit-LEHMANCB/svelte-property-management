@@ -1,13 +1,13 @@
 import type { PageServerLoad } from './$types';
 import { message, superValidate } from 'sveltekit-superforms/server';
 import { zod4 as zod } from 'sveltekit-superforms/adapters';
-import { adminDB, adminStorage } from '$lib/server/admin';
-import { propertySchema } from '$lib/schemas';
+import { adminDB, adminStorage } from '#lib/server/admin';
+import { propertySchema } from '#lib/schemas';
 import { error, fail } from '@sveltejs/kit';
-import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
+import { PUBLIC_FB_STORAGE_BUCKET } from '$app/env/public';
 import { FieldPath, FieldValue } from 'firebase-admin/firestore';
 import type { DocumentWithId, PhotoItem } from '../../../../../../app';
-import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
+import { getAdminUserDataOrError, getUserIdOrError } from '#lib/server/authHelpers';
 
 export const load = (async (event) => {
 	const userId = getUserIdOrError(event.locals.userID);

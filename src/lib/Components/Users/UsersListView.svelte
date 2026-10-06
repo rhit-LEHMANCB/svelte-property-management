@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Avatar, Paginator, getModalStore } from '$lib/ui';
+	import { Avatar, Paginator, getModalStore } from '#lib/ui';
 	import type { DocumentWithId } from '../../../app';
-	import { viewUserInfoModal } from '$lib/Hooks/modals';
+	import { viewUserInfoModal } from '#lib/Hooks/modals';
 
 	export let users: DocumentWithId[];
 	export let paginated = false;

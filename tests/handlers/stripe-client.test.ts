@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // The real Stripe client module, with the `stripe` package replaced so its constructor arguments can be read.
-vi.unmock('$lib/server/stripe');
+vi.unmock('#lib/server/stripe');
 const constructed = vi.hoisted(() => ({ calls: [] as unknown[][] }));
 vi.mock('stripe', () => ({
 	default: class {
@@ -16,7 +16,7 @@ const loadClient = async (baseUrl?: string) => {
 	constructed.calls.length = 0;
 	if (baseUrl === undefined) delete process.env.STRIPE_API_BASE_URL;
 	else process.env.STRIPE_API_BASE_URL = baseUrl;
-	await import('$lib/server/stripe');
+	await import('#lib/server/stripe');
 	return constructed.calls[0];
 };
 
