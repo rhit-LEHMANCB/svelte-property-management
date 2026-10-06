@@ -2,7 +2,7 @@ schema: spec-driven
 
 context: |
   SvelteKit 1 + Svelte 4 app (Skeleton/Tailwind, Firebase auth/Firestore/storage, SendGrid) for property management.
-  Requires Node 20 (see .nvmrc); Node 24 breaks tailwind.config.ts loading.
+  Requires Node 22 (see .nvmrc and package.json engines; the Cloud Function runtime follows engines.node).
   Branch flow: feature branches -> develop -> production. CI runs lint, svelte-check and build on PRs.
 
 # Project context (optional)

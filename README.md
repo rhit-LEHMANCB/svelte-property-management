@@ -21,7 +21,7 @@ at build time, so `npm run build` and `npm run dev` fail if one is missing. Use 
 project for local work, not production. Note that `FB_PRIVATE_KEY` is a JSON string, not a raw PEM;
 the example shows the format.
 
-Node 20 is required (`.nvmrc`; run `nvm use`). Tailwind 3's config loader does not work on Node 24.
+Node 22 is required (`.nvmrc`; run `nvm use`). `package.json` `engines.node` pins the Cloud Function runtime to the same version.
 
 ## Testing
 
