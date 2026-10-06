@@ -20,13 +20,17 @@ if (baseUrl) {
 	}
 }
 
-export const stripe = new Stripe(
-	STRIPE_API_KEY,
-	target
-		? {
-				host: target.hostname,
-				port: target.port || undefined,
-				protocol: target.protocol.replace(':', '') as 'http' | 'https'
-			}
-		: undefined
-);
+// Stripe SDKs send the API version they were built for. stripe 14, which this app ran on before,
+// used 2023-10-16; the current SDK defaults to a version three years newer. Pinning the old one
+// keeps every request (customers, checkout sessions, portal sessions) behaving exactly as before.
+// Moving to a newer API version is a separate change that needs a Stripe test-mode pass.
+const API_VERSION = '2023-10-16' as unknown as Stripe.LatestApiVersion;
+
+export const stripe = new Stripe(STRIPE_API_KEY, {
+	apiVersion: API_VERSION,
+	...(target && {
+		host: target.hostname,
+		port: target.port || undefined,
+		protocol: target.protocol.replace(':', '') as 'http' | 'https'
+	})
+});
