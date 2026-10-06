@@ -1,13 +1,13 @@
 # Lifecycle: upgrade-to-latest-versions
 
 - Branch: `upgrade-to-latest-versions`
-- Stage: 2 Propose + preflight (awaiting Gate A)
+- Stage: 3 Implement (PR 1, Node 22)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-06
 
 ## Interview summary
-(approved: no, pending user confirmation)
+(approved: yes, 2026-10-06)
 
 **Issue:** #48 "Upgrade SvelteKit and Skeleton to latest versions". Deadline 2026-10-30: Cloud Function `ssrlehmanrealtydev` on Node.js 20 is decommissioned.
 
@@ -46,8 +46,10 @@
 
 
 ## Gate A
-Approved: no
-Accepted preflight gaps: none
+Approved: yes, 2026-10-06 (user)
+`gh pr merge` allowed: confirmed by user.
+Accepted preflight gaps: local `npm run build` fails with the stale `.env` and with `.env.example` (placeholder `FB_PRIVATE_KEY`); runs use generated CI-style env values. Local `npm run check` uses `.env.example` values.
+Delivery: PR 1 (Node 22, tasks group 1, includes these change docs) from branch `upgrade-to-latest-versions`; PR 2 (groups 2 to 8) from a new branch off updated `develop`.
 
 ## Preflight
 | Check | Result |
