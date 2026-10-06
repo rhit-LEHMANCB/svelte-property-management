@@ -10,9 +10,9 @@
 
 ## 2. Layer 1: unit tests
 
-- [ ] 2.1 Test `passwordChangeSchema` and `profileSchema` against the authentication and user-profile scenarios (length, character classes, mismatch, phone and email); verify `npm run test:unit` passes and each test title names its scenario
-- [ ] 2.2 Test `propertySchema`, `insuranceSchema` and `maintenanceSchema` for every limit and the end-after-start rule; verify each rule has an accepting and a rejecting case
-- [ ] 2.3 Test the three `authHelpers` functions with a mocked `adminDB` for anonymous, non-admin, admin and missing-document callers; verify the thrown status codes match access-control
+- [x] 2.1 Test `passwordChangeSchema` and `profileSchema` against the authentication and user-profile scenarios (length, character classes, mismatch, phone and email); verify `npm run test:unit` passes and each test title names its scenario
+- [x] 2.2 Test `propertySchema`, `insuranceSchema` and `maintenanceSchema` for every limit and the end-after-start rule; verify each rule has an accepting and a rejecting case
+- [x] 2.3 Test the three `authHelpers` functions with a mocked `adminDB` for anonymous, non-admin, admin and missing-document callers; verify the thrown status codes match access-control
 
 ## 3. Layer 2: handler test infrastructure
 
