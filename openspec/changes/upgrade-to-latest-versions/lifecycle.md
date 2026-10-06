@@ -1,8 +1,8 @@
 # Lifecycle: upgrade-to-latest-versions
 
 - Branch: `upgrade-to-latest-versions`
-- Stage: 5 Ship PR 1 to develop
-- Review round: 1 of 3 (PR 1)
+- Stage: 4 Review (PR 2, framework stack)
+- Review round: 0 of 3 (PR 2); PR 1 merged (#75)
 - QA cycle: 0 of 3
 - Started: 2026-10-06
 
@@ -84,3 +84,7 @@ PR 1, round 1: blockers 0, majors 0, minors 4, nits 1. Fixed the test-related mi
 
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
+
+## Progress notes
+- PR 1 (#75) merged into `develop` 2026-10-06; dev deploy succeeded on Node 22 and the deploy log has no function-runtime deprecation warning.
+- PR 2 branch `upgrade-framework-stack`: tasks 2 to 8.2 done. SvelteKit 3 is deferred (Firebase Hosting SSR wrapper imports a module Kit 3 removed); the finished migration is on `wip/sveltekit-3-migration`.
