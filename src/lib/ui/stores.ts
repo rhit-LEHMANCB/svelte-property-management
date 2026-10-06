@@ -38,6 +38,7 @@ export type ModalSettings = {
 };
 
 const DEFAULT_TOAST_TIMEOUT = 5000;
+let toastCount = 0;
 
 function createToastStore() {
 	const { subscribe, update, set } = writable<Toast[]>([]);
@@ -47,7 +48,7 @@ function createToastStore() {
 	return {
 		subscribe,
 		trigger(settings: ToastSettings) {
-			const id = crypto.randomUUID();
+			const id = `toast-${++toastCount}`;
 			update((toasts) => [...toasts, { ...settings, id }]);
 			setTimeout(() => close(id), settings.timeout ?? DEFAULT_TOAST_TIMEOUT);
 			return id;
@@ -62,7 +63,8 @@ function createModalStore() {
 	return {
 		subscribe,
 		trigger(settings: ModalSettings) {
-			update((modals) => [...modals, settings]);
+			// A copy, so triggering the same settings object twice queues two distinct modals.
+			update((modals) => [...modals, { ...settings }]);
 		},
 		/** Closes the front modal without calling its response callback. */
 		close() {

@@ -236,3 +236,61 @@ describe('maintenance-requests: submit request validation', () => {
 		).toBe(false);
 	});
 });
+
+describe('property-management and renters-insurance: missing and wrongly typed values', () => {
+	const validProperty = {
+		title: 'Maple Court',
+		description: 'Two bedroom',
+		bedrooms: 2,
+		bathrooms: 1,
+		squareFeet: 800,
+		rent: 1200,
+		streetAddress: '1 Main St',
+		apartmentInfo: '',
+		city: 'Terre Haute',
+		state: 'IN',
+		zip: '47802'
+	};
+
+	it('Scenario: a missing bedrooms, bathrooms or rent is reported as Required', () => {
+		for (const field of ['bedrooms', 'bathrooms', 'rent']) {
+			const result = propertySchema.safeParse({ ...validProperty, [field]: undefined });
+			expect(messages(result)).toContain('Required');
+		}
+	});
+
+	it('Scenario: a non-numeric bedrooms, bathrooms, rent or square feet is reported by field', () => {
+		const text = (field: string, label: string) =>
+			expect(messages(propertySchema.safeParse({ ...validProperty, [field]: 'abc' }))).toContain(
+				`${label} must be a number`
+			);
+		text('bedrooms', 'Bedrooms');
+		text('bathrooms', 'Bathrooms');
+		text('rent', 'Rent');
+		text('squareFeet', 'Square feet');
+	});
+
+	it('Scenario: a missing square feet says it is required', () => {
+		expect(
+			messages(propertySchema.safeParse({ ...validProperty, squareFeet: undefined }))
+		).toContain('Square feet is required');
+	});
+
+	it('Scenario: a missing or malformed insurance date asks for a date', () => {
+		const valid = {
+			companyName: 'Acme',
+			policyNumber: 'P-1',
+			startDate: new Date('2026-01-01'),
+			endDate: new Date('2027-01-01')
+		};
+		expect(messages(insuranceSchema.safeParse({ ...valid, startDate: undefined }))).toContain(
+			'Please select a date'
+		);
+		expect(messages(insuranceSchema.safeParse({ ...valid, startDate: 'nope' }))).toContain(
+			'Please enter a date in the correct format'
+		);
+		expect(messages(insuranceSchema.safeParse({ ...valid, endDate: 'nope' }))).toContain(
+			'Please enter a date in the correct format'
+		);
+	});
+});

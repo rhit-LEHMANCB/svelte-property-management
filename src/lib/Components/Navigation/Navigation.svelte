@@ -27,7 +27,7 @@
 		{#if isAdmin}
 			<li>
 				<a
-					class="flex items-center rounded-base px-4 py-2 hover:preset-tonal"
+					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
 					href="/admin"
 					on:click={drawerClose}
 					class:preset-filled-primary-500={$page.url.pathname === '/admin'}
@@ -36,7 +36,7 @@
 			</li>
 			<li>
 				<a
-					class="flex items-center rounded-base px-4 py-2 hover:preset-tonal"
+					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
 					href="/profile"
 					on:click={drawerClose}
 					class:preset-filled-primary-500={$page.url.pathname.startsWith('/profile')}
@@ -45,7 +45,7 @@
 			</li>
 			<li>
 				<a
-					class="flex items-center rounded-base px-4 py-2 hover:preset-tonal"
+					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
 					href="/admin/maintenance"
 					on:click={drawerClose}
 					class:preset-filled-primary-500={$page.url.pathname.startsWith('/admin/maintenance')}
@@ -54,7 +54,7 @@
 			</li>
 			<li>
 				<a
-					class="flex items-center rounded-base px-4 py-2 hover:preset-tonal"
+					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
 					href="/admin/properties"
 					on:click={drawerClose}
 					class:preset-filled-primary-500={$page.url.pathname.startsWith('/admin/properties')}
@@ -63,7 +63,7 @@
 			</li>
 			<li>
 				<a
-					class="flex items-center rounded-base px-4 py-2 hover:preset-tonal"
+					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
 					href="/admin/users"
 					on:click={drawerClose}
 					class:preset-filled-primary-500={$page.url.pathname.startsWith('/admin/users')}
@@ -73,7 +73,7 @@
 		{:else}
 			<li>
 				<a
-					class="flex items-center rounded-base px-4 py-2 hover:preset-tonal"
+					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
 					href="/"
 					on:click={drawerClose}
 					class:preset-filled-primary-500={$page.url.pathname === '/'}
@@ -82,7 +82,7 @@
 			</li>
 			<li>
 				<a
-					class="flex items-center rounded-base px-4 py-2 hover:preset-tonal"
+					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
 					href="/maintenance"
 					on:click={drawerClose}
 					class:preset-filled-primary-500={$page.url.pathname.startsWith('/maintenance')}
@@ -91,7 +91,7 @@
 			</li>
 			<li>
 				<a
-					class="flex items-center rounded-base px-4 py-2 hover:preset-tonal"
+					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
 					href="/payment"
 					on:click={drawerClose}
 					class:preset-filled-primary-500={$page.url.pathname.startsWith('/payment')}
@@ -100,7 +100,7 @@
 			</li>
 			<li>
 				<a
-					class="flex items-center rounded-base px-4 py-2 hover:preset-tonal"
+					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
 					href="/profile"
 					on:click={drawerClose}
 					class:preset-filled-primary-500={$page.url.pathname.startsWith('/profile')}
@@ -109,7 +109,7 @@
 			</li>
 			<li>
 				<a
-					class="flex items-center rounded-base px-4 py-2 hover:preset-tonal"
+					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
 					href="/insurance"
 					on:click={drawerClose}
 					class:preset-filled-primary-500={$page.url.pathname.startsWith('/insurance')}
@@ -118,7 +118,7 @@
 			</li>
 			<li>
 				<a
-					class="flex items-center rounded-base px-4 py-2 hover:preset-tonal"
+					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
 					href="/"
 					on:click={drawerClose}><IconInfoCircle class="mr-2" />About Us</a
 				>

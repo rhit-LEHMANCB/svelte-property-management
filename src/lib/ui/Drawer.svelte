@@ -5,7 +5,7 @@
 	const drawerStore = getDrawerStore();
 
 	function onKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape') drawerStore.close();
+		if (event.key === 'Escape' && $drawerStore) drawerStore.close();
 	}
 </script>
 
@@ -20,11 +20,14 @@
 			transition:fade={{ duration: 150 }}
 			on:click={() => drawerStore.close()}
 		></button>
-		<aside
+		<div
+			role="dialog"
+			aria-modal="true"
+			aria-label="Navigation"
 			class="bg-surface-100-900 absolute inset-y-0 left-0 w-[80vw] overflow-y-auto shadow-xl md:w-[280px]"
 			transition:fly={{ x: -280, duration: 150 }}
 		>
 			<slot />
-		</aside>
+		</div>
 	</div>
 {/if}

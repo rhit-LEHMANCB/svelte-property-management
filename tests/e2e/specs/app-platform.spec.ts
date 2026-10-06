@@ -40,6 +40,22 @@ test.describe('app-platform: modal dialogs keep working', () => {
 	});
 });
 
+test.describe('app-platform: dialog input', () => {
+	test('Scenario: a payment amount of 0 is rejected with a message, not ignored', async ({
+		page
+	}) => {
+		await signIn(page, TENANT);
+		await page.goto('/payment');
+		await page.waitForLoadState('networkidle');
+		await page.getByRole('button', { name: 'Make a Payment' }).click();
+		const dialog = page.getByRole('dialog');
+		await dialog.getByRole('spinbutton').fill('0');
+		await dialog.getByRole('button', { name: 'Submit' }).click();
+
+		await expect(page.getByText('Number must be greater than 0')).toBeVisible();
+	});
+});
+
 test.describe('app-platform: notifications keep working', () => {
 	test('Scenario: a notification can be dismissed', async ({ page }) => {
 		await page.route('**/api/signin/reset', (route) => route.fulfill({ status: 500, body: '{}' }));
@@ -139,6 +155,20 @@ test.describe('app-platform: menus, autocompletes, tabs and pagination keep work
 
 		await expect(page.getByRole('dialog')).toBeVisible();
 		await expect(page.getByRole('dialog').getByRole('button', { name: 'Close' })).toBeVisible();
+		// Choosing a menu item closes the menu itself, not only opens what the item does.
+		await expect(page.getByRole('button', { name: 'View More', exact: true })).toHaveCount(0);
+	});
+
+	test('Scenario: a popup menu closes when focus leaves it', async ({ page }) => {
+		await signIn(page, ADMIN);
+		await page.goto('/admin/users');
+		await page.waitForLoadState('networkidle');
+
+		await page.locator('ul.list > li').first().getByRole('button').last().click();
+		await expect(page.getByRole('button', { name: 'View More', exact: true })).toBeVisible();
+		await page.getByRole('button', { name: 'Add User' }).focus();
+
+		await expect(page.getByRole('button', { name: 'View More', exact: true })).toHaveCount(0);
 	});
 });
 
@@ -159,6 +189,17 @@ test.describe('app-platform: navigation shell and theme preserved', () => {
 			() => document.documentElement.scrollWidth > document.documentElement.clientWidth
 		);
 		expect(overflows).toBe(false);
+	});
+
+	test('Scenario: the current page link keeps its highlight on hover', async ({ page }) => {
+		await signIn(page, ADMIN);
+		await page.goto('/admin/properties');
+		await page.waitForLoadState('networkidle');
+		const link = page.getByRole('navigation').getByRole('link', { name: 'Properties' });
+
+		await link.hover();
+
+		await expect(link).toHaveCSS('background-color', 'rgb(255, 165, 0)');
 	});
 
 	test('Scenario: the brand theme colors are applied', async ({ page }) => {

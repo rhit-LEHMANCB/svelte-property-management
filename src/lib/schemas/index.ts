@@ -51,11 +51,15 @@ export const propertySchema = z.object({
 		.min(1, 'Please provide a description')
 		.max(10000, 'Description cannot exceed 10000 characters'),
 	bedrooms: z
-		.number({ error: 'Bedrooms must be a number' })
+		.number({
+			error: (issue) => (issue.input === undefined ? 'Required' : 'Bedrooms must be a number')
+		})
 		.positive('Bedrooms must be greater than 0')
 		.int('Bedrroms must be an integer'),
 	bathrooms: z
-		.number({ error: 'Bathrooms must be a number' })
+		.number({
+			error: (issue) => (issue.input === undefined ? 'Required' : 'Bathrooms must be a number')
+		})
 		.positive('Bathrooms must be greater than 0'),
 	squareFeet: z
 		.number({
@@ -64,7 +68,11 @@ export const propertySchema = z.object({
 		})
 		.positive('Square Feet must be greater than 0')
 		.int('Square Feet must be an integer'),
-	rent: z.number({ error: 'Rent must be a number' }).positive('Rent must be greater than 0'),
+	rent: z
+		.number({
+			error: (issue) => (issue.input === undefined ? 'Required' : 'Rent must be a number')
+		})
+		.positive('Rent must be greater than 0'),
 	streetAddress: z
 		.string()
 		.min(1, 'Please provide a street address')

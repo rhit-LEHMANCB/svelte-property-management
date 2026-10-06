@@ -5,8 +5,10 @@
 
 	const modalStore = getModalStore();
 
-	let value = settings.value ?? '';
+	let value: string | number | null = settings.value ?? '';
 	let dialog: HTMLDialogElement;
+	let pressedOnBackdrop = false;
+	const titleId = `modal-title-${Math.random().toString(36).slice(2)}`;
 
 	function open(node: HTMLDialogElement) {
 		node.showModal();
@@ -18,17 +20,25 @@
 		settings.response?.(result);
 	}
 
+	// Only a press and release both on the backdrop dismisses, so dragging a text selection out of
+	// the dialog does not close it.
+	function onMouseDown(event: MouseEvent) {
+		pressedOnBackdrop = event.target === dialog;
+	}
 	function onBackdropClick(event: MouseEvent) {
-		if (event.target === dialog) finish(false);
+		if (event.target === dialog && pressedOnBackdrop) finish(false);
+		pressedOnBackdrop = false;
 	}
 </script>
 
 <dialog
 	bind:this={dialog}
 	use:open
-	aria-labelledby={settings.title ? 'modal-title' : undefined}
+	aria-labelledby={settings.title ? titleId : undefined}
+	aria-label={settings.title ? undefined : 'Dialog'}
 	class="m-auto bg-transparent p-0 text-inherit backdrop:bg-black/50"
 	on:cancel|preventDefault={() => finish(false)}
+	on:mousedown={onMouseDown}
 	on:click={onBackdropClick}
 >
 	{#if settings.type === 'component' && settings.component}
@@ -36,16 +46,17 @@
 	{:else}
 		<form
 			class="card bg-surface-100-900 w-[min(92vw,32rem)] space-y-4 p-4 shadow-xl"
-			on:submit|preventDefault={() => finish(settings.type === 'prompt' ? value : true)}
+			on:submit|preventDefault={() =>
+				finish(settings.type === 'prompt' ? String(value ?? '') : true)}
 		>
 			{#if settings.title}
-				<header id="modal-title" class="h3">{settings.title}</header>
+				<header id={titleId} class="h3">{settings.title}</header>
 			{/if}
 			{#if settings.body}
 				<article class="whitespace-pre-line">{settings.body}</article>
 			{/if}
 			{#if settings.type === 'prompt'}
-				<!-- svelte-ignore a11y-autofocus -->
+				<!-- svelte-ignore a11y_autofocus -->
 				<input class="input" bind:value autofocus {...settings.valueAttr} />
 			{/if}
 			<footer class="flex justify-end gap-2">

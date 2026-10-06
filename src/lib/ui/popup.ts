@@ -7,12 +7,17 @@ export type PopupSettings = {
 	/** The `data-popup` value of the element to show. */
 	target: string;
 	placement?: 'top' | 'bottom' | 'left' | 'right';
+	/** A click inside the popup on an element matching this selector closes it. */
+	closeQuery?: string;
 };
+
+const DEFAULT_CLOSE_QUERY = 'a[href], button';
 
 /** Shows the element marked `data-popup="<target>"` next to the node, positioned with Floating UI. */
 export const popup: Action<HTMLElement, PopupSettings> = (node, settings) => {
 	let current = settings;
 	let open = false;
+	let shown: HTMLElement | undefined;
 	let stopAutoUpdate: (() => void) | undefined;
 
 	const content = () =>
@@ -58,6 +63,9 @@ export const popup: Action<HTMLElement, PopupSettings> = (node, settings) => {
 		const element = content();
 		if (!element || open) return;
 		open = true;
+		shown = element;
+		// Capture phase, because menu items stop their clicks from bubbling.
+		element.addEventListener('click', onContentClick, true);
 		element.style.display = 'block';
 		stopAutoUpdate = autoUpdate(node, element, place);
 	}
@@ -67,10 +75,20 @@ export const popup: Action<HTMLElement, PopupSettings> = (node, settings) => {
 		if (!open) return;
 		open = false;
 		stopAutoUpdate?.();
+		shown?.removeEventListener('click', onContentClick, true);
+		shown = undefined;
 		if (element) element.style.display = 'none';
 	}
 
 	const toggle = () => (open ? hide() : show());
+	function onContentClick(event: MouseEvent) {
+		const query = current.closeQuery ?? DEFAULT_CLOSE_QUERY;
+		if ((event.target as Element | null)?.closest(query)) hide();
+	}
+	// Focus moving out of both the trigger and the popup closes a focus-click popup.
+	const onBlur = (event: FocusEvent) => {
+		if (!content()?.contains(event.relatedTarget as Node | null)) hide();
+	};
 	const onOutside = (event: MouseEvent) => {
 		const target = event.target as Node;
 		if (open && !node.contains(target) && !content()?.contains(target)) hide();
@@ -90,6 +108,7 @@ export const popup: Action<HTMLElement, PopupSettings> = (node, settings) => {
 		} else {
 			node.addEventListener('focus', show);
 			node.addEventListener('click', show);
+			node.addEventListener('blur', onBlur);
 		}
 		window.addEventListener('mousedown', onOutside);
 		window.addEventListener('keydown', onKey);
@@ -101,6 +120,7 @@ export const popup: Action<HTMLElement, PopupSettings> = (node, settings) => {
 			['mouseleave', hide],
 			['focus', show],
 			['blur', hide],
+			['blur', onBlur],
 			['click', toggle],
 			['click', show]
 		] as const) {
