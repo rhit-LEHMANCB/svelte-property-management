@@ -1,7 +1,7 @@
 # Lifecycle: p0-payments-and-access-fixes
 
 - Branch: `p0-payments-and-access-fixes`
-- Stage: 3 Implement (Gate A approved; next action: run the apply workflow)
+- Stage: 4 Review (implementation done 2026-10-06; all tasks ticked; lint, check, unit, handlers, build, e2e pass locally)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-06

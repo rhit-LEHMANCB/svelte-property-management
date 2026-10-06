@@ -5,6 +5,7 @@ import { adminDB } from '$lib/server/admin';
 import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 import { getUserDataOrError } from '$lib/server/authHelpers';
 import { getUserIdOrError } from '$lib/server/authHelpers';
+import { loadBalance } from '$lib/server/balance';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const userId = getUserIdOrError(locals.userID);
@@ -15,6 +16,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	if (!amount || typeof amount != 'number') {
 		throw error(400, 'Amount must be a provided number for the amount to charge');
+	}
+
+	// Whole cents only: more than two decimals would be silently rounded into a different charge.
+	const amountCents = Math.round(amount * 100);
+	if (amountCents <= 0 || Math.abs(amount * 100 - amountCents) > 1e-6) {
+		throw error(400, 'Amount must be greater than 0 and have at most two decimal places');
 	}
 
 	const userJunctionsQuery = await adminDB
@@ -39,8 +46,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		throw error(500, 'Failed to find property info.');
 	}
 
-	//TODO: validate amount is not greater than remaining balance
-	//if (amount > )
+	const { balanceCents } = await loadBalance(
+		userProperty.id,
+		userPropertyData.rent,
+		userJunctionsQuery.docs[0].data().moveInMonth
+	);
+	if (amountCents > balanceCents) {
+		throw error(400, 'Amount is greater than the balance owed');
+	}
+
+	const feeCents = Math.round(amountCents * 0.029 + 30);
 
 	const session = await stripe.checkout.sessions.create({
 		customer: userData.stripeID,
@@ -56,7 +71,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						name: 'Rent',
 						description: `Rent payment for ${userPropertyData.streetAddress}, ${userPropertyData.city}, ${userPropertyData.state}`
 					},
-					unit_amount: amount * 100
+					unit_amount: amountCents
 				},
 				// For metered billing, do not pass quantity
 				quantity: 1
@@ -68,7 +83,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						name: 'Transaction Fee',
 						description: `Transaction fee for one-time payment. Set up auto-pay to waive this fee.`
 					},
-					unit_amount: Math.round(amount * 100 * 0.029 + 30)
+					unit_amount: feeCents
 				},
 				// For metered billing, do not pass quantity
 				quantity: 1
@@ -79,12 +94,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			enabled: true,
 			invoice_data: {
 				metadata: {
-					propertyID: userProperty.id
+					propertyID: userProperty.id,
+					rentCents: String(amountCents),
+					feeCents: String(feeCents)
 				}
 			}
 		},
-		// TODO: please change these later
-		success_url: `${PUBLIC_FRONTEND_URL}/`,
+		success_url: `${PUBLIC_FRONTEND_URL}/payment/success`,
 		cancel_url: `${PUBLIC_FRONTEND_URL}/payment`
 	});
 

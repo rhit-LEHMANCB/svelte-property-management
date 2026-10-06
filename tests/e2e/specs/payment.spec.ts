@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { FAKE_STRIPE_URL, PROPERTY, TENANT } from '../support/constants';
+import { ADMIN, FAKE_STRIPE_URL, PROPERTY, TENANT } from '../support/constants';
 import { signIn } from '../support/helpers';
 
 type Recorded = { path: string; body: Record<string, string> };
@@ -57,5 +57,51 @@ test.describe('rent-payments', () => {
 		await expect(page.getByText(/less than or equal to/)).toBeVisible();
 		await expect(page).toHaveURL(/\/payment$/);
 		expect(await recorded()).toHaveLength(0);
+	});
+
+	test('Scenario: the page shows the real balance and the due date', async ({ page }) => {
+		await signIn(page, TENANT);
+		await page.goto('/payment');
+		await page.waitForLoadState('networkidle');
+
+		await expect(page.getByText(/You have a balance of \$1,000\.00 due on/)).toBeVisible();
+	});
+
+	test('Scenario: the server refuses an amount above the balance and creates no session', async ({
+		page
+	}) => {
+		await signIn(page, TENANT);
+		await page.goto('/payment');
+		await page.waitForLoadState('networkidle');
+
+		const status = await page.evaluate(async () => {
+			const response = await fetch('/api/stripe/create-checkout-session/payment', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ amount: 1000.01 })
+			});
+			return response.status;
+		});
+
+		expect(status).toBe(400);
+		expect(await recorded()).toHaveLength(0);
+	});
+
+	test('Scenario: the confirmation page opens for a tenant', async ({ page }) => {
+		await signIn(page, TENANT);
+		await page.goto('/payment/success');
+
+		await expect(page.getByText('Thank you for your payment')).toBeVisible();
+		await page.getByRole('link', { name: 'Back to payments' }).click();
+		await expect(page).toHaveURL(/\/payment$/);
+	});
+
+	test('Scenario: an admin opening a tenant page is sent to /admin', async ({ page }) => {
+		await signIn(page, ADMIN);
+
+		for (const path of ['/payment', '/maintenance', '/insurance', '/payment/success']) {
+			await page.goto(path);
+			await expect(page).toHaveURL(/\/admin$/);
+		}
 	});
 });

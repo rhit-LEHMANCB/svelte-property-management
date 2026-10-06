@@ -5,6 +5,24 @@ import { stripe } from '$lib/server/stripe';
 import type { Stripe } from 'stripe';
 import { adminDB } from '$lib/server/admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { getMonthKey } from '$lib/server/payments';
+
+const wholeCents = (value: string | undefined) =>
+	value !== undefined && /^\d+$/.test(value) ? Number(value) : undefined;
+
+/**
+ * The rent and fee of a paid invoice, in cents. Invoices created by the app carry both in their
+ * metadata; invoices from before that fall back to the line items by description.
+ */
+function readAmounts(invoice: Stripe.Invoice) {
+	const rentCents = wholeCents(invoice.metadata?.rentCents);
+	if (rentCents) {
+		return { rentCents, feeCents: wholeCents(invoice.metadata?.feeCents) };
+	}
+	const line = (description: string) =>
+		invoice.lines.data.find((l) => l.description === description)?.amount;
+	return { rentCents: line('Rent'), feeCents: line('Transaction Fee') };
+}
 
 export const POST: RequestHandler = async ({ request }) => {
 	const sig = request.headers.get('stripe-signature');
@@ -30,74 +48,59 @@ export const POST: RequestHandler = async ({ request }) => {
 	// Handle the event
 	switch (event.type) {
 		case 'invoice.payment_succeeded': {
-			const invoicePaymentSucceeded = event.data.object;
-			if (!invoicePaymentSucceeded.metadata) {
-				console.log('No metadata provided');
+			const invoice = event.data.object;
+			const propertyId = invoice.metadata?.propertyID;
+			if (!propertyId) {
+				console.log('No property in invoice metadata');
 				break;
 			}
 
-			let amount = invoicePaymentSucceeded.lines.data.find(
-				(line) => line.description === 'Rent'
-			)?.amount;
-
-			if (!amount) {
+			const { rentCents, feeCents } = readAmounts(invoice);
+			if (!rentCents) {
 				console.log('Could not find rent payment amount');
 				break;
 			}
 
-			amount = amount / 100;
-			const eventDate = Timestamp.fromMillis(invoicePaymentSucceeded.created * 1000);
-			const curMonthString = eventDate.toDate().toLocaleString('en-us', { month: 'long' });
-			const curYearString = eventDate.toDate().toLocaleString('en-us', { year: 'numeric' });
+			const amount = rentCents / 100;
+			const eventDate = Timestamp.fromMillis(invoice.created * 1000);
+			const { year, monthName } = getMonthKey(eventDate.toDate());
+			const transaction = {
+				date: eventDate,
+				amount,
+				...(feeCents !== undefined && { fee: feeCents / 100 })
+			};
 
-			const propertyDoc = adminDB
-				.collection('properties')
-				.doc(invoicePaymentSucceeded.metadata.propertyID);
-			const currentYearDocument = propertyDoc.collection('payment_history').doc(curYearString);
+			// Any failure below responds 500 so that Stripe redelivers the event.
+			try {
+				const propertyDoc = adminDB.collection('properties').doc(propertyId);
+				const currentYearDocument = propertyDoc.collection('payment_history').doc(String(year));
+				const currentYearData = (await currentYearDocument.get()).data();
 
-			const currentYearData = (await currentYearDocument.get()).data();
+				let remainingBalance: number | FieldValue;
+				if (currentYearData && currentYearData[monthName]) {
+					remainingBalance = FieldValue.increment(-1 * amount);
+				} else {
+					const propertyData = (await propertyDoc.get()).data();
 
-			if (currentYearData && currentYearData[curMonthString]) {
-				currentYearDocument
-					.set(
-						{
-							[curMonthString]: {
-								remainingBalance: FieldValue.increment(-1 * amount),
-								transactions: FieldValue.arrayUnion({
-									date: eventDate,
-									amount: amount
-								})
-							}
-						},
-						{ merge: true }
-					)
-					.catch((err) => {
-						throw error(500, err);
-					});
-			} else {
-				const propertyData = (await propertyDoc.get()).data();
-
-				if (!propertyData) {
-					console.log('Could not find property details');
-					break;
+					if (!propertyData) {
+						console.log('Could not find property details');
+						break;
+					}
+					remainingBalance = propertyData.rent - amount;
 				}
 
-				currentYearDocument
-					.set(
-						{
-							[curMonthString]: {
-								remainingBalance: propertyData.rent - amount,
-								transactions: FieldValue.arrayUnion({
-									date: eventDate,
-									amount: amount
-								})
-							}
-						},
-						{ merge: true }
-					)
-					.catch((err) => {
-						throw error(500, err);
-					});
+				await currentYearDocument.set(
+					{
+						[monthName]: {
+							remainingBalance,
+							transactions: FieldValue.arrayUnion(transaction)
+						}
+					},
+					{ merge: true }
+				);
+			} catch (err) {
+				console.log(err instanceof Error ? err.message : err);
+				throw error(500, 'Failed to record payment');
 			}
 			break;
 		}

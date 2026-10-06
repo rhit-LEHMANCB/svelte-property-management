@@ -63,11 +63,7 @@ The system SHALL display the tenant's actual remaining balance and due date from
 - **THEN** the server responds 400
 
 ## Known Gaps
-- `/payment` hardcodes `balance = 1000.0` and today's date as the due date.
-- The server-side balance check is a `TODO`.
-- Only the "Rent" line is recorded; the fee is ignored. Matching is by the literal description "Rent".
-- `success_url` and `cancel_url` carry a `TODO`; success returns to `/` with no confirmation.
-- Webhook writes are not awaited, so a Firestore failure still returns 200 and Stripe will not retry.
-- Month is taken from the invoice creation time in the server's locale and timezone.
-- The amount multiplication `amount * 100` is not rounded; the fee line is.
 - Auto-pay is referenced in copy but has no implementation here.
+- A duplicate webhook delivery for one invoice is recorded twice (no de-duplication).
+- Two checkouts started before the first webhook lands can together exceed the balance.
+- Production runs with a Stripe test-mode key until the account is activated for live payments; the key-mode guard only warns there.
