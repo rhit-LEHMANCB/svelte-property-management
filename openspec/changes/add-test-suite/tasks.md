@@ -33,11 +33,11 @@
 
 ## 5. Layer 3: end-to-end infrastructure
 
-- [ ] 5.1 Add `firebase-tools` and `@playwright/test`, add an `emulators` section and permissive `firestore.rules` and `storage.rules` for auth, firestore and storage under project `demo-lehman-realty`; verify `firebase emulators:exec --project demo-lehman-realty --only auth,firestore,storage "echo ok"` succeeds (needs a JRE)
-- [ ] 5.2 Add the `import.meta.env.MODE === 'e2e'` emulator hook in `src/lib/firebase.ts` and the optional `STRIPE_API_BASE_URL` override in `src/lib/server/stripe.ts`; verify `npm run build` output is unchanged for production mode and `npm run check` passes
-- [ ] 5.3 Write the seed script (admin user, tenant user, property, junction) and the fake Stripe server; verify by running the seed against the emulator and checking the documents exist
-- [ ] 5.4 Write `playwright.config.ts` with two projects: `e2e` (webServer `vite dev --mode e2e`, env block with generated admin key, fixed port, one worker, CI retry, report on failure) and `qa` (reads `BASE_URL` for the deployed dev site and the `QA_*` credentials from the environment or the gitignored `.env.qa`, starts no server or emulators, traces and screenshots on); verify `npx playwright test --list` shows both projects and the app reaches `/signin` in the emulator setup
-- [ ] 5.5 Add npm script `test:e2e` wrapping `firebase emulators:exec`; verify one placeholder test passes through the script
+- [x] 5.1 Add `firebase-tools` and `@playwright/test`, add a separate `firebase.emulators.json` (so the deploy config in `firebase.json` stays untouched) with the `emulators` section and permissive `firestore.rules` and `storage.rules` for auth, firestore and storage under project `demo-lehman-realty`; verify `firebase emulators:exec --config firebase.emulators.json --project demo-lehman-realty --only auth,firestore,storage "echo ok"` succeeds (needs a JRE)
+- [x] 5.2 Add the `import.meta.env.MODE === 'e2e'` emulator hook in `src/lib/firebase.ts` and the optional `STRIPE_API_BASE_URL` override in `src/lib/server/stripe.ts`; verify `npm run build` output is unchanged for production mode and `npm run check` passes
+- [x] 5.3 Write the seed script (admin user, tenant user, property, junction) and the fake Stripe server; verify by running the seed against the emulator and checking the documents exist
+- [x] 5.4 Write `playwright.config.ts` with two projects: `e2e` (webServer `vite dev --mode e2e`, env block with generated admin key, fixed port, one worker, CI retry, report on failure) and `qa` (reads `BASE_URL` for the deployed dev site and the `QA_*` credentials from the environment or the gitignored `.env.qa`, starts no server or emulators, traces and screenshots on); verify `npx playwright test --list` shows both projects and the app reaches `/signin` in the emulator setup
+- [x] 5.5 Add npm script `test:e2e` wrapping `firebase emulators:exec`; verify one placeholder test passes through the script
 
 ## 6. Layer 3: smoke tests
 

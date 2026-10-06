@@ -12,9 +12,12 @@
 		"format": "prettier --plugin-search-dir . --write .",
 		"test:unit": "vitest run tests/unit",
 		"test:handlers": "vitest run tests/handlers",
-		"test": "vitest run"
+		"test": "vitest run",
+		"test:e2e": "firebase emulators:exec --config firebase.emulators.json --project demo-lehman-realty --only auth,firestore,storage \"playwright test --project=e2e\"",
+		"test:qa": "PLAYWRIGHT_QA=1 playwright test --project=qa"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.63.0",
 		"@skeletonlabs/skeleton": "^2.5.0",
 		"@skeletonlabs/tw-plugin": "^0.2.4",
 		"@sveltejs/adapter-auto": "^2.0.0",
@@ -29,6 +32,7 @@
 		"eslint-config-prettier": "^8.5.0",
 		"eslint-plugin-svelte": "^2.30.0",
 		"firebase": "9.9",
+		"firebase-tools": "^15.32.1",
 		"postcss": "^8.4.24",
 		"postcss-load-config": "^4.0.1",
 		"prettier": "^2.8.0",

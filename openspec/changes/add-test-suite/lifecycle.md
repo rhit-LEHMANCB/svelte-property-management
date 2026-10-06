@@ -47,6 +47,12 @@ Accepted preflight gaps: local `.env` out of date for develop (does not affect t
 - Task 5.4: Playwright config now has two projects, `e2e` and `qa`.
 - Task 7.2 and design: document the `qa` project and add an `.env.example` with the format of every variable (including the `FB_PRIVATE_KEY` JSON shape).
 
+## Implementation notes
+- Emulator config lives in `firebase.emulators.json`, not in `firebase.json`, so the deploy config is untouched (task 5.1 text updated).
+- `firebase-tools` and `@playwright/test` add about 8,700 lockfile lines. The app's own dependencies are unchanged; 25 transitive packages moved within their semver ranges.
+- The dev server logs "default Firebase app already exists" in e2e mode because `admin.ts` is evaluated twice; it is caught by the existing try/catch and is not new.
+- Local `npm run lint`, `check` and `build` need three env overrides (see Preflight) because the local `.env` is stale.
+
 ## Review rounds
 (none yet)
 
