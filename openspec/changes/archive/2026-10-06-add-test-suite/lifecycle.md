@@ -1,7 +1,7 @@
 # Lifecycle: add-test-suite
 
 - Branch: `add-test-suite` (from `origin/develop` at `75f789a`)
-- Stage: 7 complete. Merged to `develop` (PR #53, `bba5eeb`), deployed to dev, independent QA passed, production PR opened. Waiting at Gate B for a human to verify and merge.
+- Stage: **8 complete (lifecycle finished).** Merged to `develop` (PR #53), deployed to dev, independent QA passed, released to production by a human (PR #62), archived automatically (PR #63).
 - Review round: 4 done (3 plus 1 extra requested by the user); round 4 had no blockers or majors
 - QA cycle: 1 of 3 (passed)
 - Started: 2026-10-05
@@ -103,7 +103,7 @@ Independent QA agent (fresh Sonnet 5.5, given only the dev URL, the proposal and
 | property-management | properties list; the QA property's edit page opens (nothing edited) |
 | user-management | users directory lists the users |
 
-Screenshots (19, redacted: emails, phone numbers and other people's rows are blacked out because the repository is public) are on the unmerged branch `qa-evidence/add-test-suite`, under `openspec/changes/add-test-suite/qa/screenshots/`, together with the QA spec `tests/qa/add-test-suite/regression.spec.ts`. The first set of images showed the QA accounts' emails and another user's contact details; it was discarded and the images were retaken with redaction. QA data (19 `qa-regression-*` maintenance requests) was verified as QA tenant data and deleted from the dev Firestore.
+Screenshots (19, redacted: emails, phone numbers and other people's rows are blacked out because the repository is public) are under the tag `qa-evidence-add-test-suite` (the temporary branch was deleted after the release), under `openspec/changes/add-test-suite/qa/screenshots/`, together with the QA spec `tests/qa/add-test-suite/regression.spec.ts`. The first set of images showed the QA accounts' emails and another user's contact details; it was discarded and the images were retaken with redaction. QA data (19 `qa-regression-*` maintenance requests) was verified as QA tenant data and deleted from the dev Firestore.
 
 **Observations outside the specs** (filed): the tenant closed-request list labels the closed date "Opened:" (#57); input typed or clicked before hydration is silently lost (#58); the users list sorts last names case-sensitively (#59); QA failures can leave the typed password in `test-results/error-context.md` (#60). Known gaps seen again: the payment page's hardcoded $1,000 balance (#36). Not covered by automation: anything that sends email, completing a Stripe payment and the webhook, saving profile and insurance data, property and user create, edit and delete, other browsers and phones, screen readers.
 
@@ -122,3 +122,10 @@ Ranked by risk. This release adds tests, CI and docs and no user-facing behavior
 
 ## Halted (resolved)
 The run halted after round 3 (one major). The major was fixed, the findings were filed as issues #54, #55 and #56, and the user asked for round 4, which came back clean. The original halt notes are kept in the draft PR #53 description.
+
+## Wrap-up
+- **Production release:** PR #62 (`develop` to `production`) was merged by a human at 12:52 UTC on 2026-10-06. The production deploy succeeded (live hosting release at 12:58 UTC; the function `ssrlehmanrealty` is `ACTIVE` on `nodejs20`), and both production hostnames returned 200.
+- **Archive:** the new `openspec-archive.yml` workflow ran for the first time on that push. It archived this change into `openspec/changes/archive/2026-10-06-add-test-suite/`, added the `test-suite` capability to `openspec/specs/` (10 specs now), and opened and merged PR #63 into `develop` in 24 seconds. The PR-check run that its creation triggered failed instantly with no jobs, because the PR had already merged; filed as #64.
+- **Issues filed from this change:** #54 (cookie `maxAge` unit), #55 (`/reset` wrong mode returns 500), #56 ("Leave site?" prompt after a reset), #57 (closed-request label says "Opened:"), #58 (input lost before hydration), #59 (users list case-sensitive sort), #60 (QA failure can leave the typed password in `test-results/`), #64 (archive PR check race). Existing: #36, #46, #48.
+- **Evidence:** the redacted screenshots and the QA spec are kept under the tag `qa-evidence-add-test-suite`; the production PR's images point at it.
+- **Next in the plan:** the Node runtime bump (the Cloud Functions Node 20 runtime is decommissioned on 2026-10-30), then the rest of #48. The test suite is now in place for those upgrades.
