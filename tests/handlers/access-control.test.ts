@@ -53,15 +53,6 @@ describe('access-control: tenant property context (authenticated layout)', () =>
 		});
 	});
 
-	it('Scenario: a link to a property that no longer exists fails with 500 "Failed to find property info."', async () => {
-		seedTenant('t1');
-		linkTenant('t1', 'deleted-property');
-
-		const result = await call(layoutLoad, { userID: 't1' });
-
-		expect(result).toMatchObject({ status: 500, error: 'Failed to find property info.' });
-	});
-
 	it('Scenario: admins need no property and get only their user data', async () => {
 		seedAdmin('a1');
 

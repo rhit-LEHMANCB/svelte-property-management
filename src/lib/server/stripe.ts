@@ -11,7 +11,7 @@ export const stripe = new Stripe(
 	target
 		? {
 				host: target.hostname,
-				port: target.port,
+				port: target.port || undefined,
 				protocol: target.protocol.replace(':', '') as 'http' | 'https'
 		  }
 		: undefined

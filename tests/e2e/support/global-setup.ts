@@ -1,6 +1,4 @@
-import { getApps, initializeApp } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { adminAuth, adminDb } from './admin';
 import {
 	ADMIN,
 	AUTH_EMULATOR,
@@ -29,9 +27,8 @@ export default async function globalSetup() {
 		{ method: 'DELETE' }
 	);
 
-	const app = getApps()[0] ?? initializeApp({ projectId: PROJECT_ID });
-	const auth = getAuth(app);
-	const db = getFirestore(app);
+	const auth = adminAuth();
+	const db = adminDb();
 
 	for (const user of [ADMIN, TENANT]) {
 		await auth.createUser({

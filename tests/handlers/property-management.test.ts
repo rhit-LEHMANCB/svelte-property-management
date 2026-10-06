@@ -116,6 +116,31 @@ describe('property-management: edit property (edit page action)', () => {
 	});
 });
 
+describe('property-management: admin-only edit actions', () => {
+	it('Scenario: a non-admin cannot edit a property or upload photos (401, nothing changes)', async () => {
+		seedTenant('tenant-1');
+		seedProperty('prop-1');
+		const photos = new FormData();
+		photos.append('photos', new File([new Uint8Array([1])], 'x.png'));
+
+		const edit = await call(editActions.basicInfo, {
+			userID: 'tenant-1',
+			params: { propertyId: 'prop-1' },
+			form: { ...validForm, title: 'Hijacked' }
+		});
+		const upload = await call(editActions.photos, {
+			userID: 'tenant-1',
+			params: { propertyId: 'prop-1' },
+			form: photos
+		});
+
+		expect(edit).toMatchObject({ status: 401, error: 'You must be an admin to do this.' });
+		expect(upload).toMatchObject({ status: 401, error: 'You must be an admin to do this.' });
+		expect(db.peek('properties/prop-1')?.title).toBe('Maple Court');
+		expect(services.storage.log.written).toHaveLength(0);
+	});
+});
+
 describe('property-management: property photos', () => {
 	const png = (name: string, bytes = [1, 2, 3]) =>
 		new File([new Uint8Array(bytes)], name, { type: 'image/png' });

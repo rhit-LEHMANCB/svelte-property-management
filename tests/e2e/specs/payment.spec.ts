@@ -53,6 +53,8 @@ test.describe('rent-payments', () => {
 		await dialog.getByRole('spinbutton').fill('999999');
 		await dialog.getByRole('button', { name: 'Submit' }).click();
 
+		// Wait for the app to react (an error toast) before checking that nothing was sent.
+		await expect(page.getByText(/less than or equal to 1000/)).toBeVisible();
 		await expect(page).toHaveURL(/\/payment$/);
 		expect(await recorded()).toHaveLength(0);
 	});

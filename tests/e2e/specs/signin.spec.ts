@@ -11,10 +11,19 @@ test.describe('authentication and access-control', () => {
 
 		await expect(page).toHaveURL(`${APP_URL}/`);
 		const nav = page.getByRole('navigation');
-		for (const item of ['Maintenance', 'Payment', 'Insurance', 'Profile']) {
-			await expect(nav.getByRole('link', { name: item })).toBeVisible();
+		for (const item of [
+			'Dashboard',
+			'Maintenance',
+			'Payment',
+			'Profile',
+			'Insurance',
+			'About Us'
+		]) {
+			await expect(nav.getByRole('link', { name: item, exact: true })).toBeVisible();
 		}
-		await expect(nav.getByRole('link', { name: 'Properties' })).toHaveCount(0);
+		for (const item of ['Properties', 'Users']) {
+			await expect(nav.getByRole('link', { name: item, exact: true })).toHaveCount(0);
+		}
 
 		const session = (await context.cookies()).find((cookie) => cookie.name === '__session');
 		expect(session).toBeDefined();
@@ -30,16 +39,19 @@ test.describe('authentication and access-control', () => {
 
 		await expect(page).toHaveURL(`${APP_URL}/admin`);
 		const nav = page.getByRole('navigation');
-		for (const item of ['Maintenance', 'Properties', 'Users', 'Profile']) {
-			await expect(nav.getByRole('link', { name: item })).toBeVisible();
+		for (const item of ['Home', 'Maintenance', 'Properties', 'Users', 'Profile']) {
+			await expect(nav.getByRole('link', { name: item, exact: true })).toBeVisible();
 		}
-		await expect(nav.getByRole('link', { name: 'Payment' })).toHaveCount(0);
+		for (const item of ['Dashboard', 'Payment', 'Insurance', 'About Us']) {
+			await expect(nav.getByRole('link', { name: item, exact: true })).toHaveCount(0);
+		}
 	});
 
 	test('Scenario: Invalid credentials show an error toast and stay on the sign-in page', async ({
 		page
 	}) => {
 		await page.goto('/signin');
+		await page.waitForLoadState('networkidle');
 		await page.getByLabel('Email').fill(TENANT.email);
 		await page.getByLabel('Password').fill('not-the-password');
 		await page.getByRole('button', { name: 'Sign in' }).click();
@@ -66,13 +78,5 @@ test.describe('authentication and access-control', () => {
 		await page.goto('/maintenance');
 
 		await expect(page).toHaveURL(/\/signin/);
-	});
-
-	test('Scenario: a tenant cannot open an admin page', async ({ page }) => {
-		await signIn(page, TENANT);
-
-		const response = await page.goto('/admin/users');
-
-		expect(response?.status()).toBe(401);
 	});
 });

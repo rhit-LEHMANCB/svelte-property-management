@@ -2,7 +2,7 @@
 
 - Branch: `add-test-suite` (from `origin/develop` at `75f789a`)
 - Stage: 4 Review loop (stage 3 complete: 33 of 33 tasks done)
-- Review round: 0 of 3
+- Review round: 1 of 3 done (fixes applied, round 2 next)
 - QA cycle: 0 of 3
 - Started: 2026-10-05
 - Issue: #50 (related: #48)
@@ -58,10 +58,19 @@ Accepted preflight gaps: local `.env` out of date for develop (does not affect t
 - Local `npm run lint`, `check` and `build` need three env overrides (see Preflight) because the local `.env` is stale.
 
 ## Review rounds
-(none yet)
+**Round 1** (blockers 0, majors 4, minors 6, nits 2). All fixed; none rejected.
+- Major: e2e test asserting 401 on an admin URL covered the "not yet implemented" route-enforcement requirement. Removed.
+- Major: tenant-assignment tests asserted that admins appear in the assignable list (a Known Gap). Rewritten to check tenants only.
+- Major: three negative e2e checks could pass before the app reacted. Each now waits for a positive signal first (validation message or error toast).
+- Major: spec scenarios without tests. Added handler tests for non-admin photo upload and property edit, and e2e specs for password reset completion (valid, mismatch, wrong mode), admin insurance visibility and the missing-insurance badge, the profile reset button, and the full navigation labels.
+- Minor: dropped a layout test that asserted a Known Gap's consequence; handler tests now block fetch and http(s) so a bypassed double fails; the `qa` project no longer records traces or video (they capture typed passwords); the invalid-credentials spec waits before filling; the `tests` job has `permissions: contents: read` and caches the Playwright browser and emulator jars; the fake Firestore leaves out documents lacking the field for `!=` and `not-in`.
+- Nit: `port: target.port || undefined`; `tests/qa/.gitkeep` and a README note.
+- Found while fixing: my access-control spec had the wrong navigation labels (tenant Dashboard, not Home; admin Home, not Admin; About Us only for tenants) and my authentication spec claimed a 400 for a wrong `/reset` mode (the app responds 500). Both specs corrected; the 500 and a "Leave site?" prompt after a successful reset are recorded as Known Gaps.
 
 ## Deferred findings
 - `POST /api/signin` sets the cookie with `maxAge: expiresIn`, and `expiresIn` is 5 days in milliseconds. SvelteKit cookie `maxAge` is in seconds, so the browser cookie lives about 13.7 years. The session itself still expires after 5 days at Firebase, so the practical effect is limited, but the value is wrong. Not in the specs' Known Gaps; tests assert only httpOnly, secure and path. File an issue at wrap-up.
+- `/reset` with a wrong `mode` responds 500 (page text "500 Invalid action"), not the intended 400: the `error(400)` is thrown inside the component while rendering. Found by the e2e test; recorded in the authentication spec's Known Gaps. File an issue at wrap-up.
+- After a successful password reset, the Continue button navigates with an absolute URL while the superforms form is still marked tainted, so the browser shows "Leave site? Changes you made may not be saved" and, in headless Chromium, the navigation is cancelled. Recorded in the authentication spec's Known Gaps. File an issue at wrap-up.
 
 ## QA report
 (stage 6)

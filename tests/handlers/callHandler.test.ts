@@ -1,3 +1,5 @@
+import http from 'node:http';
+import https from 'node:https';
 import { describe, expect, it } from 'vitest';
 import { error, json, redirect } from '@sveltejs/kit';
 import { adminDB } from '$lib/server/admin';
@@ -61,7 +63,7 @@ describe('handler test infrastructure: service doubles', () => {
 		expect(services.db.peek('users/u1')).toBeUndefined();
 	});
 
-	it('works with no credentials and no network: the doubles never leave the process', async () => {
+	it('Scenario: Hermetic run: the service doubles answer in-process', async () => {
 		const session = await services.stripe.checkout.sessions.create({});
 		expect(session.url).toBe('https://checkout.test/session');
 		expect(
@@ -74,5 +76,11 @@ describe('handler test infrastructure: service doubles', () => {
 		expect(() =>
 			services.stripe.webhooks.constructEvent(Buffer.from('{}'), 'bad', 'whsec_fixture')
 		).toThrow();
+	});
+
+	it('Scenario: Hermetic run: any attempt to use the network fails the test', async () => {
+		expect(() => fetch('https://api.stripe.com/v1/charges')).toThrow(/Network access is blocked/);
+		expect(() => http.request('http://example.com')).toThrow(/Network access is blocked/);
+		expect(() => https.get('https://example.com')).toThrow(/Network access is blocked/);
 	});
 });

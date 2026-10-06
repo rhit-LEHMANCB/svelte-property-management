@@ -86,7 +86,10 @@ export default defineConfig({
 			testDir: './tests/qa',
 			use: {
 				...devices['Desktop Chrome'],
-				baseURL: process.env.BASE_URL ?? 'https://lehman-realty-dev.web.app'
+				baseURL: process.env.BASE_URL ?? 'https://lehman-realty-dev.web.app',
+				// Traces and video record what is typed, which would include the QA account passwords.
+				trace: 'off',
+				video: 'off'
 			}
 		}
 	]

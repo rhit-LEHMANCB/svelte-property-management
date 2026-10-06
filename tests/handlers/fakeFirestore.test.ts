@@ -150,6 +150,14 @@ describe('FakeFirestore: queries', () => {
 		expect(await ids(q.where(FakeFieldPath.documentId(), 'not-in', ['u1', 'u3']))).toEqual(['u2']);
 	});
 
+	it('!= and not-in leave out documents that lack the field, as Firestore does', async () => {
+		await db.doc('users/with').set({ role: 'user' });
+		await db.doc('users/other').set({ role: 'admin' });
+		await db.doc('users/without').set({ name: 'x' });
+		expect(await ids(db.collection('users').where('role', '!=', 'admin'))).toEqual(['with']);
+		expect(await ids(db.collection('users').where('role', 'not-in', ['admin']))).toEqual(['with']);
+	});
+
 	it('chained where clauses all apply', async () => {
 		const q = db
 			.collection('junction')

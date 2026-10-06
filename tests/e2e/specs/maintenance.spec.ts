@@ -59,6 +59,13 @@ test.describe('maintenance-requests', () => {
 		await page.getByLabel('Description').fill('No subject given');
 		await page.getByRole('button', { name: 'Add' }).click();
 
+		// Wait for the app to react (the subject field is flagged invalid) before checking that nothing
+		// was submitted, so this cannot pass merely because the page had not responded yet.
+		await expect
+			.poll(() =>
+				page.getByLabel('Subject').evaluate((el) => (el as HTMLInputElement).validationMessage)
+			)
+			.toBe('Please provide a subject');
 		await expect(page.getByText('Successfully added maintenance request.')).toHaveCount(0);
 		await expect(page.getByLabel('Description')).toHaveValue('No subject given');
 	});

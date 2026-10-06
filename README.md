@@ -37,6 +37,8 @@ spec's "Known Gaps", or marked "not yet implemented", is deliberately not assert
 | `npm run test:e2e`      | Playwright smoke tests (sign-in, maintenance, property creation, payment) against the Firebase emulators and a fake Stripe | Java 21 or newer, `npx playwright install chromium` once                                                                                         |
 | `npm run test:qa`       | Playwright specs in `tests/qa/` against the deployed dev site (used by the `dev-lifecycle` skill)                          | `QA_ADMIN_EMAIL`, `QA_ADMIN_PASSWORD`, `QA_TENANT_EMAIL`, `QA_TENANT_PASSWORD` in the environment or a gitignored `.env.qa`; optional `BASE_URL` |
 
+`tests/qa/` is empty until specs are added for a change; the `dev-lifecycle` skill's QA agent writes them there. The `qa` project does not record traces or video, because those would capture the typed account passwords; failure screenshots are still saved. `test-results/` and `playwright-report/` come from the end-to-end run and are not committed.
+
 The unit and handler tests use fixture values for every `$env` variable and never touch the network.
 The end-to-end tests build the app in `e2e` mode, serve it with `vite preview`, and set every variable
 themselves, so a local `.env` is never used. The pull request check runs all of these in the `tests`

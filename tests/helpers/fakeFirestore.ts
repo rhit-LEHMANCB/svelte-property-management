@@ -6,6 +6,9 @@ import { isDeepStrictEqual } from 'node:util';
  * documentId), orderBy, limit, and the FieldValue sentinels serverTimestamp, increment,
  * arrayUnion, arrayRemove, delete. It exists so handler tests run without Java or an emulator;
  * the Playwright layer covers real Firestore behavior.
+ *
+ * Not modeled: composite-index requirements, the 10-value limit on `in` and `not-in`, transactions
+ * and batches, security rules, and consistency or latency.
  */
 
 export class FakeTimestamp {
@@ -193,11 +196,15 @@ export class FakeQuery {
 			case '==':
 				return isDeepStrictEqual(a, comparable(f.value));
 			case '!=':
-				return !isDeepStrictEqual(a, comparable(f.value));
+				// Like Firestore, documents without the field are not returned.
+				return a !== undefined && !isDeepStrictEqual(a, comparable(f.value));
 			case 'in':
 				return (f.value as unknown[]).some((v) => isDeepStrictEqual(a, comparable(v)));
 			case 'not-in':
-				return !(f.value as unknown[]).some((v) => isDeepStrictEqual(a, comparable(v)));
+				return (
+					a !== undefined &&
+					!(f.value as unknown[]).some((v) => isDeepStrictEqual(a, comparable(v)))
+				);
 			default:
 				throw new Error(`FakeFirestore: unsupported operator ${f.op}`);
 		}
