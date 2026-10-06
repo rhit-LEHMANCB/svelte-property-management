@@ -41,7 +41,7 @@ The system SHALL verify the Stripe signature on `POST /api/stripe/webhook` and, 
 #### Scenario: Payment covers carried-over months
 - **WHEN** the invoice metadata carries a `moveInMonth` and the payment exceeds the current month's remainder
 - **THEN** the payment is applied to the oldest unpaid months first, each affected month gets its own transaction and `remainingBalance`, and the fee is recorded on the first transaction
-- **AND** all writes for the payment are committed in one batch, so a failure leaves nothing recorded
+- **AND** all reads and writes for the payment, including the record that the invoice was handled, happen in one transaction, so a failure leaves nothing recorded
 
 #### Scenario: Month near midnight
 - **WHEN** an invoice is created at 23:30 on the last day of a month in the business time zone
@@ -50,6 +50,10 @@ The system SHALL verify the Stripe signature on `POST /api/stripe/webhook` and, 
 #### Scenario: Write fails
 - **WHEN** a Firestore write fails while recording a payment
 - **THEN** the response is 500 so Stripe retries the event
+
+#### Scenario: Redelivered invoice
+- **WHEN** an `invoice.payment_succeeded` event arrives for an invoice that was already recorded
+- **THEN** it is acknowledged with 200 and nothing is recorded again
 
 #### Scenario: Bad signature
 - **WHEN** the signature is missing or fails verification

@@ -8,7 +8,7 @@ import { isDeepStrictEqual } from 'node:util';
  * the Playwright layer covers real Firestore behavior.
  *
  * Not modeled: composite-index requirements, the 10-value limit on `in` and `not-in`, transactions,
- * atomicity of batches (they are applied in order), security rules, and consistency or latency.
+ * isolation between concurrent transactions, security rules, and consistency or latency.
  */
 
 export class FakeTimestamp {
@@ -324,19 +324,40 @@ export class FakeFirestore {
 	doc(path: string) {
 		return new FakeDocRef(this, path);
 	}
-	/** Writes are queued and applied on commit(); the real SDK applies them atomically. */
+	/** Writes are queued and applied on commit(), all or nothing (rolled back if one fails). */
 	batch() {
 		const ops: (() => Promise<void>)[] = [];
 		const batch = {
-			set(ref: FakeDocRef, data: Data, options?: { merge?: boolean }) {
+			set: (ref: FakeDocRef, data: Data, options?: { merge?: boolean }) => {
 				ops.push(() => ref.set(data, options));
 				return batch;
 			},
-			async commit() {
-				for (const op of ops) await op();
+			commit: async () => {
+				const before = new Map(this.store);
+				try {
+					for (const op of ops) await op();
+				} catch (e) {
+					this.store = before;
+					throw e;
+				}
 			}
 		};
 		return batch;
+	}
+	/** Reads see the current data; writes are applied together at the end. Not retried or isolated. */
+	async runTransaction<T>(
+		fn: (tx: {
+			get: (ref: FakeDocRef) => Promise<FakeSnapshot>;
+			set: (ref: FakeDocRef, data: Data, options?: { merge?: boolean }) => unknown;
+		}) => Promise<T>
+	): Promise<T> {
+		const batch = this.batch();
+		const result = await fn({
+			get: (ref) => ref.get(),
+			set: (ref, data, options) => batch.set(ref, data, options)
+		});
+		await batch.commit();
+		return result;
 	}
 
 	// Storage primitives used by the refs above.

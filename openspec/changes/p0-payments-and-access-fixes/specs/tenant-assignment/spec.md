@@ -13,12 +13,16 @@ The system SHALL store a move-in month (`YYYY-MM`) on a tenant's junction docume
 - **WHEN** an admin assigns a tenant and supplies no `moveInMonth`
 - **THEN** the junction document stores the current month in the business time zone
 
+#### Scenario: Re-assign an assigned tenant
+- **WHEN** an admin assigns a tenant who is already assigned to the property and supplies no `moveInMonth`
+- **THEN** the stored `moveInMonth` is kept
+
 #### Scenario: Change the move-in month
 - **WHEN** an admin updates an assigned tenant's `moveInMonth` via `PATCH /api/property/{id}/tenants`
 - **THEN** the junction document is updated and the response is 200
 
 #### Scenario: Invalid month
-- **WHEN** `moveInMonth` is not a month in the form `YYYY-MM`
+- **WHEN** `moveInMonth` is not a month in the form `YYYY-MM`, or is more than five years before the current month
 - **THEN** the response is 400 and nothing is written
 
 #### Scenario: Non-admin

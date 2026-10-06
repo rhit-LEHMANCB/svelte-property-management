@@ -65,58 +65,73 @@ export const POST: RequestHandler = async ({ request }) => {
 			const eventDate = Timestamp.fromMillis(invoice.created * 1000);
 			const moveInMonth = invoice.metadata?.moveInMonth;
 
-			// Any failure below responds 500 so that Stripe redelivers the event.
+			// Any failure below responds 500 so that Stripe redelivers the event. Everything is read and
+			// written in one transaction: concurrent events cannot overwrite each other, a payment
+			// spanning two years is recorded completely or not at all, and the invoice is marked as
+			// recorded in the same commit, so a redelivery never counts a payment twice.
 			try {
-				const propertyData = (await adminDB.collection('properties').doc(propertyId).get()).data();
-				if (!propertyData) {
-					console.log('Could not find property details');
-					break;
-				}
+				const propertyRef = adminDB.collection('properties').doc(propertyId);
+				const outcome = await adminDB.runTransaction(async (tx) => {
+					const recordedRef = invoice.id
+						? propertyRef.collection('recorded_invoices').doc(invoice.id)
+						: undefined;
+					if (recordedRef && (await tx.get(recordedRef)).exists) {
+						return 'already-recorded';
+					}
 
-				// A payment clears the oldest unpaid months first, the same order the balance uses.
-				const histories = await loadHistories(propertyId, moveInMonth, eventDate.toDate());
-				const allocations = allocatePayment({
-					rent: propertyData.rent,
-					moveInMonth,
-					histories,
-					now: eventDate.toDate(),
-					amountCents: rentCents
-				});
+					const propertyData = (await tx.get(propertyRef)).data();
+					if (!propertyData) {
+						return 'unknown-property';
+					}
 
-				// One entry per year document; the fee is recorded once, on the first transaction.
-				const years = new Map<string, Record<string, unknown>>();
-				allocations.forEach((a, index) => {
-					const amount = a.cents / 100;
-					const transaction = {
-						date: eventDate,
-						amount,
-						...(index === 0 && feeCents !== undefined && { fee: feeCents / 100 })
-					};
-					const months = years.get(String(a.month.year)) ?? {};
-					months[a.month.monthName] = {
-						remainingBalance: a.hasEntry
-							? FieldValue.increment(-1 * amount)
-							: (propertyData.rent * 100 - a.cents) / 100,
-						transactions: FieldValue.arrayUnion(transaction)
-					};
-					years.set(String(a.month.year), months);
-				});
-
-				// One batch, so a payment spanning two years is recorded completely or not at all and a
-				// retry after a failure starts from the same state.
-				const batch = adminDB.batch();
-				for (const [year, months] of years) {
-					batch.set(
-						adminDB
-							.collection('properties')
-							.doc(propertyId)
-							.collection('payment_history')
-							.doc(year),
-						months,
-						{ merge: true }
+					// A payment clears the oldest unpaid months first, the same order the balance uses.
+					const histories = await loadHistories(
+						propertyId,
+						moveInMonth,
+						eventDate.toDate(),
+						(ref) => tx.get(ref)
 					);
+					const allocations = allocatePayment({
+						rent: propertyData.rent,
+						moveInMonth,
+						histories,
+						now: eventDate.toDate(),
+						amountCents: rentCents
+					});
+
+					// One entry per year document; the fee is recorded once, on the first transaction.
+					const years = new Map<string, Record<string, unknown>>();
+					allocations.forEach((a, index) => {
+						const amount = a.cents / 100;
+						const transaction = {
+							date: eventDate,
+							amount,
+							...(index === 0 && feeCents !== undefined && { fee: feeCents / 100 })
+						};
+						const months = years.get(String(a.month.year)) ?? {};
+						months[a.month.monthName] = {
+							remainingBalance: a.hasEntry
+								? FieldValue.increment(-1 * amount)
+								: (propertyData.rent * 100 - a.cents) / 100,
+							transactions: FieldValue.arrayUnion(transaction)
+						};
+						years.set(String(a.month.year), months);
+					});
+
+					for (const [year, months] of years) {
+						tx.set(propertyRef.collection('payment_history').doc(year), months, { merge: true });
+					}
+					if (recordedRef) {
+						tx.set(recordedRef, { recordedAt: eventDate });
+					}
+					return 'recorded';
+				});
+
+				if (outcome === 'unknown-property') {
+					console.log('Could not find property details');
+				} else if (outcome === 'already-recorded') {
+					console.log('Invoice already recorded; ignoring redelivery');
 				}
-				await batch.commit();
 			} catch (err) {
 				console.log(err instanceof Error ? err.message : err);
 				throw error(500, 'Failed to record payment');

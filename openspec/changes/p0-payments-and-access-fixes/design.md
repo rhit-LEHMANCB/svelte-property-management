@@ -16,7 +16,7 @@ See proposal.md for motivation. Current state that shapes the approach:
 
 **Non-Goals:**
 - Auto-pay, receipts, late fees, partial-month proration, credits for overpayment.
-- De-duplicating webhook deliveries (deferred finding).
+- Moving the fee into a ledger of its own.
 - Moving to a newer Stripe API version.
 
 ## Decisions
@@ -31,7 +31,7 @@ See proposal.md for motivation. Current state that shapes the approach:
 
 **Webhook reads rent and fee from invoice metadata.** Checkout's `invoice_data.metadata` gets `rentCents` and `feeCents` next to `propertyID`; the webhook uses them and falls back to the line described "Rent" for invoices created before this change. *Why:* the invoice's own metadata is under our control, while per-line metadata on invoices from Checkout is not reliably carried through. Writes are awaited and errors propagate as 500; an unknown property is logged and acknowledged 200, because retrying cannot fix it.
 
-**Payments are allocated oldest-first.** Checkout copies the junction's `moveInMonth` into the invoice metadata; the webhook walks the same months as `computeBalance` and applies the payment to the oldest unpaid month first (`allocatePayment`), so paying a carried-over balance clears it. Anything beyond what is owed goes to the current month. All year documents are written in one Firestore batch, so a failed write leaves nothing partial and a retry starts from the same state. The metadata value can be stale if an admin edits the move-in month between checkout and payment; accepted. *Alternative:* record everything under the invoice month and let the balance offset months. Rejected: balance would then differ from `remainingBalance` records.
+**Payments are allocated oldest-first.** Checkout copies the junction's `moveInMonth` into the invoice metadata; the webhook walks the same months as `computeBalance` and applies the payment to the oldest unpaid month first (`allocatePayment`), so paying a carried-over balance clears it. Anything beyond what is owed goes to the current month. The webhook reads and writes in one Firestore transaction, together with a `recorded_invoices/{invoiceId}` marker under the property: a failed write leaves nothing partial, concurrent events cannot overwrite each other, and a redelivered invoice is ignored. The metadata value can be stale if an admin edits the move-in month between checkout and payment; accepted. *Alternative:* record everything under the invoice month and let the balance offset months. Rejected: balance would then differ from `remainingBalance` records.
 
 **Checkout caps against the same function.** The endpoint loads the junction, property and the year documents from `moveInMonth` onward, computes the balance, and returns 400 when `amountCents > balanceCents` or the amount is not a positive whole number of cents. `unit_amount` uses the rounded cents.
 

@@ -7,8 +7,12 @@ import { MOVE_IN_MONTH_PATTERN, getMonthKey } from '$lib/server/payments';
 const isValidId = (value: unknown): value is string =>
 	typeof value === 'string' && value.length > 0 && !value.includes('/');
 
-const isValidMonth = (value: unknown): value is string =>
-	typeof value === 'string' && MOVE_IN_MONTH_PATTERN.test(value);
+// A move-in month more than five years back is almost certainly a typo and would charge years of rent.
+const isValidMonth = (value: unknown): value is string => {
+	if (typeof value !== 'string' || !MOVE_IN_MONTH_PATTERN.test(value)) return false;
+	const { year, month } = getMonthKey(new Date());
+	return value >= `${year - 5}-${String(month).padStart(2, '0')}`;
+};
 
 export const POST: RequestHandler = async ({ params, locals, request }) => {
 	const userId = getUserIdOrError(locals.userID);

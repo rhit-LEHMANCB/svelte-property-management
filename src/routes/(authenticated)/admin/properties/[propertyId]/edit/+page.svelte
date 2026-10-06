@@ -123,8 +123,12 @@
 	}
 
 	async function updateMoveInMonth(tenantId: string, event: Event) {
-		const moveInMonth = (event.currentTarget as HTMLInputElement).value;
+		const input = event.currentTarget as HTMLInputElement;
+		const moveInMonth = input.value;
 		if (!moveInMonth) {
+			// A move-in month cannot be cleared; show the stored one again.
+			input.value = moveInMonthOf(tenantId) ?? '';
+			errorToast('A move-in month is required.', toastStore);
 			return;
 		}
 		const response = await fetch(`/api/property/${$page.params.propertyId}/tenants`, {
@@ -136,7 +140,7 @@
 		});
 		if (response.ok) {
 			successToast('Move-in month updated.', toastStore);
-			invalidateAll();
+			await invalidateAll();
 		} else {
 			errorToast('Error updating move-in month.', toastStore);
 		}

@@ -1,3 +1,4 @@
+import type { DocumentReference, DocumentSnapshot } from 'firebase-admin/firestore';
 import { adminDB } from './admin';
 import { computeBalance, monthsOwed, type Balance, type YearHistory } from './payments';
 
@@ -5,18 +6,17 @@ import { computeBalance, monthsOwed, type Balance, type YearHistory } from './pa
 export async function loadHistories(
 	propertyId: string,
 	moveInMonth: string | undefined,
-	now: Date
+	now: Date,
+	// A transaction passes its own `get` so that the reads are part of it.
+	read: (ref: DocumentReference) => Promise<DocumentSnapshot> = (ref) => ref.get()
 ): Promise<Record<string, YearHistory>> {
 	const years = [...new Set(monthsOwed(moveInMonth, now).map((m) => String(m.year)))];
 	const histories: Record<string, YearHistory> = {};
 	await Promise.all(
 		years.map(async (year) => {
-			const doc = await adminDB
-				.collection('properties')
-				.doc(propertyId)
-				.collection('payment_history')
-				.doc(year)
-				.get();
+			const doc = await read(
+				adminDB.collection('properties').doc(propertyId).collection('payment_history').doc(year)
+			);
 			histories[year] = doc.data() as YearHistory;
 		})
 	);

@@ -15,6 +15,10 @@ export function checkStripeKeyMode(
 	projectId: string,
 	warn: (message: string) => void = console.warn
 ) {
+	// An unset project id would otherwise count as production and let a live key through.
+	if (!projectId) {
+		throw new Error('PUBLIC_FB_PROJECT_ID is not set, so the Stripe key mode cannot be checked.');
+	}
 	const live = apiKey.startsWith('sk_live_') || apiKey.startsWith('rk_live_');
 	const production = isProductionProject(projectId);
 

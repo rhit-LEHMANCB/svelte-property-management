@@ -1,8 +1,8 @@
 # Lifecycle: p0-payments-and-access-fixes
 
 - Branch: `p0-payments-and-access-fixes`
-- Stage: 4 Review - HALTED (round 3 ended with 2 majors; implementation complete, all tasks ticked, lint/check/unit/handlers/build/e2e pass locally)
-- Review round: 3 of 3 (HALTED)
+- Stage: 4 Review (resumed 2026-10-06 on the user's instruction: "fix everything and run another round, if it passes continue along")
+- Review round: 3 of 3 done; round 4 run on the user's instruction after the halt
 - QA cycle: 0 of 3
 - Started: 2026-10-06
 
@@ -97,9 +97,9 @@ Accepted preflight gaps: `npm run check` fails on the stale local `.env` unless 
   - minor: re-assign keeping `moveInMonth` has no spec scenario.
   - minor: key guard treats an empty or unknown project id as production; consider an explicit allowlist.
   - minor: concurrent-webhook race (already a Known Gap). Nit: 2000-01 lower bound.
+- Round 3 fixes (before round 4): webhook now runs in one transaction with a `recorded_invoices/{id}` marker (idempotent redelivery, no concurrent overwrite, no partial multi-year write); fake Firestore batch and transaction are all-or-nothing and the test asserts nothing is left behind; `hasEntry` matches `monthOwedCents`; re-assign scenario added to the spec; empty project id throws in the key guard; move-in month limited to 5 years back; cleared month input is reverted with a toast. Not changed: stale `moveInMonth` in invoice metadata (accepted, documented in design).
 
 ## Deferred findings
-- Duplicate webhook delivery for one invoice is not de-duplicated.
 
 ## QA report
 (filled in stage 6; link to the QA evidence branch)

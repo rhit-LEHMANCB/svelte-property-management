@@ -192,7 +192,7 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 		propertyID = 'prop-1'
 	) => ({
 		type: 'invoice.payment_succeeded',
-		data: { object: { created, metadata: { propertyID }, lines: { data: lines } } }
+		data: { object: { id: 'in_1', created, metadata: { propertyID }, lines: { data: lines } } }
 	});
 	const send = (event: object, signature: string | null = VALID_STRIPE_SIGNATURE) =>
 		call(webhook, {
@@ -389,6 +389,32 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 
 		failing.mockRestore();
 		expect(result.status).toBe(500);
+		// Nothing partial is left behind, not even the first year's document.
+		expect(db.peek('properties/prop-1/payment_history/2025')).toBeUndefined();
+		expect(history()).toBeUndefined();
+		expect(db.peek('properties/prop-1/recorded_invoices/in_1')).toBeUndefined();
+	});
+
+	it('Scenario: redelivery of an already recorded invoice is acknowledged and not counted twice', async () => {
+		seedProperty('prop-1', { rent: 1000 });
+		const event = invoiceEvent([{ description: 'Rent', amount: 40000 }]);
+
+		expect((await send(event)).status).toBe(200);
+		expect((await send(event)).status).toBe(200);
+
+		const march = (history() as { March: { remainingBalance: number; transactions: unknown[] } })
+			.March;
+		expect(march.remainingBalance).toBe(600);
+		expect(march.transactions).toHaveLength(1);
+	});
+
+	it('Scenario: an entry without a numeric remainingBalance is treated as unrecorded', async () => {
+		seedProperty('prop-1', { rent: 1000 });
+		db.seed('properties/prop-1/payment_history/2026', { March: { transactions: [] } });
+
+		await send(invoiceEvent([{ description: 'Rent', amount: 40000 }]));
+
+		expect((history() as { March: { remainingBalance: number } }).March.remainingBalance).toBe(600);
 	});
 
 	it('Scenario: Bad signature responds 400 and records nothing', async () => {

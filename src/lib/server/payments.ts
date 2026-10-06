@@ -102,9 +102,9 @@ export function allocatePayment(input: {
 	amountCents: number;
 }): Allocation[] {
 	const months = monthsOwed(input.moveInMonth, input.now);
+	// Same test as `monthOwedCents`: an entry without a numeric remainder is treated as absent.
 	const hasEntry = (m: MonthKey) =>
-		input.histories[String(m.year)]?.[m.monthName] !== undefined &&
-		input.histories[String(m.year)]?.[m.monthName] !== null;
+		typeof input.histories[String(m.year)]?.[m.monthName]?.remainingBalance === 'number';
 	const result: Allocation[] = [];
 	let left = input.amountCents;
 	for (const m of months) {

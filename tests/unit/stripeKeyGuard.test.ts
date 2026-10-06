@@ -19,6 +19,10 @@ describe('checkStripeKeyMode', () => {
 		expect(() => checkStripeKeyMode('sk_live_x', 'demo-lehman-realty', vi.fn())).toThrow();
 	});
 
+	it('refuses to guess when the project id is empty', () => {
+		expect(() => checkStripeKeyMode('sk_live_x', '', vi.fn())).toThrow(/PUBLIC_FB_PROJECT_ID/);
+	});
+
 	it('warns, without throwing or printing the key, for a test key in production', () => {
 		const warn = vi.fn();
 
