@@ -134,7 +134,6 @@ export function computeBalance(input: {
 	histories: Record<string, YearHistory>;
 	now: Date;
 }): Balance {
-	const rentCents = Math.round(input.rent * 100);
 	const current = getMonthKey(input.now);
 	let balanceCents = 0;
 	let oldestUnpaid: MonthKey | undefined;
