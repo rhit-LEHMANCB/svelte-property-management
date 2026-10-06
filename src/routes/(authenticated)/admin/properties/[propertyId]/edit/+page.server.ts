@@ -49,7 +49,11 @@ export const load = (async (event) => {
 
 	const tenantPromises = tenantJunctions.docs.map(async (junction) => {
 		const user = await adminDB.collection('users').doc(junction.data().tenantId).get();
-		return { id: user.id, data: user.data() };
+		return {
+			id: user.id,
+			data: user.data(),
+			moveInMonth: junction.data().moveInMonth as string | undefined
+		};
 	});
 
 	const tenants: DocumentWithId[] = (await Promise.all(tenantPromises)).filter((tenant) => {

@@ -50,6 +50,8 @@ export type CallOptions = {
 	/** Raw body, for webhooks. */
 	rawBody?: string;
 	cookies?: Record<string, string>;
+	/** `event.route.id`, for loads that branch on the route. */
+	routeId?: string | null;
 	/** What `await event.parent()` returns in a page load. */
 	parent?: Record<string, unknown>;
 };
@@ -113,7 +115,7 @@ export async function call(
 		setHeaders: () => undefined,
 		getClientAddress: () => '127.0.0.1',
 		isDataRequest: false,
-		route: { id: null },
+		route: { id: options.routeId ?? null },
 		platform: undefined
 	};
 

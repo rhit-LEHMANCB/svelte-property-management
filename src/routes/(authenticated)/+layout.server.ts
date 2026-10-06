@@ -3,7 +3,17 @@ import { error, redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { getUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
 
-export const load = (async ({ locals }) => {
+// Pages only tenants use. Admins who open them (typed URL, old bookmark) go to the admin home.
+const tenantOnlyRoutes = [
+	'/(authenticated)/maintenance',
+	'/(authenticated)/insurance',
+	'/(authenticated)/payment'
+];
+
+const isTenantOnlyRoute = (routeId: string | null) =>
+	routeId !== null && tenantOnlyRoutes.some((r) => routeId === r || routeId.startsWith(`${r}/`));
+
+export const load = (async ({ locals, route }) => {
 	const uid = getUserIdOrError(locals.userID);
 	const userData = await getUserDataOrError(uid);
 
@@ -12,6 +22,9 @@ export const load = (async ({ locals }) => {
 	}
 
 	if (userData.permissions === 'admin') {
+		if (isTenantOnlyRoute(route.id)) {
+			throw redirect(303, '/admin');
+		}
 		return {
 			user: userData
 		};

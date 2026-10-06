@@ -3,14 +3,18 @@
 	import { getModalStore, getToastStore, type ModalSettings } from '$lib/ui';
 	import { type ZodError, z } from 'zod';
 
-	let balance = 1000.0;
-	let balanceDueDate = new Date();
+	export let data: { balanceCents: number; dueDate: string | null };
+
+	$: balance = data.balanceCents / 100;
+	// The due date is a calendar day (YYYY-MM-DD); parse it as local so it is not shifted a day.
+	$: balanceDueDate = data.dueDate ? new Date(`${data.dueDate}T00:00:00`) : null;
+	const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
 	const toastStore = getToastStore();
 	const modalStore = getModalStore();
 
 	async function startCheckout(response: string) {
-		if (!response) {
+		if (!response || data.balanceCents <= 0) {
 			return;
 		}
 		const amount = parseFloat(response);
@@ -18,7 +22,7 @@
 			const balanceSchema = z
 				.number()
 				.gt(0, 'Number must be greater than 0')
-				.lte(balance, `Number must be less than or equal to ${balance}`)
+				.lte(balance, `Number must be less than or equal to ${currency.format(balance)}`)
 				.multipleOf(0.01, 'Number must be a multiple of 0.01');
 			balanceSchema.parse(amount);
 		} catch (error) {
@@ -75,11 +79,11 @@
 			<div class="h-auto m-5">
 				<strong class="h3">Your current balance</strong>
 				<div class="flex flex-col gap-5">
-					{#if balance == 0}
+					{#if data.balanceCents <= 0 || !balanceDueDate}
 						<span>You have nothing to pay</span>
 					{:else}
 						<span
-							>You have a balance of ${balance.toLocaleString()} due on {balanceDueDate.toLocaleString(
+							>You have a balance of {currency.format(balance)} due on {balanceDueDate.toLocaleString(
 								'en-us',
 								{
 									dateStyle: 'short'
@@ -88,8 +92,10 @@
 						>
 					{/if}
 					<div class="flex flex-row gap-2 items-center">
-						<button class="btn preset-filled-secondary-500" on:click={viewPaymentClicked}
-							>Make a Payment</button
+						<button
+							class="btn preset-filled-secondary-500"
+							disabled={data.balanceCents <= 0}
+							on:click={viewPaymentClicked}>Make a Payment</button
 						>
 						<button class="btn preset-filled-primary-500" on:click={viewPaymentClicked}
 							>Set up auto pay</button

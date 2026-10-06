@@ -58,7 +58,5 @@ The system SHALL deny non-admins access to `/admin/*` pages, not just the admin 
 - **THEN** the server rejects with 401
 
 ## Known Gaps
-- Admin pages under `/admin/*` check the role in their `load`, so they do fail for tenants, but `/admin/+page.svelte` has no server load; its protection is only the redirect from `/`.
 - `isFirstLogin` is read but never written anywhere, so the redirect never triggers for users created by `/api/user/add`.
-- Tenant routes (`/maintenance`, `/insurance`, `/payment`) accept admins: they check login only, and admins have no property, so they error.
 - The tenant home page is a stub reading "Manager page".
