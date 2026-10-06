@@ -1,7 +1,7 @@
 # Lifecycle: p0-payments-and-access-fixes
 
 - Branch: `p0-payments-and-access-fixes`
-- Stage: 2 Propose done, awaiting Gate A
+- Stage: 3 Implement (Gate A approved; next action: run the apply workflow)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-06
@@ -64,8 +64,11 @@
 **Assumptions:** `America/Indiana/Indianapolis` is the business timezone; the rent due date is the 1st; amounts are USD; one property per tenant (#39 not fixed here).
 
 ## Gate A
-Approved: no
-Accepted preflight gaps: none
+Approved: yes, 2026-10-06 (user)
+Accepted preflight gaps: `npm run check` fails on the stale local `.env` unless `PUBLIC_FRONTEND_URL=http://localhost:5173 STRIPE_ENDPOINT_SECRET=whsec_local` are set on the command line (use that); e2e not yet run locally (Java 26 vs CI's 21).
+`gh pr merge` confirmed allowed by the user.
+
+**Resume notes (context was cleared before stage 3):** openspec CLI is at `/tmp/claude-1000/-home-lehmancb-code-svelte-property-management/f334f564-f8f9-407d-829a-6c15351d6006/scratchpad/osp/node_modules/.bin/openspec` (or reinstall `@fission-ai/openspec@1.14.1` into a scratch dir). Run `export NVM_DIR=~/.nvm; source $NVM_DIR/nvm.sh; nvm use` before any npm command. Never read or edit `.env`. Branch `p0-payments-and-access-fixes` has the proposal commit (not pushed).
 
 ## Preflight
 | Check | Result |
