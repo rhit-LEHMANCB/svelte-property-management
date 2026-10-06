@@ -12,3 +12,7 @@ node_modules
 pnpm-lock.yaml
 package-lock.json
 yarn.lock
+
+# Generated or tool-managed by OpenSpec
+/.claude
+/openspec
