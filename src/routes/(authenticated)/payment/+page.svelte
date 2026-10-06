@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { errorToast } from '$lib/Hooks/toasts';
 	import { getModalStore, getToastStore, type ModalSettings } from '@skeletonlabs/skeleton';
-	import { ZodError, z } from 'zod';
+	import { type ZodError, z } from 'zod';
 
 	let balance = 1000.0;
 	let balanceDueDate = new Date();
@@ -15,10 +15,14 @@
 		}
 		const amount = parseFloat(response);
 		try {
-			const balanceSchema = z.number().gt(0).lte(balance).multipleOf(0.01);
+			const balanceSchema = z
+				.number()
+				.gt(0, 'Number must be greater than 0')
+				.lte(balance, `Number must be less than or equal to ${balance}`)
+				.multipleOf(0.01, 'Number must be a multiple of 0.01');
 			balanceSchema.parse(amount);
 		} catch (error) {
-			errorToast((error as ZodError).errors[0].message, toastStore);
+			errorToast((error as ZodError).issues[0].message, toastStore);
 			return;
 		}
 		const fetchResponse = await fetch(`/api/stripe/create-checkout-session/payment`, {

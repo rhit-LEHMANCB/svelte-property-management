@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { superForm } from 'sveltekit-superforms/client';
+	import { superForm } from 'sveltekit-superforms';
+	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
 	import type { PageData } from './$types';
 	import { maintenanceSchema } from '$lib/schemas';
 	import { successToast } from '$lib/Hooks/toasts';
@@ -11,7 +12,7 @@
 
 	const { form, errors, enhance } = superForm(data.form, {
 		customValidity: true,
-		validators: maintenanceSchema,
+		validators: zodClient(maintenanceSchema),
 		resetForm: true,
 		onUpdated({ form }) {
 			if (form.message === 'Form submitted') {
@@ -48,8 +49,7 @@
 								class="input"
 								class:input-error={$errors.description}
 								title="Description"
-								rows="6"
-							/></label
+								rows="6"></textarea></label
 						>
 					</div>
 				</div>

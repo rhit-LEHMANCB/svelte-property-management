@@ -12,16 +12,17 @@
 	import { error } from '@sveltejs/kit';
 	import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 	import type { PageData } from './$types';
-	import { superForm } from 'sveltekit-superforms/client';
+	import { superForm } from 'sveltekit-superforms';
+	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
 	import { passwordChangeSchema } from '$lib/schemas';
 	import { IconQuestionMark } from '@tabler/icons-svelte';
 	import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 
 	export let data: PageData;
 
-	const { form, errors, validate, enhance } = superForm(data.form, {
+	const { form, errors, validateForm, enhance } = superForm(data.form, {
 		customValidity: true,
-		validators: passwordChangeSchema,
+		validators: zodClient(passwordChangeSchema),
 		validationMethod: 'onblur'
 	});
 
@@ -51,7 +52,7 @@
 			throw error(400, 'Invalid action');
 		}
 
-		const result = await validate();
+		const result = await validateForm({ update: true });
 
 		if (!result.valid) {
 			return;
@@ -108,7 +109,7 @@
 									<li>- One lowercase letter</li>
 									<li>- A number or special character</li>
 								</ul>
-								<div class="arrow variant-filled-primary" />
+								<div class="arrow variant-filled-primary"></div>
 							</div>
 						</div>
 						<input

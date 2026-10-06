@@ -144,7 +144,7 @@
 							<p>Phone Number: {user.data.phoneNumber}</p>
 						</div>
 						{#if userProperty === false}
-							<div class="placeholder animate-pulse w-32" />
+							<div class="placeholder animate-pulse w-32"></div>
 						{:else if !userProperty?.data || !userProperty?.id}
 							<strong>Not renting a property</strong>
 						{:else}
@@ -174,7 +174,7 @@
 						<p class="text-center my-12 text-lg font-bold">No insurance info</p>
 					{/if}
 				{:else if tabSet === 2}
-					<div />
+					<div></div>
 				{/if}
 			</svelte:fragment>
 		</TabGroup>

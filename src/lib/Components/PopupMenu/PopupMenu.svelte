@@ -24,5 +24,5 @@
 	<div class="flex flex-col gap-2">
 		<slot />
 	</div>
-	<div class="arrow bg-surface-100-800-token" />
+	<div class="arrow bg-surface-100-800-token"></div>
 </div>

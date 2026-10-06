@@ -18,10 +18,10 @@
 
 ## 3. Svelte 5 and superforms
 
-- [ ] 3.1 Upgrade `svelte` to 5, `svelte-check`, `eslint-plugin-svelte`, `prettier-plugin-svelte`, `sveltekit-superforms` (and its adapters) and `@sveltejs/vite-plugin-svelte`; verify install succeeds
-- [ ] 3.2 Run the Svelte 5 migration tool and fix remaining compile errors, keeping legacy syntax where it still works; verify `npm run check` is clean
-- [ ] 3.3 Port the 11 superforms files to the new superforms API and verify the handler and e2e tests that submit forms pass
-- [ ] 3.4 Verify `npm run lint`, `npm test`, `npm run build` and `npm run test:e2e` pass
+- [x] 3.1 Upgrade `svelte` to 5, `svelte-check`, `eslint-plugin-svelte`, `prettier-plugin-svelte`, `sveltekit-superforms` (and its adapters) and `@sveltejs/vite-plugin-svelte`; verify install succeeds
+- [x] 3.2 Run the Svelte 5 migration tool and fix remaining compile errors, keeping legacy syntax where it still works; verify `npm run check` is clean
+- [x] 3.3 Port the 11 superforms files to the new superforms API and verify the handler and e2e tests that submit forms pass
+- [x] 3.4 Verify `npm run lint`, `npm test`, `npm run build` and `npm run test:e2e` pass
 
 ## 4. Tailwind 4
 

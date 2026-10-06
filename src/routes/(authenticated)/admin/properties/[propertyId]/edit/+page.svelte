@@ -234,7 +234,7 @@
 							on:selection={onTenantSelect}
 						/>
 					</div>
-					<div class="arrow bg-surface-100-800-token" />
+					<div class="arrow bg-surface-100-800-token"></div>
 				</div>
 			</form>
 			<div class="p-5">

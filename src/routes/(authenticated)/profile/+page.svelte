@@ -3,7 +3,8 @@
 	import { profileSchema } from '$lib/schemas';
 	import { Avatar, getToastStore } from '@skeletonlabs/skeleton';
 	import type { PageData } from './$types';
-	import { superForm } from 'sveltekit-superforms/client';
+	import { superForm } from 'sveltekit-superforms';
+	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
 	import { invalidateAll } from '$app/navigation';
 	import { enhance } from '$app/forms';
 	import { MaskedTextChangedListener } from 'ts-input-mask';
@@ -24,7 +25,7 @@
 		enhance: enhanceContact
 	} = superForm(data.form, {
 		customValidity: true,
-		validators: profileSchema,
+		validators: zodClient(profileSchema),
 		onUpdated({ form }) {
 			if (form.message === 'Form submitted') {
 				// Display the message using a toast library

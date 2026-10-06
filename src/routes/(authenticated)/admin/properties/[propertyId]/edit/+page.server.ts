@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { message, superValidate } from 'sveltekit-superforms/server';
+import { zod4 as zod } from 'sveltekit-superforms/adapters';
 import { adminDB, adminStorage } from '$lib/server/admin';
 import { propertySchema } from '$lib/schemas';
 import { error, fail } from '@sveltejs/kit';
@@ -55,7 +56,7 @@ export const load = (async (event) => {
 		return tenant.data;
 	}) as DocumentWithId[];
 
-	const form = await superValidate(propertyData, propertySchema);
+	const form = await superValidate(propertyData, zod(propertySchema));
 	const photos: PhotoItem[] = propertyData.photos ?? [];
 	return {
 		form,
@@ -67,7 +68,7 @@ export const load = (async (event) => {
 
 export const actions = {
 	basicInfo: async (event) => {
-		const form = await superValidate(event, propertySchema);
+		const form = await superValidate(event, zod(propertySchema));
 
 		const userId = getUserIdOrError(event.locals.userID);
 

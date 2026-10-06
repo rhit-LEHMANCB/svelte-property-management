@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { message, superValidate } from 'sveltekit-superforms/server';
+import { zod4 as zod } from 'sveltekit-superforms/adapters';
 import { insuranceSchema } from '$lib/schemas';
 import { adminDB } from '$lib/server/admin';
 import { formatDate } from '$lib/DatePicker/date-utils';
@@ -24,7 +25,7 @@ export const load = (async (event) => {
 		insuranceData = undefined;
 	}
 
-	const form = await superValidate(insuranceData, insuranceSchema);
+	const form = await superValidate(insuranceData, zod(insuranceSchema));
 
 	return {
 		form
@@ -33,7 +34,7 @@ export const load = (async (event) => {
 
 export const actions = {
 	default: async (event) => {
-		const form = await superValidate(event, insuranceSchema);
+		const form = await superValidate(event, zod(insuranceSchema));
 
 		const userId = getUserIdOrError(event.locals.userID);
 
