@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, inMemoryPersistence, setPersistence } from 'firebase/auth';
+import { connectAuthEmulator, getAuth, inMemoryPersistence, setPersistence } from 'firebase/auth';
 import {
 	PUBLIC_FB_API_KEY,
 	PUBLIC_FB_APP_ID,
@@ -34,6 +34,10 @@ function makeApp() {
 function makeAuth(app: FirebaseApp) {
 	const auth = getAuth(app);
 	setPersistence(auth, inMemoryPersistence);
+	// Only the end-to-end tests run Vite in this mode; production builds drop the branch.
+	if (import.meta.env.MODE === 'e2e') {
+		connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+	}
 	return auth;
 }
 
