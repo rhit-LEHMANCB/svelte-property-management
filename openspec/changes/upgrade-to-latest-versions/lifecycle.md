@@ -1,9 +1,9 @@
 # Lifecycle: upgrade-to-latest-versions
 
 - Branch: `upgrade-to-latest-versions`
-- Stage: 5 Ship PR 2 to develop
+- Stage: 7 Production PR (awaiting Gate B)
 - Review round: 1 of 3 (PR 2); PR 1 merged (#75)
-- QA cycle: 0 of 3
+- QA cycle: 3 of 3 (passed)
 - Started: 2026-10-06
 
 ## Interview summary
@@ -74,13 +74,79 @@ Delivery: PR 1 (Node 22, tasks group 1, includes these change docs) from branch 
 PR 1, round 1: blockers 0, majors 0, minors 4, nits 1. Fixed the test-related minors (config load test, engines equals .nvmrc, regex parse). Deferred: ESM tailwind.config.js needs Node 22.12+ for native require(esm) (fine on current 22.x used by CI; consider .cjs if a runtime pins older 22.x); nit: dev deploy log evidence goes in the PR description.
 
 ## Deferred findings
-(minors, nits and known gaps to turn into issues at wrap-up)
+To turn into issues at wrap-up:
+- SvelteKit 3 and adapter-auto 8: blocked until the Firebase Hosting SSR wrapper (`firebase-frameworks`) supports Kit 3; migration kept on branch `wip/sveltekit-3-migration` (list of required changes in design.md).
+- firebase-admin 14: blocked by the `firebase-frameworks` peer range (guarded by a unit test).
+- Stripe API version pin 2023-10-16: move to a current API version with a test-mode pass.
+- Remove-tenant button also opens the user-info dialog (QA observation).
+- Tab roles and focus handling for the local Tabs, Drawer and Modal components (accessibility follow-ups from review).
+- Pre-existing and newly surfaced ESLint rules turned off: `svelte/no-navigation-without-resolve`, `svelte/require-each-key`, `svelte/no-reactive-reassign`.
+- PR checks only run a build: a preview-deploy or function-install check would have caught the firebase-admin range and the superforms install problems earlier (`check:server` covers the second).
+- `actions/checkout@v3` and `actions/setup-node` still run on a deprecated Actions Node runtime (a warning in the deploy log).
+- Two moderate `npm audit` findings in production dependencies (uuid via gaxios) and several in firebase-tools.
+- ESM `tailwind.config.js` note is obsolete: the Tailwind config no longer exists after Tailwind 4.
+- Evidence branch specs (`tests/qa/...`) can be promoted into `tests/e2e` for the covered scenarios (one ESLint finding to fix first).
 
 ## QA report
-(filled in stage 6; link to the QA evidence branch)
+Evidence (screenshots, Playwright specs): branch `qa-evidence/upgrade-to-latest-versions` (not merged). Deployed commit for the final cycle: `e7c9c29` on `develop`, dev site https://lehman-realty-dev.web.app, Stripe test mode.
+
+| Cycle | Commit | Result | What happened |
+|---|---|---|---|
+| 1 | 4d0d50e | FAIL | App bug: HTTP 500 on every page with a superforms load (/profile, /maintenance, /insurance, /admin/properties/add, /admin/properties/<id>/edit, /reset). Cause: the server build imports `ts-deepmerge` and `memoize-weak` from the bundled sveltekit-superforms, which the deployed function did not install. Fixed in #78 (superforms and firebase to `dependencies`, new `check:server` CI guard). |
+| 2 | 8ac2e00 | FAIL (1 scenario) | All upgrade scenarios and form flows passed. App bug that predates the upgrade: after the last photo is deleted `photos: []` made `/admin/properties` return 500. Fixed in #79 with an e2e test. |
+| 3 | e7c9c29 | **PASS** | 41 passed, 1 skipped by design (local regression suites cannot run against a deployed site), 0 failing. |
+
+Before cycle 1 the first dev deploy also failed (firebase-admin 14 conflicts with the `firebase-frameworks` peer range); fixed in #77 by pinning firebase-admin to 13.
+
+### Final cycle, scenarios (all pass unless noted)
+| Capability | Scenario | Result | Evidence |
+|---|---|---|---|
+| app-platform | Supported runtime, observable part (site serves) | pass (partial: Node version and deploy log are not visible from a browser) | ![runtime](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-ci-and-deploy-use-the-supported-runtime.png?raw=true) |
+| app-platform | Admin confirms a destructive action (delete user; delete property from the directory) | pass | ![confirm user delete, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-admin-confirms-a-destructive-action.png?raw=true) ![confirm property delete, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/property-management-directory-delete-confirmed-toast.png?raw=true) |
+| app-platform | Admin cancels a dialog (user, property) | pass | ![cancel, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-admin-cancels-a-dialog.png?raw=true) ![cancel property delete, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/property-management-directory-delete-cancelled.png?raw=true) |
+| app-platform | Success notification (tenant maintenance request) | pass | ![success toast, tenant](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-success-notification.png?raw=true) |
+| app-platform | Error notification (missing subject keeps values; invalid email toast; invalid zip) | pass | ![error toast, tenant](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-error-notification.png?raw=true) ![validation, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-error-validation-values-kept.png?raw=true) |
+| app-platform | Autocomplete selection (tenant picker) | pass | ![autocomplete, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/tenant-assignment-autocomplete-options.png?raw=true) ![assigned, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/tenant-assignment-assigned.png?raw=true) |
+| app-platform | Paginated list | pass | ![pagination, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-paginated-list.png?raw=true) |
+| app-platform | Tabs (property edit; user dialog) | pass | ![property tabs, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-tabs-property-photos.png?raw=true) ![user dialog tabs, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-tabs-user-info-insurance.png?raw=true) |
+| app-platform | Role-based navigation (admin, tenant) | pass | ![admin nav](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-role-based-navigation-admin.png?raw=true) ![tenant nav](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-role-based-navigation-tenant.png?raw=true) |
+| app-platform | Small screens at 390px, no horizontal scroll (admin, tenant) | pass | ![drawer, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-small-screens-menu-admin.png?raw=true) ![drawer, tenant](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-small-screens-menu-tenant.png?raw=true) |
+| app-platform | Brand theme (buttons are #FFA500) | pass | ![theme, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-brand-theme.png?raw=true) |
+| app-platform | Core flows: payment start reaches Stripe test checkout ($10.00 + $0.59 fee) | pass | ![Stripe checkout, tenant](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/app-platform-payment-start.png?raw=true) |
+| app-platform | Toolchain on Node 22; regression suites | not observable or skipped on the deployed site (they run in CI: lint, check, 198 unit tests, 35 e2e tests, build, `check:server`) | none |
+| property-management | Photo upload then delete, then the directory still lists the property | pass | ![directory after photo delete, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/property-management-directory-after-photo-delete.png?raw=true) |
+| property-management | Add, edit (persists after reload), delete through the directory dialog | pass | ![edit, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/property-management-edit-success.png?raw=true) |
+| tenant-assignment | Assign, cancel removal, confirm removal | pass | ![removed, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/tenant-assignment-removed.png?raw=true) |
+| maintenance-requests | Submit, close dialog (empty note, cancel, close with note) | pass | ![closed, admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/maintenance-requests-admin-closed.png?raw=true) |
+| user-profile | Save and reload, invalid rejected, reset request | pass | ![profile saved, tenant](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/user-profile-contact-saved.png?raw=true) |
+| renters-insurance | End before start rejected, valid save persists | pass | ![insurance validation, tenant](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/renters-insurance-end-before-start.png?raw=true) |
+| authentication | Sign in and out (both roles), wrong password toast, `/reset` wrong mode is 400, valid mode shows the form | pass | ![reset wrong mode](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/authentication-reset-wrong-mode.png?raw=true) |
+| access-control, rent-payments, user-management | Tenant gets 401 on admin URLs, amount over balance toast, users list | pass | ![401, tenant](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/upgrade-to-latest-versions/openspec/changes/upgrade-to-latest-versions/qa/screenshots/access-control-tenant-admin-url.png?raw=true) |
+
+### Observations outside the specs
+- Low: on a property's Tenants tab the remove-tenant button sits inside the clickable user row, so after Cancel or Confirm the user-info dialog also opens. Probably predates the upgrade (same markup); filed as a follow-up issue.
+- Low: the user-info dialog tabs expose no `tab` role (screen readers), same as before the upgrade (they were radio labels).
+- Info: no console errors and no HTTP 5xx except the expected ones (QA's own blocked Google Maps requests; edit URL of a deleted property, which the spec documents).
+
+### Not covered by automation
+Node 22 runtime and deploy log on the Cloud Function, real emails (password reset, new user), a completed Stripe payment and its webhook, Google Maps address autocomplete (blocked in QA), real phones, keyboard and screen-reader use, photo reorder by drag and drop, large data volumes.
+
+### QA data left on the dev project
+Maintenance requests with `qa-` subjects cannot be deleted from the UI (open and closed ones remain). The `qa-c2-*` properties from cycle 2 were deleted in cycle 3 through the directory dialog. `boom` and `qa-property (do not delete)` belong to others and were left.
 
 ## Verification checklist for the human
-(filled in stage 7)
+Ranked by risk. Production-only items first, because QA could not reach production.
+
+1. **Production deploy installs and starts the SSR function** (risk: high). Where: the production deploy workflow run, then https://<production site>/signin. Do: after merging, watch the deploy for an `npm install` error; open the sign-in page, then `/reset?mode=bad` (expect a 400 page) and, signed in, `/profile`. Expect: deploy green, pages load, no 500. Why a person: production configuration and the function's install can only be checked there. The first dev deploys failed twice on dependency problems that tests could not see.
+2. **Cloud Function runtime is Node 22** (risk: high). Where: Firebase console > Functions (production project) or the deploy log. Expect: Node.js 22 and no "deprecated runtime" warning for the backend function; this must hold before 2026-10-30.
+3. **Production environment values still work** (risk: high). Where: GitHub `production` environment secrets and variables. Check: `FB_PRIVATE_KEY` is the JSON-string format (`{"privateKey": "..."}`), `FRONTEND_URL`, Stripe keys are live-mode keys. No new variables were added by this change. Sign in as an admin and as a tenant on production.
+4. **Stripe live-mode payment** (risk: high). Where: tenant `/payment`. Do: make a small real payment (or a live-mode test per your practice), return to the app, confirm the payment history and the webhook record. Expect: same amounts and fee as before. Why a person: QA used test mode and stopped at the hosted page. Note: requests are pinned to Stripe API version 2023-10-16 (what the old SDK used); the webhook endpoint keeps its own configured version.
+5. **Real password reset and new-user emails** (risk: high). Where: profile "Reset", admin "Add User". Do: trigger both, open the emails, follow the links on the production domain, set a password, sign in. Expect: links open `/reset` with the form on the production domain and the new password works. Why a person: real mail delivery and production authorized domains.
+6. **Property address autocomplete (Google Maps)** (risk: medium). Where: `/admin/properties/add`. Do: type a real address, pick a suggestion. Expect: street, city, state and zip fill in; the popup does not overlap other elements. QA blocked Maps requests.
+7. **Phone check** (risk: medium). Where: a real phone, both roles. Do: open the menu drawer, visit every page, open dialogs, upload a property photo from the camera. Expect: nothing cut off, no sideways scroll, dialogs usable with the keyboard up.
+8. **Look and feel against the old site** (risk: low). Where: any page. The styling framework changed (Skeleton 5, Tailwind 4); layout and brand colors are kept but small differences in spacing, fonts or card shading are expected and acceptable.
+9. **Keyboard and screen reader on dialogs, menus and tabs** (risk: low). Tab, Enter and Escape through the row menu, a delete dialog and the tabs; note that the user-info dialog tabs have no `tab` role (as before the upgrade).
+
 
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
