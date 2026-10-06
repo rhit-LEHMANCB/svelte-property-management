@@ -55,7 +55,7 @@
 
 - [x] 8.1 Run the full local gate (`npm run lint`, `npm run check`, `npm test`, `npm run build`, `npm run test:e2e`) on Node 22 and verify green
 - [x] 8.2 Update `openspec/config.yaml` project context (Svelte 5, SvelteKit, Tailwind 4, Skeleton 5, Node 22) and verify it matches `package.json`
-- [ ] 8.3 After the dev deploy, verify the dev site loads, sign-in works for both roles and the deploy log has no deprecation warnings
+- [x] 8.3 After the dev deploy, verify the dev site loads, sign-in works for both roles and the deploy log has no deprecation warnings
 
 ## Workflow follow-up
 
