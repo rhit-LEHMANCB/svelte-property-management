@@ -37,7 +37,7 @@ The system SHALL give each non-admin user in the authenticated area exactly one 
 - **THEN** the layout fails with 500 "User is associated with wrong number of properties: N"
 
 ### Requirement: Role-specific navigation
-The system SHALL show admins Admin, Maintenance, Properties, Users and Profile, and tenants Home, Maintenance, Payment, Profile and Insurance.
+The system SHALL show admins Home, Maintenance, Properties, Users and Profile, and tenants Dashboard, Maintenance, Payment, Profile, Insurance and About Us.
 
 #### Scenario: Navigation per role
 - **WHEN** the nav renders

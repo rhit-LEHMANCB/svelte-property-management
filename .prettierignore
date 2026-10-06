@@ -16,3 +16,7 @@ yarn.lock
 # Generated or tool-managed by OpenSpec
 /.claude
 /openspec
+
+# Playwright output
+/test-results
+/playwright-report

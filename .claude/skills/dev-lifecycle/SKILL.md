@@ -48,7 +48,7 @@ Read `references/interview.md` and follow it. Ask in rounds of at most 4 questio
    - git can commit (author identity set or usable) and push to `origin`; `gh auth status` is logged in with `repo` and `workflow` scopes.
    - Merging a PR with `gh pr merge` is permitted in this session. It cannot be tested without merging; ask the user to confirm it is allowed (a Bash permission rule such as `Bash(gh pr merge:*)`, or a permission mode that allows it). If it is not, say the run will halt at stage 5.
    - Playwright is set up (`playwright.config.ts` with a `qa` project) and the browsers are installed. If the `add-test-suite` change has not landed, QA cannot run; say so.
-   - QA credentials are in the environment: `QA_ADMIN_EMAIL`, `QA_ADMIN_PASSWORD`, `QA_TENANT_EMAIL`, `QA_TENANT_PASSWORD`, for accounts that exist in the **dev** project. Check that the variables are set, never print them.
+   - QA credentials are available: `QA_ADMIN_EMAIL`, `QA_ADMIN_PASSWORD`, `QA_TENANT_EMAIL`, `QA_TENANT_PASSWORD`, for accounts that exist in the **dev** project (`lehman-realty-dev`). They come from the environment or from the gitignored `.env.qa` file in the repo root. Check that they are set (and that `.env.qa`, if used, is mode 600 and untracked), never print them. Never use credentials from `.env`, which may point at production.
    - The dev deploy workflow (`firebase-hosting-merge.yml`) is passing on `develop` right now.
    - Local checks work: `nvm use`, `npm run lint`, `npm run check`, test scripts that exist, and Java if the tests need the emulators.
    - Any secrets or variables this change needs are already added to the GitHub `develop` environment (from the interview's rollout notes).

@@ -60,7 +60,7 @@ The system SHALL let a user set a new password at `/reset` using the Firebase `o
 
 #### Scenario: Wrong mode
 - **WHEN** `mode` is not `resetPassword`
-- **THEN** the page fails with 400 "Invalid action"
+- **THEN** the page shows an "Invalid action" error and does not show the reset form
 
 ### Requirement: Password policy
 The system SHALL require passwords of 8 to 32 characters with at least one lowercase letter, one uppercase letter and one digit or special character, entered twice identically.
@@ -72,4 +72,7 @@ The system SHALL require passwords of 8 to 32 characters with at least one lower
 ## Known Gaps
 - `/signin` has no link to request a password reset; reset is only reachable from `/profile` or by email.
 - There is no sign-in rate limiting beyond Firebase's own.
+- A wrong `mode` on `/reset` is meant to fail with 400 "Invalid action", but the error is thrown while the page renders, so the response is 500 (#55).
+- After a successful reset, Continue navigates with an absolute URL while the form is still marked changed, so the browser asks "Leave site? Changes you made may not be saved" and the user can stay on the reset page (#56).
+- The session cookie is set with `maxAge` in milliseconds where SvelteKit expects seconds, so the browser keeps it for about 13.7 years; the underlying Firebase session still expires after 5 days (#54).
 - Page carries `TODO` to redirect to the sign-in page after a successful reset; it currently goes to `continueUrl` or `/`.
