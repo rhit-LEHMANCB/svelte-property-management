@@ -21,13 +21,13 @@ if (isQa) {
 	// QA accounts live in the gitignored .env.qa unless the variables are already set. It is loaded
 	// before the BASE_URL check below, so a BASE_URL kept in that file is checked too.
 	if (typeof process.loadEnvFile !== 'function') {
-		throw new Error('QA runs need Node 20.12 or newer (run `nvm use`).');
+		throw new Error('QA runs need Node 22 or newer (run `nvm use`).');
 	}
 	try {
 		process.loadEnvFile('.env.qa');
 	} catch (error) {
 		if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-			throw new Error(`Could not read .env.qa: ${(error as Error).message}`);
+			throw new Error(`Could not read .env.qa: ${(error as Error).message}`, { cause: error });
 		}
 		// No file: the variables must come from the environment.
 	}
@@ -108,7 +108,7 @@ export default defineConfig({
 					timeout: 300_000,
 					reuseExistingServer: false
 				}
-		  ],
+			],
 	projects: [
 		{
 			name: 'e2e',

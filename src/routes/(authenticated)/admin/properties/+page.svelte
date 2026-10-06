@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Avatar, Paginator, getToastStore } from '@skeletonlabs/skeleton';
+	import { Avatar, Paginator, getToastStore } from '$lib/ui';
 	import { IconHomeMinus, IconHomePlus, IconPhotoCancel } from '@tabler/icons-svelte';
-	import { getModalStore, type ModalSettings } from '@skeletonlabs/skeleton';
+	import { getModalStore, type ModalSettings } from '$lib/ui';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { goto, invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
@@ -65,14 +65,16 @@
 </script>
 
 <div class="grid grid-flow-row p-5 gap-5">
-	<button on:click={addPropertyClicked} class="btn btn-sm variant-filled-primary justify-self-start"
+	<button
+		on:click={addPropertyClicked}
+		class="btn btn-sm preset-filled-primary-500 justify-self-start"
 		><IconHomePlus class="mr-2" />Add Property</button
 	>
 	<ul class="list">
 		{#each paginatedProperties as property}
 			<a href={`/admin/properties/${property.id}/edit`} class="card bg-surface-200 flex p-2">
 				<li class="w-full">
-					{#if property.data.photos}
+					{#if property.data.photos?.length}
 						<Avatar src={property.data.photos[0].photoUrl} rounded="rounded-none" width="w-32" />
 					{:else}
 						<IconPhotoCancel size={128} />
@@ -82,12 +84,12 @@
 					<div class="flex grow justify-end">
 						<button
 							on:click={(event) => handleDeleteClick(event, property)}
-							class="btn-icon btn-sm variant-filled-error"><IconHomeMinus /></button
+							class="btn-icon btn-sm preset-filled-error-500"><IconHomeMinus /></button
 						>
 					</div>
 				</li>
 			</a>
 		{/each}
 	</ul>
-	<Paginator bind:settings={page} showFirstLastButtons={false} showPreviousNextButtons={true} />
+	<Paginator bind:settings={page} />
 </div>

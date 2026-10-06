@@ -21,7 +21,7 @@ at build time, so `npm run build` and `npm run dev` fail if one is missing. Use 
 project for local work, not production. Note that `FB_PRIVATE_KEY` is a JSON string, not a raw PEM;
 the example shows the format.
 
-Node 20 is required (`.nvmrc`; run `nvm use`). Tailwind 3's config loader does not work on Node 24.
+Node 22 is required (`.nvmrc`; run `nvm use`). `package.json` `engines.node` pins the Cloud Function runtime to the same version.
 
 ## Testing
 
@@ -36,6 +36,10 @@ spec's "Known Gaps", or marked "not yet implemented", is deliberately not assert
 | `npm test`              | Both of the above                                                                                                          | nothing                                                                                                                                          |
 | `npm run test:e2e`      | Playwright smoke tests (sign-in, maintenance, property creation, payment) against the Firebase emulators and a fake Stripe | Java 21 or newer, `npx playwright install chromium` once                                                                                         |
 | `npm run test:qa`       | Playwright specs in `tests/qa/` against the deployed dev site (used by the `dev-lifecycle` skill)                          | `QA_ADMIN_EMAIL`, `QA_ADMIN_PASSWORD`, `QA_TENANT_EMAIL`, `QA_TENANT_PASSWORD` in the environment or a gitignored `.env.qa`; optional `BASE_URL` |
+
+`develop` is protected by the repository ruleset "Protect develop": changes go in through a pull request, and the `tests` and `build_and_preview` checks must both pass before it can be merged. This applies to everyone, repository admins included, and nobody can push to `develop` directly or delete it. In a real emergency the owner can edit or disable the ruleset under Settings, Rules. `production` keeps its own branch protection.
+
+After a production release, the archive workflow opens a pull request into `develop` with the archived OpenSpec changes. GitHub holds the checks of a pull request opened with the built-in token until someone approves them, so the workflow approves that run itself and turns on auto-merge, and GitHub merges the pull request when `tests` and `build_and_preview` are green. If a check fails, or the approval could not be given, the pull request stays open (open it and click "Approve and run workflows" if the checks never started).
 
 `tests/qa/` is empty until specs are added for a change; the `dev-lifecycle` skill's QA agent writes them there. The `qa` project does not record traces or video, because those would capture the typed account passwords; failure screenshots are still saved. `test-results/` and `playwright-report/` come from the end-to-end run and are not committed. After a QA run they can still hold failure screenshots and error context, so do not share them. `test:qa` uses POSIX shell syntax for its environment variable, so on Windows run it from WSL or Git Bash.
 

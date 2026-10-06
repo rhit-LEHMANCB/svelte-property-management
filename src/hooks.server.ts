@@ -9,7 +9,7 @@ export const handle = (async ({ event, resolve }) => {
 	try {
 		const decodedClaims = await adminAuth.verifySessionCookie(sessionCookie ?? '');
 		event.locals.userID = decodedClaims.uid;
-	} catch (e) {
+	} catch {
 		if (isAuthenticationRequired(event.url.pathname)) {
 			throw redirect(303, '/signin');
 		}

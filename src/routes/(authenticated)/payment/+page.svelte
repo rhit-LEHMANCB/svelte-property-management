@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { errorToast } from '$lib/Hooks/toasts';
-	import { getModalStore, getToastStore, type ModalSettings } from '@skeletonlabs/skeleton';
-	import { ZodError, z } from 'zod';
+	import { getModalStore, getToastStore, type ModalSettings } from '$lib/ui';
+	import { type ZodError, z } from 'zod';
 
 	let balance = 1000.0;
 	let balanceDueDate = new Date();
@@ -16,10 +15,14 @@
 		}
 		const amount = parseFloat(response);
 		try {
-			const balanceSchema = z.number().gt(0).lte(balance).multipleOf(0.01);
+			const balanceSchema = z
+				.number()
+				.gt(0, 'Number must be greater than 0')
+				.lte(balance, `Number must be less than or equal to ${balance}`)
+				.multipleOf(0.01, 'Number must be a multiple of 0.01');
 			balanceSchema.parse(amount);
 		} catch (error) {
-			errorToast((error as ZodError).errors[0].message, toastStore);
+			errorToast((error as ZodError).issues[0].message, toastStore);
 			return;
 		}
 		const fetchResponse = await fetch(`/api/stripe/create-checkout-session/payment`, {
@@ -31,7 +34,7 @@
 		});
 		if (fetchResponse.ok) {
 			const body = await fetchResponse.json();
-			goto(body.url);
+			window.location.assign(body.url);
 		} else {
 			errorToast('Error starting payment process.', toastStore);
 		}
@@ -43,7 +46,7 @@
 		});
 		if (response.ok) {
 			const body = await response.json();
-			goto(body.url);
+			window.location.assign(body.url);
 		} else {
 			errorToast('Error starting customer portal.', toastStore);
 		}
@@ -54,7 +57,7 @@
 		type: 'prompt',
 		// Data
 		title: 'Enter Payment Amount',
-		body: 'Provide the amount you would like to pay.<br />Note: One-time payments are subject to a transaction fee. Please set up auto-pay to waive this fee.',
+		body: 'Provide the amount you would like to pay.\nNote: One-time payments are subject to a transaction fee. Please set up auto-pay to waive this fee.',
 		// Populates the input value and attributes
 		valueAttr: { type: 'number', required: true, step: '0.01' },
 		// Returns the updated response value
@@ -85,10 +88,10 @@
 						>
 					{/if}
 					<div class="flex flex-row gap-2 items-center">
-						<button class="btn variant-filled-secondary" on:click={viewPaymentClicked}
+						<button class="btn preset-filled-secondary-500" on:click={viewPaymentClicked}
 							>Make a Payment</button
 						>
-						<button class="btn variant-filled-primary" on:click={viewPaymentClicked}
+						<button class="btn preset-filled-primary-500" on:click={viewPaymentClicked}
 							>Set up auto pay</button
 						>
 					</div>
@@ -101,7 +104,7 @@
 			<div class="h-auto m-5">
 				<strong class="h3">Transaction History</strong>
 				<div>
-					<button class="btn variant-filled-secondary mt-5" on:click={startCustomerPortal}
+					<button class="btn preset-filled-secondary-500 mt-5" on:click={startCustomerPortal}
 						>View Portal</button
 					>
 				</div>

@@ -1,26 +1,27 @@
 <script lang="ts">
-	import { superForm } from 'sveltekit-superforms/client';
+	import { superForm } from 'sveltekit-superforms';
+	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
 	import { propertySchema, type PropertySchema } from '$lib/schemas';
 	import { successToast } from '$lib/Hooks/toasts';
 	import { IconCurrencyDollar } from '@tabler/icons-svelte';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import type { SuperValidated } from 'sveltekit-superforms';
-	import { getToastStore } from '@skeletonlabs/skeleton';
+	import { getToastStore } from '$lib/ui';
 	import { getGoogle } from '$lib/google';
 
 	const toastStore = getToastStore();
 
-	export let data: SuperValidated<PropertySchema>;
+	export let data: SuperValidated<PropertySchema, string>;
 
 	const { form, errors, enhance } = superForm(data, {
 		customValidity: true,
-		validators: propertySchema,
+		validators: zodClient(propertySchema),
 		onUpdated({ form }) {
 			if (form.message === 'Form submitted') {
 				// Display the message using a toast library
 				successToast('Successfully added info.', toastStore);
-			} else if (form.message.startsWith('id')) {
+			} else if (form.message?.startsWith('id')) {
 				successToast('Successfully created property', toastStore);
 				const id = form.message.slice(2);
 				goto(`/admin/properties/${id}/edit`);
@@ -118,11 +119,12 @@
 			>
 			<label class="label"
 				><span>Rent</span>
-				<div class="input-group input-group-divider grid-cols-[auto_1fr_auto]">
-					<div class="input-group-shim"><IconCurrencyDollar /></div>
+				<div class="flex items-center gap-2">
+					<IconCurrencyDollar />
 					<input
 						name="rent"
 						bind:value={$form.rent}
+						class="input"
 						class:input-error={$errors.rent}
 						title="Rent"
 						type="number"
@@ -138,8 +140,7 @@
 					rows="4"
 					class="textarea"
 					class:input-error={$errors.description}
-					title="Description"
-				/></label
+					title="Description"></textarea></label
 			>
 		</div>
 		<div class="grid grid-cols-3 gap-4">
@@ -238,7 +239,7 @@
 			</div>
 		</div>
 		<div class="justify-self-start">
-			<button type="submit" class="btn variant-filled-secondary">Save</button>
+			<button type="submit" class="btn preset-filled-secondary-500">Save</button>
 		</div>
 	</div>
 </form>

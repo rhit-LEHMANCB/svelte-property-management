@@ -4,8 +4,8 @@
 	export let isDelete = false;
 
 	const variant = isDelete
-		? 'variant-filled-error'
-		: 'variant-filled-surface bg-surface-100-800-token text-base-token hover:bg-surface-hover-token';
+		? 'preset-filled-error-500'
+		: 'preset-filled-surface-100-900 hover:preset-tonal-surface';
 </script>
 
 <button

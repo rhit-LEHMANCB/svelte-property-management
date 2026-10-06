@@ -1,15 +1,13 @@
 <script lang="ts">
-	import '../app.postcss';
+	import '../app.css';
 
-	import { Modal, Toast, initializeStores, storePopup } from '@skeletonlabs/skeleton';
-	import { computePosition, autoUpdate, offset, shift, flip, arrow } from '@floating-ui/dom';
+	import { ModalHost, ToastHost, initializeStores } from '$lib/ui';
 
-	storePopup.set({ computePosition, autoUpdate, offset, shift, flip, arrow });
 	initializeStores();
 </script>
 
-<Toast />
+<ToastHost />
 
-<Modal />
+<ModalHost />
 
 <slot />

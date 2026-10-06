@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { ADMIN, FIRESTORE_EMULATOR, PROJECT_ID } from '../support/constants';
+import { adminDb } from '../support/admin';
 import { signIn } from '../support/helpers';
 
 const findProperty = async (title: string) => {
@@ -94,5 +95,30 @@ test.describe('property-management', () => {
 		await expect(page).toHaveURL(/\/admin\/properties\/add$/);
 		await expect(page.getByText('Successfully created property')).toHaveCount(0);
 		expect(await findProperty(title)).toBeUndefined();
+	});
+
+	test('Scenario: a property whose photos were all deleted still appears in the list', async ({
+		page
+	}) => {
+		// Deleting the last photo leaves `photos: []`, which is not the same as no photos field.
+		await adminDb().doc('properties/e2e-no-photos').set({
+			title: '000 E2E Emptied Photos Court',
+			description: 'All photos were deleted',
+			streetAddress: '3 Main St',
+			city: 'Terre Haute',
+			state: 'IN',
+			rent: 700,
+			photos: []
+		});
+
+		await signIn(page, ADMIN);
+		await page.goto('/admin/properties');
+		await page.waitForLoadState('networkidle');
+
+		// The title sorts first, so the row is on the first page of the directory.
+		const row = page.locator('ul.list > a', { hasText: '000 E2E Emptied Photos Court' });
+		await expect(row).toBeVisible();
+		await expect(row.locator('img')).toHaveCount(0);
+		await expect(row.locator('svg').first()).toBeVisible();
 	});
 });

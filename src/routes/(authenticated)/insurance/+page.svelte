@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { superForm } from 'sveltekit-superforms/client';
+	import { superForm } from 'sveltekit-superforms';
+	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
 	import type { PageData } from './$types';
 	import { insuranceSchema } from '$lib/schemas';
 	import { successToast } from '$lib/Hooks/toasts';
-	import { getToastStore } from '@skeletonlabs/skeleton';
+	import { getToastStore } from '$lib/ui';
 	import DateInput from '$lib/DatePicker/DateInput.svelte';
 
 	export let data: PageData;
@@ -11,7 +12,7 @@
 
 	const { form, errors, enhance } = superForm(data.form, {
 		customValidity: true,
-		validators: insuranceSchema,
+		validators: zodClient(insuranceSchema),
 		onUpdated({ form }) {
 			if (form.message === 'Form submitted') {
 				// Display the message using a toast library
@@ -52,7 +53,6 @@
 						>
 					</div>
 					<div>
-						<!-- svelte-ignore a11y-label-has-associated-control -->
 						<label class="label"
 							><span>Start Date</span>
 							<DateInput
@@ -64,7 +64,6 @@
 						</label>
 					</div>
 					<div>
-						<!-- svelte-ignore a11y-label-has-associated-control -->
 						<label class="label"
 							><span>End Date</span>
 							<DateInput
@@ -76,7 +75,7 @@
 						</label>
 					</div>
 				</div>
-				<button type="submit" class="btn variant-filled-secondary mt-5">Save</button>
+				<button type="submit" class="btn preset-filled-secondary-500 mt-5">Save</button>
 			</form>
 		</div>
 	</div>

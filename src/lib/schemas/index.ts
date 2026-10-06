@@ -10,7 +10,7 @@ export const profileSchema = z.object({
 		.string()
 		.min(1, 'Please provide a last name')
 		.max(250, 'Last name cannot exceed 250 characters'),
-	email: z.string().email('Please enter a valid email'),
+	email: z.email('Please enter a valid email'),
 	phoneNumber: z.string().refine(validator.isMobilePhone, 'Please enter a valid phone number')
 });
 
@@ -31,7 +31,7 @@ export const passwordChangeSchema = z
 		path: ['verifyPassword']
 	});
 
-export const emailSchema = z.string().email();
+export const emailSchema = z.email();
 
 export const maintenanceSchema = z.object({
 	subject: z
@@ -52,24 +52,26 @@ export const propertySchema = z.object({
 		.max(10000, 'Description cannot exceed 10000 characters'),
 	bedrooms: z
 		.number({
-			invalid_type_error: 'Bedrooms must be a number'
+			error: (issue) => (issue.input === undefined ? 'Required' : 'Bedrooms must be a number')
 		})
 		.positive('Bedrooms must be greater than 0')
 		.int('Bedrroms must be an integer'),
 	bathrooms: z
 		.number({
-			invalid_type_error: 'Bathrooms must be a number'
+			error: (issue) => (issue.input === undefined ? 'Required' : 'Bathrooms must be a number')
 		})
 		.positive('Bathrooms must be greater than 0'),
 	squareFeet: z
 		.number({
-			required_error: 'Square feet is required',
-			invalid_type_error: 'Square feet must be a number'
+			error: (issue) =>
+				issue.input === undefined ? 'Square feet is required' : 'Square feet must be a number'
 		})
 		.positive('Square Feet must be greater than 0')
 		.int('Square Feet must be an integer'),
 	rent: z
-		.number({ invalid_type_error: 'Rent must be a number' })
+		.number({
+			error: (issue) => (issue.input === undefined ? 'Required' : 'Rent must be a number')
+		})
 		.positive('Rent must be greater than 0'),
 	streetAddress: z
 		.string()
@@ -83,7 +85,7 @@ export const propertySchema = z.object({
 		.max(2, 'Please enter a valid state code'),
 	zip: z.string().regex(/^[0-9]{5}(?:-[0-9]{4})?$/, 'Please enter a valid zip code')
 });
-export type PropertySchema = typeof propertySchema;
+export type PropertySchema = z.infer<typeof propertySchema>;
 
 export const insuranceSchema = z
 	.object({
@@ -96,12 +98,16 @@ export const insuranceSchema = z
 			.min(1, 'Please provide your policy number')
 			.max(100, 'Company Name cannot exceed 100 characters'),
 		startDate: z.date({
-			required_error: 'Please select a date',
-			invalid_type_error: 'Please enter a date in the correct format'
+			error: (issue) =>
+				issue.input === undefined
+					? 'Please select a date'
+					: 'Please enter a date in the correct format'
 		}),
 		endDate: z.coerce.date({
-			required_error: 'Please select a date',
-			invalid_type_error: 'Please enter a date in the correct format'
+			error: (issue) =>
+				issue.input === undefined
+					? 'Please select a date'
+					: 'Please enter a date in the correct format'
 		})
 	})
 	.refine((schema) => schema.startDate < schema.endDate, {
