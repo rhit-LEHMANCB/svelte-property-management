@@ -1,7 +1,7 @@
 # Lifecycle: upgrade-to-latest-versions
 
 - Branch: `upgrade-to-latest-versions`
-- Stage: 0 Intake
+- Stage: 2 Propose + preflight (awaiting Gate A)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-06
@@ -50,7 +50,23 @@ Approved: no
 Accepted preflight gaps: none
 
 ## Preflight
-(table of checks and results, from stage 2)
+| Check | Result |
+|---|---|
+| git identity and push to origin | OK |
+| `gh auth` scopes (repo, workflow) | OK (rhit-LEHMANCB) |
+| `gh pr merge` permitted in this session | NOT TESTABLE, user must confirm |
+| Playwright config with `qa` project, chromium installed | OK |
+| QA credentials (4 vars in `.env.qa`, mode 600, gitignored, untracked) | OK, present (values not shown) |
+| Dev deploy workflow on `develop` | OK, last 3 runs succeeded |
+| `develop` branch protection | Ruleset "Protect develop" is active; required checks `tests` and `build_and_preview` |
+| GitHub `develop` environment secrets | 12 present; this change needs none new |
+| `npm run lint` | OK (1 warning) |
+| `npm test` (190 tests) | OK |
+| `npm run test:e2e` (22 tests, Java 26) | OK with `.env.example` values |
+| `npm run check` | FAILS with the stale local `.env` (9 errors, issue #48 note); OK (0 errors) when `.env.example` is loaded |
+| `npm run build` locally | FAILS with the stale `.env`; also fails with `.env.example` because `FB_PRIVATE_KEY` is a placeholder. CI passes. Unattended runs must build with generated or CI-style values |
+| Node 20 locally via `nvm use` | OK |
+
 
 ## Review rounds
 (none yet; one line per round: blockers, majors, fixed, rejected with reason)
