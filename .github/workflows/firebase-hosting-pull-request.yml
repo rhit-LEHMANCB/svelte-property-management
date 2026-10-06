@@ -36,6 +36,8 @@ jobs:
         run: npm run check
       - name: Build production
         run: npm run build
+      - name: Check server imports
+        run: npm run check:server
   tests:
     runs-on: ubuntu-latest
     timeout-minutes: 20
