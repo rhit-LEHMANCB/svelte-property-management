@@ -49,8 +49,7 @@
 								class="input"
 								class:input-error={$errors.description}
 								title="Description"
-								rows="6"
-							></textarea></label
+								rows="6"></textarea></label
 						>
 					</div>
 				</div>

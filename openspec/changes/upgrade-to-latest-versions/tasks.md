@@ -46,10 +46,10 @@
 
 ## 7. Remaining dependencies
 
-- [ ] 7.1 Upgrade firebase, firebase-admin and firebase-tools to latest; fix `src/lib/server/admin.ts`, `src/lib/firebase.ts` and call sites; verify handler tests and the e2e run on the emulators pass
-- [ ] 7.2 Upgrade stripe, zod, `@sendgrid/mail`, validator, `@tabler/icons-svelte`, `google-maps`, `ts-input-mask`, `@floating-ui/dom` and `@types/*`; fix API changes and verify unit and handler tests pass
-- [ ] 7.3 Upgrade ESLint, typescript-eslint, Prettier (drop `--plugin-search-dir`), TypeScript and Playwright; apply formatting in a separate commit and verify `npm run lint` passes
-- [ ] 7.4 Run `npm outdated` and verify nothing remains outdated, or each exception is recorded with its reason in the PR description
+- [x] 7.1 Upgrade firebase, firebase-admin and firebase-tools to latest; fix `src/lib/server/admin.ts`, `src/lib/firebase.ts` and call sites; verify handler tests and the e2e run on the emulators pass
+- [x] 7.2 Upgrade stripe, zod, `@sendgrid/mail`, validator, `@tabler/icons-svelte`, `google-maps`, `ts-input-mask`, `@floating-ui/dom` and `@types/*`; fix API changes and verify unit and handler tests pass
+- [x] 7.3 Upgrade ESLint, typescript-eslint, Prettier (drop `--plugin-search-dir`), TypeScript and Playwright; apply formatting in a separate commit and verify `npm run lint` passes
+- [x] 7.4 Run `npm outdated` and verify nothing remains outdated, or each exception is recorded with its reason (exceptions are listed in design.md under Implementation notes: SvelteKit 3 and adapter-auto 8, `@types/node` 26, TypeScript 7)
 
 ## 8. Integration
 

@@ -34,6 +34,11 @@ Current stack: SvelteKit 1.27, Svelte 4.1, Vite 4.4, Tailwind 3.3 with `tailwind
 - **Skeleton 5 port:** Skeleton 5 provides CSS (themes, presets, buttons, forms) and low-level Zag components, not the store-driven Modal, Toast, Drawer, Popup and Autocomplete of Skeleton 2. The app keeps its call-site API through small local components in `src/lib/ui/` (toast and modal stores, `ModalHost`, `ToastHost`, `Drawer`, `popup` action, `Tab`/`TabGroup`, `Paginator`, `Avatar`, `Autocomplete`) styled with Skeleton 5 classes. The custom theme is `src/theme.css`.
 - **Modal body is plain text:** the old modal rendered `body` as HTML, which put user-entered names and titles into HTML. It now renders text and keeps line breaks.
 
+- **Dependencies left behind on purpose (task 7.4):** `@sveltejs/kit` 3 and `@sveltejs/adapter-auto` 8 (decision 9); `@types/node` stays on 22 to match the runtime; `typescript` stays on 6 because `typescript-eslint` and SvelteKit 2 accept it and not 7 yet. Two moderate `npm audit` findings remain in production dependencies (`uuid` below 11.1.1 through `gaxios`) and several in `firebase-tools` and its tree, none fixable without breaking changes.
+- **Stripe API version pinned:** `stripe` 23 would send API version `2026-09-30.endive`; the old SDK sent `2023-10-16`. `src/lib/server/stripe.ts` pins `2023-10-16` so requests behave as before. Moving to a newer API version needs its own Stripe test-mode pass.
+- **ESLint 10 flat config:** `eslint-plugin-svelte` 3's recommended set adds three rules the existing code breaks (`no-navigation-without-resolve`, `require-each-key`, `no-reactive-reassign`); they are turned off in `eslint.config.js` and left for a cleanup.
+- **firebase-admin 14:** the app now initializes with `initializeApp` and `cert` from `firebase-admin/app`.
+
 ## Risks / Trade-offs
 
 - [Skeleton 5 is a rewrite, not a bump] → Wrapper helpers, port page by page, rely on e2e plus QA scenarios; fallback ships earlier steps and files an issue.
