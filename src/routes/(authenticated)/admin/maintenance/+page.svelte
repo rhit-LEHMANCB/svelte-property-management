@@ -1,12 +1,7 @@
 <script lang="ts">
 	import { IconCheck, IconTool } from '@tabler/icons-svelte';
 	import type { PageData } from './$types';
-	import {
-		Paginator,
-		getModalStore,
-		type ModalSettings,
-		getToastStore
-	} from '@skeletonlabs/skeleton';
+	import { Paginator, getModalStore, type ModalSettings, getToastStore } from '$lib/ui';
 	import type { MaintenanceRequest } from '../../../../app';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { invalidateAll } from '$app/navigation';
@@ -84,7 +79,7 @@
 						{#each paginatedOpenRequests as request}
 							<div class="flex-row">
 								<button
-									class="btn-icon variant-filled-primary shrink-0"
+									class="btn-icon preset-filled-primary-500 shrink-0"
 									on:click={() => confirmModal(request)}><IconCheck /></button
 								>
 								<span class="flex-auto max-w-[90%] break-words">
@@ -113,11 +108,7 @@
 				{:else}
 					<p class="text-center my-12 text-lg">No open maintenance requests</p>
 				{/if}
-				<Paginator
-					bind:settings={openPage}
-					showFirstLastButtons={false}
-					showPreviousNextButtons={true}
-				/>
+				<Paginator bind:settings={openPage} />
 			</div>
 		</div>
 	</div>
@@ -129,7 +120,7 @@
 					<dl class="list-dl pb-2">
 						{#each paginatedClosedRequests as request}
 							<div class="flex-row">
-								<span class="badge-icon variant-filled-primary shrink-0"
+								<span class="badge-icon preset-filled-primary-500 shrink-0"
 									><IconTool size={16} /></span
 								>
 								<span class="flex-auto max-w-[90%] break-words">
@@ -158,11 +149,7 @@
 				{:else}
 					<p class="text-center my-12 text-lg">No closed maintenance requests</p>
 				{/if}
-				<Paginator
-					bind:settings={openPage}
-					showFirstLastButtons={false}
-					showPreviousNextButtons={true}
-				/>
+				<Paginator bind:settings={openPage} />
 			</div>
 		</div>
 	</div>

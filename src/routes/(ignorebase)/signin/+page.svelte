@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/firebase';
 	import { errorToast } from '$lib/Hooks/toasts';
-	import { getToastStore } from '@skeletonlabs/skeleton';
+	import { getToastStore } from '$lib/ui';
 
 	let email: string;
 	let password: string;
@@ -67,7 +67,7 @@
 			>
 		</div>
 		<div>
-			<button type="button" on:click={handleSignIn} class="btn variant-filled-primary mt-5"
+			<button type="button" on:click={handleSignIn} class="btn preset-filled-primary-500 mt-5"
 				>Sign in</button
 			>
 		</div>

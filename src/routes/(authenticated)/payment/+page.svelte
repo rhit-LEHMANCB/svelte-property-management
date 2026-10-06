@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { errorToast } from '$lib/Hooks/toasts';
-	import { getModalStore, getToastStore, type ModalSettings } from '@skeletonlabs/skeleton';
+	import { getModalStore, getToastStore, type ModalSettings } from '$lib/ui';
 	import { type ZodError, z } from 'zod';
 
 	let balance = 1000.0;
@@ -57,7 +57,7 @@
 		type: 'prompt',
 		// Data
 		title: 'Enter Payment Amount',
-		body: 'Provide the amount you would like to pay.<br />Note: One-time payments are subject to a transaction fee. Please set up auto-pay to waive this fee.',
+		body: 'Provide the amount you would like to pay.\nNote: One-time payments are subject to a transaction fee. Please set up auto-pay to waive this fee.',
 		// Populates the input value and attributes
 		valueAttr: { type: 'number', required: true, step: '0.01' },
 		// Returns the updated response value
@@ -88,10 +88,10 @@
 						>
 					{/if}
 					<div class="flex flex-row gap-2 items-center">
-						<button class="btn variant-filled-secondary" on:click={viewPaymentClicked}
+						<button class="btn preset-filled-secondary-500" on:click={viewPaymentClicked}
 							>Make a Payment</button
 						>
-						<button class="btn variant-filled-primary" on:click={viewPaymentClicked}
+						<button class="btn preset-filled-primary-500" on:click={viewPaymentClicked}
 							>Set up auto pay</button
 						>
 					</div>
@@ -104,7 +104,7 @@
 			<div class="h-auto m-5">
 				<strong class="h3">Transaction History</strong>
 				<div>
-					<button class="btn variant-filled-secondary mt-5" on:click={startCustomerPortal}
+					<button class="btn preset-filled-secondary-500 mt-5" on:click={startCustomerPortal}
 						>View Portal</button
 					>
 				</div>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { profileSchema } from '$lib/schemas';
-	import { Avatar, getToastStore } from '@skeletonlabs/skeleton';
+	import { Avatar, getToastStore } from '$lib/ui';
 	import type { PageData } from './$types';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
@@ -108,7 +108,7 @@
 						>
 					</div>
 				</div>
-				<button type="submit" class="btn variant-filled-secondary mt-5">Save</button>
+				<button type="submit" class="btn preset-filled-secondary-500 mt-5">Save</button>
 			</form>
 		</div>
 	</div>
@@ -141,7 +141,7 @@
 							on:click={() => {
 								invalidateAll();
 							}}
-							class="btn btn-sm variant-filled-secondary">Upload</button
+							class="btn btn-sm preset-filled-secondary-500">Upload</button
 						>
 					</div>
 				</div>
@@ -151,7 +151,7 @@
 			<div class="h-auto m-5">
 				<strong class="h3">Password</strong>
 				<div>
-					<button on:click={handleResetPasswordClicked} class="btn variant-filled-secondary mt-5"
+					<button on:click={handleResetPasswordClicked} class="btn preset-filled-secondary-500 mt-5"
 						>Reset</button
 					>
 				</div>

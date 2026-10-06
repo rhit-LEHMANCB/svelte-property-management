@@ -4,7 +4,7 @@
 	import type { PageData } from './$types';
 	import { insuranceSchema } from '$lib/schemas';
 	import { successToast } from '$lib/Hooks/toasts';
-	import { getToastStore } from '@skeletonlabs/skeleton';
+	import { getToastStore } from '$lib/ui';
 	import DateInput from '$lib/DatePicker/DateInput.svelte';
 
 	export let data: PageData;
@@ -75,7 +75,7 @@
 						</label>
 					</div>
 				</div>
-				<button type="submit" class="btn variant-filled-secondary mt-5">Save</button>
+				<button type="submit" class="btn preset-filled-secondary-500 mt-5">Save</button>
 			</form>
 		</div>
 	</div>

@@ -7,7 +7,7 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import type { SuperValidated } from 'sveltekit-superforms';
-	import { getToastStore } from '@skeletonlabs/skeleton';
+	import { getToastStore } from '$lib/ui';
 	import { getGoogle } from '$lib/google';
 
 	const toastStore = getToastStore();
@@ -119,11 +119,12 @@
 			>
 			<label class="label"
 				><span>Rent</span>
-				<div class="input-group input-group-divider grid-cols-[auto_1fr_auto]">
-					<div class="input-group-shim"><IconCurrencyDollar /></div>
+				<div class="flex items-center gap-2">
+					<IconCurrencyDollar />
 					<input
 						name="rent"
 						bind:value={$form.rent}
+						class="input"
 						class:input-error={$errors.rent}
 						title="Rent"
 						type="number"
@@ -239,7 +240,7 @@
 			</div>
 		</div>
 		<div class="justify-self-start">
-			<button type="submit" class="btn variant-filled-secondary">Save</button>
+			<button type="submit" class="btn preset-filled-secondary-500">Save</button>
 		</div>
 	</div>
 </form>

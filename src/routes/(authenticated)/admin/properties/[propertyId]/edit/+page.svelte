@@ -16,7 +16,7 @@
 		getToastStore,
 		type ModalSettings,
 		getModalStore
-	} from '@skeletonlabs/skeleton';
+	} from '$lib/ui';
 	import {
 		IconArrowLeft,
 		IconInfoCircle,
@@ -146,7 +146,9 @@
 </script>
 
 <div class="flex flex-row justify-between py-5">
-	<button on:click={() => goto('/admin/properties')} class="btn btn-sm variant-filled-primary ml-5"
+	<button
+		on:click={() => goto('/admin/properties')}
+		class="btn btn-sm preset-filled-primary-500 ml-5"
 		><IconArrowLeft class="mr-2" />Properties</button
 	>
 	<strong class="h3 mx-5 truncate">{data.form.data.title}</strong>
@@ -193,7 +195,7 @@
 						accept="image/png, image/jpeg, image/gif, image/webp"
 					/>
 					<div>
-						<button type="submit" class="btn variant-filled-secondary">Add</button>
+						<button type="submit" class="btn preset-filled-secondary-500">Add</button>
 					</div>
 				</div>
 				<SortablePhotos list={photos} on:sort={sortList} let:item let:index>
@@ -203,10 +205,10 @@
 						</div>
 						<button
 							on:click={() => deleteLink(item)}
-							class="chip variant-filled-error invisible group-hover:visible transition-all absolute -right-2 -bottom-4"
+							class="chip preset-filled-error-500 invisible group-hover:visible transition-all absolute -right-2 -bottom-4"
 							>Delete</button
 						>
-						<span class="badge-icon variant-filled absolute -left-3 -top-3">{index + 1}</span>
+						<span class="badge-icon preset-filled absolute -left-3 -top-3">{index + 1}</span>
 					</div>
 				</SortablePhotos>
 			</form>
@@ -223,7 +225,7 @@
 						use:popup={popupSettings}
 					/>
 					<div class="justify-self-start">
-						<button on:click={addTenant} class="btn variant-filled-secondary">Add</button>
+						<button on:click={addTenant} class="btn preset-filled-secondary-500">Add</button>
 					</div>
 				</div>
 				<div class="card w-full max-w-sm shadow-xl" data-popup="popupAutocomplete">
@@ -234,7 +236,7 @@
 							on:selection={onTenantSelect}
 						/>
 					</div>
-					<div class="arrow bg-surface-100-800-token"></div>
+					<div class="arrow bg-surface-100-900"></div>
 				</div>
 			</form>
 			<div class="p-5">
@@ -244,7 +246,7 @@
 						<svelte:fragment slot="actionButton" let:user>
 							<button
 								on:click={() => confirmModal(user)}
-								class="btn-icon btn-sm variant-filled-error"><IconLinkMinus /></button
+								class="btn-icon btn-sm preset-filled-error-500"><IconLinkMinus /></button
 							>
 						</svelte:fragment>
 					</UsersListView>

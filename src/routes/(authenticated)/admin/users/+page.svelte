@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { getToastStore } from '@skeletonlabs/skeleton';
+	import { getToastStore } from '$lib/ui';
 	import { IconUserMinus, IconUserPlus, IconUserShare } from '@tabler/icons-svelte';
-	import { getModalStore, type ModalSettings } from '@skeletonlabs/skeleton';
+	import { getModalStore, type ModalSettings } from '$lib/ui';
 	import { emailSchema } from '$lib/schemas';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { invalidateAll } from '$app/navigation';
@@ -90,7 +90,7 @@
 </script>
 
 <div class="card m-5 grid grid-flow-row p-5 gap-5">
-	<button on:click={addUserClicked} class="btn btn-sm variant-filled-primary justify-self-start"
+	<button on:click={addUserClicked} class="btn btn-sm preset-filled-primary-500 justify-self-start"
 		><IconUserPlus class="mr-2" />Add User</button
 	>
 	<UsersListView users={data.users} paginated>

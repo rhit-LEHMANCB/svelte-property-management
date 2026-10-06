@@ -1,12 +1,5 @@
 <script lang="ts">
-	import {
-		AppBar,
-		AppShell,
-		Drawer,
-		getDrawerStore,
-		type DrawerSettings,
-		getToastStore
-	} from '@skeletonlabs/skeleton';
+	import { Drawer, getDrawerStore, getToastStore } from '$lib/ui';
 	import Navigation from '$lib/Components/Navigation/Navigation.svelte';
 	import { goto } from '$app/navigation';
 	import type { LayoutData } from './$types';
@@ -19,13 +12,8 @@
 
 	$: ({ user } = data);
 
-	const drawerSettings: DrawerSettings = {
-		width: 'w-[80vw] md:w-[280px]',
-		id: 'home'
-	};
-
 	function drawerOpen(): void {
-		drawerStore.open(drawerSettings);
+		drawerStore.open();
 	}
 
 	async function signOutSSR() {
@@ -43,35 +31,37 @@
 	<Navigation isAdmin={user.permissions === 'admin'} />
 </Drawer>
 
-<AppShell slotSidebarLeft="bg-surface-500/5 w-0 lg:w-64">
-	<svelte:fragment slot="header">
-		<AppBar shadow="shadow-xl">
-			<svelte:fragment slot="lead">
-				<div class="flex items-center">
-					<button class="lg:hidden btn btn-sm mr-4" aria-label="Open menu" on:click={drawerOpen}>
-						<span>
-							<svg viewBox="0 0 100 80" class="fill-token w-4 h-4">
-								<rect width="100" height="20" />
-								<rect y="30" width="100" height="20" />
-								<rect y="60" width="100" height="20" />
-							</svg>
-						</span>
-					</button>
-					<strong class="h3">LFR Manager</strong>
-				</div>
-			</svelte:fragment>
-			<svelte:fragment slot="trail">
-				<span>Welcome, {user.firstName ?? 'New User'}</span>
-				<button type="button" on:click={signOutSSR} class="btn variant-filled-primary max-sm:hidden"
-					>Sign out<IconLogout class="ml-2" /></button
-				>
-			</svelte:fragment>
-		</AppBar>
-	</svelte:fragment>
-	<svelte:fragment slot="sidebarLeft">
+<div class="grid h-full grid-cols-1 grid-rows-[auto_1fr] lg:grid-cols-[16rem_1fr]">
+	<header
+		class="bg-surface-100-900 col-span-full flex items-center justify-between gap-4 p-4 shadow-xl"
+	>
+		<div class="flex items-center">
+			<button class="lg:hidden btn btn-sm mr-4" aria-label="Open menu" on:click={drawerOpen}>
+				<span>
+					<svg viewBox="0 0 100 80" class="fill-current w-4 h-4">
+						<rect width="100" height="20" />
+						<rect y="30" width="100" height="20" />
+						<rect y="60" width="100" height="20" />
+					</svg>
+				</span>
+			</button>
+			<strong class="h3">LFR Manager</strong>
+		</div>
+		<div class="flex items-center gap-4">
+			<span>Welcome, {user.firstName ?? 'New User'}</span>
+			<button
+				type="button"
+				on:click={signOutSSR}
+				class="btn preset-filled-primary-500 max-sm:hidden"
+				>Sign out<IconLogout class="ml-2" /></button
+			>
+		</div>
+	</header>
+	<aside class="bg-surface-500/5 hidden overflow-y-auto lg:block">
 		<Navigation isAdmin={user.permissions === 'admin'} />
-	</svelte:fragment>
-	<!-- (pageHeader) -->
+	</aside>
 	<!-- Router Slot -->
-	<slot />
-</AppShell>
+	<main class="overflow-y-auto">
+		<slot />
+	</main>
+</div>

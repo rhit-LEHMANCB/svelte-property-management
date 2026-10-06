@@ -25,18 +25,18 @@
 
 ## 4. Tailwind 4
 
-- [ ] 4.1 Upgrade `tailwindcss` and `@tailwindcss/forms` (and the Vite plugin / PostCSS setup) to the Tailwind 4 versions; replace `tailwind.config.ts` with CSS-first config in `src/app.postcss`/CSS; verify `npm run build` passes
-- [ ] 4.2 Fix utility renames and removed classes across `src`; verify pages render in the e2e run and key pages look right at desktop and phone width
-- [ ] 4.3 Remove the `vite-plugin-tailwind-purgecss` plugin if Tailwind 4 makes it unnecessary; verify the production CSS size is sane
-- [ ] 4.4 Verify `npm run lint`, `npm run check`, `npm test`, `npm run build` and `npm run test:e2e` pass; try Node 24 with `npm run build` and record the result in the design notes
+- [x] 4.1 Upgrade `tailwindcss` and `@tailwindcss/forms` (and the Vite plugin / PostCSS setup) to the Tailwind 4 versions; replace `tailwind.config.ts` with CSS-first config in `src/app.postcss`/CSS; verify `npm run build` passes
+- [x] 4.2 Fix utility renames and removed classes across `src`; verify pages render in the e2e run and key pages look right at desktop and phone width
+- [x] 4.3 Remove the `vite-plugin-tailwind-purgecss` plugin if Tailwind 4 makes it unnecessary; verify the production CSS size is sane
+- [x] 4.4 Verify `npm run lint`, `npm run check`, `npm test`, `npm run build` and `npm run test:e2e` pass; try Node 24 with `npm run build` and record the result in the design notes
 
 ## 5. Skeleton 5
 
-- [ ] 5.1 Replace `@skeletonlabs/skeleton` and `@skeletonlabs/tw-plugin` with the Skeleton 5 packages; port `theme.ts` to a CSS theme with the same colors; verify the app builds and brand colors match
-- [ ] 5.2 Add local toast and modal helpers on Skeleton 5 and port the 60+ toast and 16+ modal call sites; verify e2e flows that show a notification and a dialog pass
-- [ ] 5.3 Port popups, autocompletes, paginators and tab groups (9, 6, 7, 6 usages); verify each page that uses them works by hand and in the e2e/QA scenarios in `specs/app-platform`
-- [ ] 5.4 Port the app shell (AppShell, AppBar, Drawer) and navigation; verify role-based navigation and phone-width layout
-- [ ] 5.5 Verify `npm run lint`, `npm run check`, `npm test`, `npm run build` and `npm run test:e2e` pass; add or update e2e tests for dialogs, notifications and autocomplete behavior listed in the spec
+- [x] 5.1 Replace `@skeletonlabs/skeleton` and `@skeletonlabs/tw-plugin` with the Skeleton 5 packages; port `theme.ts` to a CSS theme with the same colors; verify the app builds and brand colors match
+- [x] 5.2 Add local toast and modal helpers on Skeleton 5 and port the 60+ toast and 16+ modal call sites; verify e2e flows that show a notification and a dialog pass
+- [x] 5.3 Port popups, autocompletes, paginators and tab groups (9, 6, 7, 6 usages); verify each page that uses them works by hand and in the e2e/QA scenarios in `specs/app-platform`
+- [x] 5.4 Port the app shell (AppShell, AppBar, Drawer) and navigation; verify role-based navigation and phone-width layout
+- [x] 5.5 Verify `npm run lint`, `npm run check`, `npm test`, `npm run build` and `npm run test:e2e` pass; add or update e2e tests for dialogs, notifications and autocomplete behavior listed in the spec
 
 ## 6. SvelteKit 3 and Vite 8
 

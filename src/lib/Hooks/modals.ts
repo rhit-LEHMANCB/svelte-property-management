@@ -1,4 +1,4 @@
-import type { ModalComponent, ModalSettings, ModalStore } from '@skeletonlabs/skeleton';
+import type { ModalComponent, ModalSettings, ModalStore } from '$lib/ui';
 import type { DocumentWithId } from '../../app';
 import UserInfoModal from '$lib/Components/Users/UserInfoModal.svelte';
 

@@ -8,7 +8,7 @@
 		popup,
 		type ModalSettings,
 		type PopupSettings
-	} from '@skeletonlabs/skeleton';
+	} from '$lib/ui';
 	import { error } from '@sveltejs/kit';
 	import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 	import type { PageData } from './$types';
@@ -98,10 +98,10 @@
 					<label class="label"
 						><div class="flex flex-row gap-2">
 							<span>New Password</span><button
-								class="badge-icon variant-outline-primary [&>*]:pointer-events-none"
+								class="badge-icon preset-outlined-primary-500 [&>*]:pointer-events-none"
 								use:popup={popupHover}><IconQuestionMark /></button
 							>
-							<div class="card p-4 variant-filled-primary w-64" data-popup="popupHover">
+							<div class="card p-4 preset-filled-primary-500 w-64" data-popup="popupHover">
 								<ul>
 									<li>- At least 8 characters</li>
 									<li>- Less than 32 characters</li>
@@ -109,7 +109,7 @@
 									<li>- One lowercase letter</li>
 									<li>- A number or special character</li>
 								</ul>
-								<div class="arrow variant-filled-primary"></div>
+								<div class="arrow preset-filled-primary-500"></div>
 							</div>
 						</div>
 						<input
@@ -137,7 +137,7 @@
 			</div>
 			<button
 				on:click={(event) => handleVerifyPasswordReset(event)}
-				class="btn variant-filled-primary mt-5">Change Password</button
+				class="btn preset-filled-primary-500 mt-5">Change Password</button
 			>
 		</form>
 	</div>

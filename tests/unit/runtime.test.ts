@@ -20,9 +20,8 @@ describe('app-platform: supported server runtime', () => {
 		expect(firstNumber(engines?.node ?? '')).toBe(nvmrcMajor);
 	});
 
-	it('loads the Tailwind config without a TypeScript loader', async () => {
-		const { default: config } = await import('../../tailwind.config.js');
-		expect(config.darkMode).toBe('class');
-		expect(config.plugins).toHaveLength(2);
+	it('keeps the custom theme the app shell selects with data-theme', () => {
+		expect(read('src/app.html')).toContain('data-theme="my-custom-theme"');
+		expect(read('src/theme.css')).toContain("[data-theme='my-custom-theme']");
 	});
 });

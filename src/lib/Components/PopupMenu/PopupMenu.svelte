@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { popup, type PopupSettings } from '@skeletonlabs/skeleton';
+	import { popup, type PopupSettings } from '$lib/ui';
 	import { IconDots } from '@tabler/icons-svelte';
 
 	export let id: string;
@@ -14,7 +14,7 @@
 </script>
 
 <button
-	class="btn-icon btn-icon-sm variant-filled-primary"
+	class="btn-icon btn-icon-sm preset-filled-primary-500"
 	on:click={(event) => event.stopPropagation()}
 	use:popup={popupMenu}
 >
@@ -24,5 +24,5 @@
 	<div class="flex flex-col gap-2">
 		<slot />
 	</div>
-	<div class="arrow bg-surface-100-800-token"></div>
+	<div class="arrow bg-surface-100-900"></div>
 </div>

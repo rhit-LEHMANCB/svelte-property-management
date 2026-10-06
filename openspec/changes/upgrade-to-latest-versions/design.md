@@ -26,6 +26,12 @@ Current stack: SvelteKit 1.27, Svelte 4.1, Vite 4.4, Tailwind 3.3 with `tailwind
 7. **Firebase packages to latest** in the same PR after the framework steps, since failures there are in auth/Firestore code and are easier to attribute once the framework is stable. `src/lib/server/admin.ts` init and the client `firebase.ts` are the touch points.
 8. **Lint config** moves with the tools: ESLint (flat config if required by plugins), Prettier 3 (drop `--plugin-search-dir`), `svelte-check`, typescript-eslint. Format changes caused by Prettier 3 are applied in a separate commit.
 
+## Implementation notes
+
+- **Node 24 check (task 4.4):** after Tailwind 4, `npm run build` and `npm test` pass on Node 24.21, so the old jiti restriction is gone. The project stays on Node 22 (supported, and the version Firebase and CI are pinned to); moving to 24 is a one-line follow-up.
+- **Skeleton 5 port:** Skeleton 5 provides CSS (themes, presets, buttons, forms) and low-level Zag components, not the store-driven Modal, Toast, Drawer, Popup and Autocomplete of Skeleton 2. The app keeps its call-site API through small local components in `src/lib/ui/` (toast and modal stores, `ModalHost`, `ToastHost`, `Drawer`, `popup` action, `Tab`/`TabGroup`, `Paginator`, `Avatar`, `Autocomplete`) styled with Skeleton 5 classes. The custom theme is `src/theme.css`.
+- **Modal body is plain text:** the old modal rendered `body` as HTML, which put user-entered names and titles into HTML. It now renders text and keeps line breaks.
+
 ## Risks / Trade-offs
 
 - [Skeleton 5 is a rewrite, not a bump] → Wrapper helpers, port page by page, rely on e2e plus QA scenarios; fallback ships earlier steps and files an issue.

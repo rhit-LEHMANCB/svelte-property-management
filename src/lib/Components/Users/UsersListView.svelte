@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Avatar, Paginator, getModalStore } from '@skeletonlabs/skeleton';
+	import { Avatar, Paginator, getModalStore } from '$lib/ui';
 	import type { DocumentWithId } from '../../../app';
 	import { viewUserInfoModal } from '$lib/Hooks/modals';
 
@@ -23,7 +23,7 @@
 <div class={`flex flex-col gap-5 ${$$props.class ?? ''}`}>
 	<ul class="list">
 		{#each paginated ? paginatedUsers : users as user}
-			<li class="hover:bg-surface-hover-token p-2">
+			<li class="hover:preset-tonal p-2">
 				<button
 					on:click={() => viewUserInfoModal(user, modalStore)}
 					class="flex flex-row w-full gap-2 flex-wrap items-center"
@@ -34,7 +34,7 @@
 							initials={`${user.data.firstName[0]}${user.data.lastName[0]}`}
 						/>
 						{#if !user.data.insurance && user.data.permissions == 'user'}
-							<span class="badge-icon variant-filled-warning absolute -left-1 -top-1">!</span>
+							<span class="badge-icon preset-filled-warning-500 absolute -left-1 -top-1">!</span>
 						{/if}
 					</div>
 					<div class="flex flex-col flex-wrap text-left">
@@ -50,6 +50,6 @@
 		{/each}
 	</ul>
 	{#if paginated}
-		<Paginator bind:settings={page} showFirstLastButtons={false} showPreviousNextButtons={true} />
+		<Paginator bind:settings={page} />
 	{/if}
 </div>
