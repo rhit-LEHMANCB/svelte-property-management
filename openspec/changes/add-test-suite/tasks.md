@@ -2,11 +2,11 @@
 
 ## 1. Test tooling setup
 
-- [ ] 1.1 Run `npm install` on current `develop` (a stale `node_modules` is missing `stripe`) and verify `npm run build` still succeeds
-- [ ] 1.2 Add `vitest@^0.34` as a dev dependency, with `vitest.config.ts` using plain `$lib` and `$env/static/*` aliases and no SvelteKit plugin; verify `npx vitest run` starts and reports "no tests"
-- [ ] 1.3 Add `tests/fixtures/env-private.ts` and `env-public.ts` with fake values for every variable the server code imports; verify a throwaway test can import `$env/static/private` and read one
+- [x] 1.1 Run `npm install` on current `develop` (a stale `node_modules` is missing `stripe`) and verify `npm run build` still succeeds
+- [x] 1.2 Add `vitest@^0.34` as a dev dependency, with `vitest.config.ts` using plain `$lib` and `$env/static/*` aliases and no SvelteKit plugin; verify `npx vitest run` starts and reports "no tests"
+- [x] 1.3 Add `tests/fixtures/env-private.ts` and `env-public.ts` with fake values for every variable the server code imports; verify a throwaway test can import `$env/static/private` and read one
 - [ ] 1.4 Add npm scripts `test:unit` (schemas and helpers), `test:handlers` and `test`; verify each script runs and exits 0 when its folder has a passing test
-- [ ] 1.5 Make sure `eslint` and `prettier` pass on the new config and test folders; verify `npm run lint` is green
+- [x] 1.5 Make sure `eslint` and `prettier` pass on the new config and test folders; verify `npm run lint` is green
 
 ## 2. Layer 1: unit tests
 
