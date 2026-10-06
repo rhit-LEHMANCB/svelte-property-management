@@ -14,6 +14,34 @@ npm create svelte@latest
 npm create svelte@latest my-app
 ```
 
+## Environment
+
+Copy `.env.example` to `.env` and fill it in. Every variable in it is required: the app imports them
+at build time, so `npm run build` and `npm run dev` fail if one is missing. Use the **dev** Firebase
+project for local work, not production. Note that `FB_PRIVATE_KEY` is a JSON string, not a raw PEM;
+the example shows the format.
+
+Node 20 is required (`.nvmrc`; run `nvm use`). Tailwind 3's config loader does not work on Node 24.
+
+## Testing
+
+There are three layers. The specs in `openspec/specs/` are the test plan: each WHEN/THEN scenario of
+current behavior is a test whose title names the capability and scenario. Behavior listed under a
+spec's "Known Gaps", or marked "not yet implemented", is deliberately not asserted.
+
+| Command                 | What it runs                                                                                                               | Needs                                                                                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run test:unit`     | Zod schemas and server auth helpers (Vitest)                                                                               | nothing                                                                                                                                          |
+| `npm run test:handlers` | API handlers, form actions and page loads, with Firebase Admin, Stripe and SendGrid replaced by in-memory doubles (Vitest) | nothing                                                                                                                                          |
+| `npm test`              | Both of the above                                                                                                          | nothing                                                                                                                                          |
+| `npm run test:e2e`      | Playwright smoke tests (sign-in, maintenance, property creation, payment) against the Firebase emulators and a fake Stripe | Java 21 or newer, `npx playwright install chromium` once                                                                                         |
+| `npm run test:qa`       | Playwright specs in `tests/qa/` against the deployed dev site (used by the `dev-lifecycle` skill)                          | `QA_ADMIN_EMAIL`, `QA_ADMIN_PASSWORD`, `QA_TENANT_EMAIL`, `QA_TENANT_PASSWORD` in the environment or a gitignored `.env.qa`; optional `BASE_URL` |
+
+The unit and handler tests use fixture values for every `$env` variable and never touch the network.
+The end-to-end tests build the app in `e2e` mode, serve it with `vite preview`, and set every variable
+themselves, so a local `.env` is never used. The pull request check runs all of these in the `tests`
+job.
+
 ## Developing
 
 Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
