@@ -24,4 +24,14 @@ describe('app-platform: supported server runtime', () => {
 		expect(read('src/app.html')).toContain('data-theme="my-custom-theme"');
 		expect(read('src/theme.css')).toContain("[data-theme='my-custom-theme']");
 	});
+
+	it('keeps firebase-admin within the range the Firebase Hosting SSR wrapper accepts', () => {
+		// firebase-tools adds firebase-frameworks ^0.11 to the deployed function, and its peer range for
+		// firebase-admin is ^11 || ^12 || ^13. A newer major makes the function's `npm install` fail and
+		// the deploy with it. Raise this limit only when firebase-frameworks accepts the newer major.
+		const { dependencies } = JSON.parse(read('package.json')) as {
+			dependencies: Record<string, string>;
+		};
+		expect(firstNumber(dependencies['firebase-admin'])).toBeLessThanOrEqual(13);
+	});
 });

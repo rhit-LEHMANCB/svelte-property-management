@@ -37,7 +37,7 @@ Current stack: SvelteKit 1.27, Svelte 4.1, Vite 4.4, Tailwind 3.3 with `tailwind
 - **Dependencies left behind on purpose (task 7.4):** `@sveltejs/kit` 3 and `@sveltejs/adapter-auto` 8 (decision 9); `@types/node` stays on 22 to match the runtime; `typescript` stays on 6 because `typescript-eslint` and SvelteKit 2 accept it and not 7 yet. Two moderate `npm audit` findings remain in production dependencies (`uuid` below 11.1.1 through `gaxios`) and several in `firebase-tools` and its tree, none fixable without breaking changes.
 - **Stripe API version pinned:** `stripe` 23 would send API version `2026-09-30.endive`; the old SDK sent `2023-10-16`. `src/lib/server/stripe.ts` pins `2023-10-16` so requests behave as before. Moving to a newer API version needs its own Stripe test-mode pass.
 - **ESLint 10 flat config:** `eslint-plugin-svelte` 3's recommended set adds three rules the existing code breaks (`no-navigation-without-resolve`, `require-each-key`, `no-reactive-reassign`); they are turned off in `eslint.config.js` and left for a cleanup.
-- **firebase-admin 14:** the app now initializes with `initializeApp` and `cert` from `firebase-admin/app`.
+- **firebase-admin 13, not 14:** the app initializes with `initializeApp` and `cert` from `firebase-admin/app`. firebase-admin 14 fails the deployed function's install because `firebase-frameworks` 0.11.8 accepts `^11 || ^12 || ^13` (found when the first deploy to dev failed); a unit test guards the limit.
 
 ## Risks / Trade-offs
 
