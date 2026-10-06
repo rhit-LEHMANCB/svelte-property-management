@@ -21,7 +21,7 @@ if (isQa) {
 	// QA accounts live in the gitignored .env.qa unless the variables are already set. It is loaded
 	// before the BASE_URL check below, so a BASE_URL kept in that file is checked too.
 	if (typeof process.loadEnvFile !== 'function') {
-		throw new Error('QA runs need Node 20.12 or newer (run `nvm use`).');
+		throw new Error('QA runs need Node 22 or newer (run `nvm use`).');
 	}
 	try {
 		process.loadEnvFile('.env.qa');

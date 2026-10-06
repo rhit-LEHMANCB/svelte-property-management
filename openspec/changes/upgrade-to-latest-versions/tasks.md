@@ -2,12 +2,12 @@
 
 ## 1. PR 1: Node 22 runtime (ships first)
 
-- [ ] 1.1 Set `.nvmrc` and `package.json` `engines.node` to Node 22; verify `nvm use` gives Node 22 and `npm ci` succeeds
-- [ ] 1.2 Make `tailwind.config.ts` load on Node 22 (convert it to a `.cjs`/`.js` config if the old jiti fails); verify `npm run build` passes on Node 22
-- [ ] 1.3 Set the Cloud Function runtime to Node 22 in `firebase.json` or via `engines` per what Firebase frameworks support, and verify with `firebase-tools` dry run or the dev deploy log
-- [ ] 1.4 Run `npm run lint`, `npm run check`, `npm test` and `npm run test:e2e` on Node 22 and verify all pass
-- [ ] 1.5 Update the Node notes in `openspec/config.yaml` and any README or workflow comments that still say Node 20 is required; verify with `grep -rn "Node 20\|node 20\|20\.x"`
-- [ ] 1.6 Add a check or test that the pinned Node is 22 or later (for example a unit test that reads `.nvmrc` and `engines`) and verify it passes
+- [x] 1.1 Set `.nvmrc` and `package.json` `engines.node` to Node 22; verify `nvm use` gives Node 22 and `npm ci` succeeds
+- [x] 1.2 Make `tailwind.config.ts` load on Node 22 (convert it to a `.cjs`/`.js` config if the old jiti fails); verify `npm run build` passes on Node 22
+- [x] 1.3 Set the Cloud Function runtime to Node 22 in `firebase.json` or via `engines` per what Firebase frameworks support, and verify with `firebase-tools` dry run or the dev deploy log
+- [x] 1.4 Run `npm run lint`, `npm run check`, `npm test` and `npm run test:e2e` on Node 22 and verify all pass
+- [x] 1.5 Update the Node notes in `openspec/config.yaml` and any README or workflow comments that still say Node 20 is required; verify with `grep -rn "Node 20\|node 20\|20\.x"`
+- [x] 1.6 Add a check or test that the pinned Node is 22 or later (for example a unit test that reads `.nvmrc` and `engines`) and verify it passes
 
 ## 2. SvelteKit 2 and Vite 5
 

@@ -1,7 +1,7 @@
 # Lifecycle: upgrade-to-latest-versions
 
 - Branch: `upgrade-to-latest-versions`
-- Stage: 3 Implement (PR 1, Node 22)
+- Stage: 4 Review (PR 1, Node 22)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-06
