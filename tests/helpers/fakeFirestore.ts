@@ -67,6 +67,17 @@ export class FirestoreNotFoundError extends Error {
 
 type Data = Record<string, unknown>;
 
+/** The real SDK rejects `undefined` field values unless ignoreUndefinedProperties is set (it is not). */
+function assertNoUndefined(value: unknown, path = 'document'): void {
+	if (value === undefined) {
+		throw new Error(`Cannot use "undefined" as a Firestore value (found at ${path}).`);
+	}
+	if (Array.isArray(value)) value.forEach((v, i) => assertNoUndefined(v, `${path}[${i}]`));
+	else if (typeof value === 'object' && value !== null && value.constructor === Object) {
+		for (const [k, v] of Object.entries(value)) assertNoUndefined(v, `${path}.${k}`);
+	}
+}
+
 const isPlainObject = (v: unknown): v is Data =>
 	typeof v === 'object' &&
 	v !== null &&
@@ -253,11 +264,13 @@ export class FakeDocRef {
 		return new FakeSnapshot(this, this.db.read(this.path));
 	}
 	async set(data: Data, options?: { merge?: boolean }) {
+		assertNoUndefined(data);
 		const merge = options?.merge === true;
 		const existing = merge ? this.db.read(this.path) : undefined;
 		this.db.write(this.path, resolve(data, existing, merge) as Data);
 	}
 	async update(data: Data) {
+		assertNoUndefined(data);
 		const existing = this.db.read(this.path);
 		if (!existing) throw new FirestoreNotFoundError(this.path);
 		const next = { ...existing };

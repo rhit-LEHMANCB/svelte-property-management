@@ -71,6 +71,16 @@ describe('FakeFirestore: documents', () => {
 		);
 	});
 
+	it('set, update and add reject undefined values, as the real SDK does', async () => {
+		await expect(db.doc('users/u1').set({ a: undefined })).rejects.toThrow(/undefined/);
+		await db.doc('users/u1').set({ a: 1 });
+		await expect(db.doc('users/u1').update({ nested: { b: undefined } })).rejects.toThrow(
+			/undefined/
+		);
+		await expect(db.collection('users').add({ list: [undefined] })).rejects.toThrow(/undefined/);
+		expect(db.peek('users/u1')).toEqual({ a: 1 });
+	});
+
 	it('delete removes the document and is harmless when it is already gone', async () => {
 		await db.doc('users/u1').set({ a: 1 });
 		await db.doc('users/u1').delete();

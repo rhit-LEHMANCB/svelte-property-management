@@ -13,6 +13,13 @@ import {
 const isQa = Boolean(process.env.PLAYWRIGHT_QA);
 
 if (isQa) {
+	// QA signs in with real dev accounts, so it must never be pointed at production.
+	const allowedHosts = ['lehman-realty-dev.web.app', 'localhost', '127.0.0.1'];
+	if (process.env.BASE_URL && !allowedHosts.includes(new URL(process.env.BASE_URL).hostname)) {
+		throw new Error(
+			`BASE_URL must be the dev site or a local server (allowed: ${allowedHosts.join(', ')}).`
+		);
+	}
 	// QA accounts live in the gitignored .env.qa unless the variables are already set.
 	try {
 		process.loadEnvFile('.env.qa');

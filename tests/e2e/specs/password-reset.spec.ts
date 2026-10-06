@@ -29,8 +29,9 @@ test.describe('authentication: password reset completion', () => {
 	test('Scenario: Valid link and password changes the password and offers to continue', async ({
 		page
 	}) => {
-		const email = 'reset-valid@e2e.test';
-		const url = await resetLink(email, 'Old-Passw0rd1', 'e2e-reset-valid');
+		const unique = `${Date.now()}-${test.info().retry}`;
+		const email = `reset-valid-${unique}@e2e.test`;
+		const url = await resetLink(email, 'Old-Passw0rd1', `e2e-reset-valid-${unique}`);
 
 		await page.goto(url);
 		await page.waitForLoadState('networkidle');
@@ -49,8 +50,9 @@ test.describe('authentication: password reset completion', () => {
 	test('Scenario: Mismatch is flagged on the verify field and the password is not changed', async ({
 		page
 	}) => {
-		const email = 'reset-mismatch@e2e.test';
-		const url = await resetLink(email, 'Old-Passw0rd1', 'e2e-reset-mismatch');
+		const unique = `${Date.now()}-${test.info().retry}`;
+		const email = `reset-mismatch-${unique}@e2e.test`;
+		const url = await resetLink(email, 'Old-Passw0rd1', `e2e-reset-mismatch-${unique}`);
 
 		await page.goto(url);
 		await page.waitForLoadState('networkidle');
@@ -72,10 +74,9 @@ test.describe('authentication: password reset completion', () => {
 	test('Scenario: Wrong mode shows an "Invalid action" error and no reset form', async ({
 		page
 	}) => {
-		const response = await page.goto('/reset?mode=verifyEmail&oobCode=abc');
+		// The response status is deliberately not asserted: it is a Known Gap (500 where 400 is intended).
+		await page.goto('/reset?mode=verifyEmail&oobCode=abc');
 
-		// The status is deliberately not asserted: the code intends 400 but responds 500 (a Known Gap).
-		expect(response?.ok()).toBe(false);
 		await expect(page.getByText('Invalid action')).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Change Password' })).toHaveCount(0);
 	});

@@ -38,6 +38,7 @@ jobs:
         run: npm run build
   tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
     steps:
@@ -50,7 +51,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
+        id: tools-cache
         with:
           path: |
             ~/.cache/ms-playwright
@@ -64,6 +66,14 @@ jobs:
         run: npm test
       - name: End-to-end tests
         run: npm run test:e2e
+      - name: Save the browser and emulator cache
+        if: always() && steps.tools-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cache/ms-playwright
+            ~/.cache/firebase/emulators
+          key: e2e-tools-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4

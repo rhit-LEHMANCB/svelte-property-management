@@ -63,21 +63,6 @@ describe('handler test infrastructure: service doubles', () => {
 		expect(services.db.peek('users/u1')).toBeUndefined();
 	});
 
-	it('Scenario: Hermetic run: the service doubles answer in-process', async () => {
-		const session = await services.stripe.checkout.sessions.create({});
-		expect(session.url).toBe('https://checkout.test/session');
-		expect(
-			services.stripe.webhooks.constructEvent(
-				Buffer.from('{"type":"x"}'),
-				'valid-signature',
-				'whsec_fixture'
-			)
-		).toEqual({ type: 'x' });
-		expect(() =>
-			services.stripe.webhooks.constructEvent(Buffer.from('{}'), 'bad', 'whsec_fixture')
-		).toThrow();
-	});
-
 	it('Scenario: Hermetic run: any attempt to use the network fails the test', async () => {
 		expect(() => fetch('https://api.stripe.com/v1/charges')).toThrow(/Network access is blocked/);
 		expect(() => http.request('http://example.com')).toThrow(/Network access is blocked/);

@@ -2,7 +2,7 @@
 
 - Branch: `add-test-suite` (from `origin/develop` at `75f789a`)
 - Stage: 4 Review loop (stage 3 complete: 33 of 33 tasks done)
-- Review round: 1 of 3 done (fixes applied, round 2 next)
+- Review round: 2 of 3 done (fixes applied, round 3 next)
 - QA cycle: 0 of 3
 - Started: 2026-10-05
 - Issue: #50 (related: #48)
@@ -66,6 +66,11 @@ Accepted preflight gaps: local `.env` out of date for develop (does not affect t
 - Minor: dropped a layout test that asserted a Known Gap's consequence; handler tests now block fetch and http(s) so a bypassed double fails; the `qa` project no longer records traces or video (they capture typed passwords); the invalid-credentials spec waits before filling; the `tests` job has `permissions: contents: read` and caches the Playwright browser and emulator jars; the fake Firestore leaves out documents lacking the field for `!=` and `not-in`.
 - Nit: `port: target.port || undefined`; `tests/qa/.gitkeep` and a README note.
 - Found while fixing: my access-control spec had the wrong navigation labels (tenant Dashboard, not Home; admin Home, not Admin; About Us only for tenants) and my authentication spec claimed a 400 for a wrong `/reset` mode (the app responds 500). Both specs corrected; the 500 and a "Leave site?" prompt after a successful reset are recorded as Known Gaps.
+
+**Round 2** (blockers 0, majors 1, minors 5, nits 2). All fixed; none rejected.
+- Major: the real `email.ts` (Firebase link with continue URL `PUBLIC_FRONTEND_URL/`, and the failure paths) was mocked away everywhere. Added `tests/handlers/email.test.ts`, which runs the real module with only SendGrid and the Admin double replaced.
+- Minor: the over-balance e2e check no longer depends on the placeholder balance of 1000; the wrong-mode e2e no longer pins the response status; reset specs use a unique user per attempt so a CI retry can run; the CI cache is now saved even when tests fail and the job has a 20 minute timeout; dropped a test that only exercised the doubles.
+- Nit: the `qa` project refuses a `BASE_URL` that is not the dev site or a local server (checked against both production hostnames); the fake Firestore now rejects `undefined` field values like the real SDK (no handler wrote one).
 
 ## Deferred findings
 - `POST /api/signin` sets the cookie with `maxAge: expiresIn`, and `expiresIn` is 5 days in milliseconds. SvelteKit cookie `maxAge` is in seconds, so the browser cookie lives about 13.7 years. The session itself still expires after 5 days at Firebase, so the practical effect is limited, but the value is wrong. Not in the specs' Known Gaps; tests assert only httpOnly, secure and path. File an issue at wrap-up.
