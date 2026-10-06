@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
 	DELETE as removeTenant,
+	PATCH as updateTenant,
 	POST as assignTenant
 } from '../../src/routes/api/property/[propertyId]/tenants/+server';
 import { GET as lookupProperty } from '../../src/routes/api/user/[userId]/assoc/+server';
 import { load as editLoad } from '../../src/routes/(authenticated)/admin/properties/[propertyId]/edit/+page.server';
+import { getMonthKey } from '../../src/lib/server/payments';
 import { call } from '../helpers/callHandler';
 import { db, linkTenant, seedAdmin, seedProperty, seedTenant } from '../helpers/seed';
 
@@ -21,8 +23,38 @@ describe('tenant-assignment: assign tenant (POST /api/property/{id}/tenants)', (
 		expect(result).toMatchObject({ status: 200, json: { status: 'Tenant added' } });
 		expect(db.peek('junction_user_property/tenant-1_prop-1')).toEqual({
 			tenantId: 'tenant-1',
-			propertyId: 'prop-1'
+			propertyId: 'prop-1',
+			moveInMonth: getMonthKey(new Date()).key
 		});
+	});
+
+	it('Scenario: an explicit moveInMonth is stored', async () => {
+		seedAdmin('admin-1');
+
+		const result = await call(assignTenant, {
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' },
+			body: { tenantId: 'tenant-1', moveInMonth: '2026-08' }
+		});
+
+		expect(result.status).toBe(200);
+		expect(db.peek('junction_user_property/tenant-1_prop-1')).toMatchObject({
+			moveInMonth: '2026-08'
+		});
+	});
+
+	it('Scenario: an invalid moveInMonth responds 400 and writes nothing', async () => {
+		seedAdmin('admin-1');
+
+		for (const moveInMonth of ['2026-13', '2026-8', 'August', 202608, null]) {
+			const result = await call(assignTenant, {
+				userID: 'admin-1',
+				params: { propertyId: 'prop-1' },
+				body: { tenantId: 'tenant-1', moveInMonth }
+			});
+			expect(result.status).toBe(400);
+		}
+		expect(db.peek('junction_user_property/tenant-1_prop-1')).toBeUndefined();
 	});
 
 	it('Scenario: Missing tenant responds 400 "Please provide a Tenant Id"', async () => {
@@ -219,5 +251,71 @@ describe('tenant-assignment: assignable users (property edit page load)', () => 
 		const result = await call(editLoad, { userID: 'tenant-1', params: { propertyId: 'prop-1' } });
 
 		expect(result.status).toBe(401);
+	});
+});
+
+describe('tenant-assignment: change move-in month (PATCH /api/property/{id}/tenants)', () => {
+	it('Scenario: an admin updates the junction moveInMonth', async () => {
+		seedAdmin('admin-1');
+		seedProperty('prop-1');
+		linkTenant('tenant-1', 'prop-1');
+
+		const result = await call(updateTenant, {
+			method: 'PATCH',
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' },
+			body: { tenantId: 'tenant-1', moveInMonth: '2026-05' }
+		});
+
+		expect(result.status).toBe(200);
+		expect(db.peek('junction_user_property/tenant-1_prop-1')).toMatchObject({
+			tenantId: 'tenant-1',
+			moveInMonth: '2026-05'
+		});
+	});
+
+	it('Scenario: an invalid month responds 400 and changes nothing', async () => {
+		seedAdmin('admin-1');
+		linkTenant('tenant-1', 'prop-1');
+
+		for (const moveInMonth of [undefined, '2026-00', 'x']) {
+			const result = await call(updateTenant, {
+				method: 'PATCH',
+				userID: 'admin-1',
+				params: { propertyId: 'prop-1' },
+				body: { tenantId: 'tenant-1', moveInMonth }
+			});
+			expect(result.status).toBe(400);
+		}
+		expect(db.peek('junction_user_property/tenant-1_prop-1')).not.toHaveProperty('moveInMonth');
+	});
+
+	it('Scenario: a tenant that is not assigned responds 404', async () => {
+		seedAdmin('admin-1');
+
+		const result = await call(updateTenant, {
+			method: 'PATCH',
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' },
+			body: { tenantId: 'ghost', moveInMonth: '2026-05' }
+		});
+
+		expect(result.status).toBe(404);
+		expect(db.peek('junction_user_property/ghost_prop-1')).toBeUndefined();
+	});
+
+	it('Scenario: a non-admin is rejected with 401', async () => {
+		seedTenant('tenant-1');
+		linkTenant('tenant-1', 'prop-1');
+
+		const result = await call(updateTenant, {
+			method: 'PATCH',
+			userID: 'tenant-1',
+			params: { propertyId: 'prop-1' },
+			body: { tenantId: 'tenant-1', moveInMonth: '2026-05' }
+		});
+
+		expect(result.status).toBe(401);
+		expect(db.peek('junction_user_property/tenant-1_prop-1')).not.toHaveProperty('moveInMonth');
 	});
 });

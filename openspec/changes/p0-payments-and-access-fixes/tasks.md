@@ -11,11 +11,11 @@
 
 ## 3. Balance logic
 
-- [ ] 3.1 Add `src/lib/server/payments.ts` with `getMonthKey` (business time zone) and `computeBalance` (integer cents); verify unit tests cover: no payments, partial payment, carry-over across a year boundary, no `moveInMonth`, overpaid month floors at 0, month near midnight local time.
+- [x] 3.1 Add `src/lib/server/payments.ts` with `getMonthKey` (business time zone) and `computeBalance` (integer cents); verify unit tests cover: no payments, partial payment, carry-over across a year boundary, no `moveInMonth`, overpaid month floors at 0, month near midnight local time.
 
 ## 4. Move-in month (tenant assignment)
 
-- [ ] 4.1 Accept and validate `moveInMonth` in `POST` and add `PATCH` in `src/routes/api/property/[propertyId]/tenants/+server.ts`; verify handler tests for default, explicit, invalid (400), non-admin (401).
+- [x] 4.1 Accept and validate `moveInMonth` in `POST` and add `PATCH` in `src/routes/api/property/[propertyId]/tenants/+server.ts`; verify handler tests for default, explicit, invalid (400), non-admin (401).
 - [ ] 4.2 Show and edit each tenant's move-in month on the property edit page's Tenants tab, and send it when adding a tenant; verify by running the app (or e2e) that adding and changing it persists.
 
 ## 5. Checkout cap and return pages (#36)
