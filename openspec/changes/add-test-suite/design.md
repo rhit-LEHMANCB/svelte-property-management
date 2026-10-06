@@ -43,6 +43,8 @@ See proposal.md for motivation. Constraints that shape the approach:
 - The app runs as `vite dev --mode e2e` on a fixed port, with an env block set in `playwright.config.ts`. The admin private key is generated at run time with `crypto.generateKeyPairSync` so no key, even a throwaway one, is committed.
 - Emulators (auth, firestore, storage) are started by `firebase emulators:exec`, which also tears them down. A seed script creates one admin, one tenant, one property and the tenant link before each run, via the Admin SDK.
 
+**A second Playwright project, `qa`, serves the lifecycle's QA stage.** It reuses the same config and helpers but takes `BASE_URL` for the deployed dev site, starts no server or emulators, and keeps traces and screenshots. The `dev-lifecycle` skill runs it with real dev accounts supplied through `QA_*` environment variables. For this change itself there is no user-facing behavior to QA, so its QA run is a regression pass over the existing flows.
+
 **Only 4 or 5 end-to-end tests.** One per flow in the spec, sharing a signed-in storage state per role. Each uses real navigation and form posts, which is what the Svelte 5 and Skeleton upgrades are most likely to break.
 
 **CI changes go in the existing PR workflow.** Order: install, lint, `svelte-check`, unit and handler tests, end-to-end tests, build. It adds `actions/setup-java` (Temurin 21, which current `firebase-tools` needs) and `npx playwright install --with-deps chromium`. The e2e step sets every `PUBLIC_FB_*`, `FB_*`, `SENDGRID_*`, `STRIPE_*` value explicitly, so the job-level real secrets are never used by tests. Failure uploads the Playwright report as an artifact.

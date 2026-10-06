@@ -36,7 +36,7 @@
 - [ ] 5.1 Add `firebase-tools` and `@playwright/test`, add an `emulators` section and permissive `firestore.rules` and `storage.rules` for auth, firestore and storage under project `demo-lehman-realty`; verify `firebase emulators:exec --project demo-lehman-realty --only auth,firestore,storage "echo ok"` succeeds (needs a JRE)
 - [ ] 5.2 Add the `import.meta.env.MODE === 'e2e'` emulator hook in `src/lib/firebase.ts` and the optional `STRIPE_API_BASE_URL` override in `src/lib/server/stripe.ts`; verify `npm run build` output is unchanged for production mode and `npm run check` passes
 - [ ] 5.3 Write the seed script (admin user, tenant user, property, junction) and the fake Stripe server; verify by running the seed against the emulator and checking the documents exist
-- [ ] 5.4 Write `playwright.config.ts` (webServer `vite dev --mode e2e`, env block with generated admin key, fixed port, one worker, CI retry, report on failure); verify `npx playwright test --list` loads and the app reaches `/signin` in the emulator setup
+- [ ] 5.4 Write `playwright.config.ts` with two projects: `e2e` (webServer `vite dev --mode e2e`, env block with generated admin key, fixed port, one worker, CI retry, report on failure) and `qa` (reads `BASE_URL` for the deployed dev site, starts no server or emulators, traces and screenshots on); verify `npx playwright test --list` shows both projects and the app reaches `/signin` in the emulator setup
 - [ ] 5.5 Add npm script `test:e2e` wrapping `firebase emulators:exec`; verify one placeholder test passes through the script
 
 ## 6. Layer 3: smoke tests
@@ -50,7 +50,7 @@
 ## 7. CI and documentation
 
 - [ ] 7.1 Update `.github/workflows/firebase-hosting-pull-request.yml` with setup-java (21), Playwright browser install, and the unit, handler and e2e steps ahead of the build, with explicit test env values and report upload on failure; verify the PR check passes on a draft PR
-- [ ] 7.2 Add a "Testing" section to `README.md` (layers, scripts, JRE requirement, how tests map to specs); verify the commands in it run as written on a clean checkout
+- [ ] 7.2 Add a "Testing" section to `README.md` (layers, scripts, JRE requirement, how tests map to specs, the `qa` project and its `QA_*` variables) and an `.env.example` listing every variable the server and client import, with the format of each (for example `FB_PRIVATE_KEY` is a JSON string `{"privateKey": "..."}`); verify the commands run as written on a clean checkout and that a `.env` copied from the example builds
 - [ ] 7.3 Update issue #48 to add the Vitest bump to the Vite upgrade step and to make this change the prerequisite; verify the issue shows the changes
 - [ ] 7.4 Integration check: break one covered behavior on a throwaway branch and verify the PR check fails on it, then revert and verify it passes
 
