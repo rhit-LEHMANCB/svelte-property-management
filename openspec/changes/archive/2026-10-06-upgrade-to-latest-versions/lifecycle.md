@@ -1,7 +1,7 @@
 # Lifecycle: upgrade-to-latest-versions
 
 - Branch: `upgrade-to-latest-versions`
-- Stage: 7 Production PR (awaiting Gate B)
+- Stage: **complete (archived automatically on 2026-10-06 after the production release `6c55641`)**
 - Review round: 1 of 3 (PR 2); PR 1 merged (#75)
 - QA cycle: 3 of 3 (passed)
 - Started: 2026-10-06
@@ -161,3 +161,6 @@ Ranked by risk. Production-only items first, because QA could not reach producti
 - QA cycle 2 (against 8ac2e00): FAIL on one scenario, otherwise all upgrade scenarios and the form flows passed (40 tests, 39 passed, 1 skipped). App bug A1, present before the upgrade: after the last photo of a property is deleted Firestore keeps `photos: []`, and `/admin/properties` rendered `photos[0].photoUrl` for any truthy `photos`, so the directory returned 500. Fix branch `fix-empty-photos-list` (`photos?.length`) with an e2e test that fails without it; one review round: 0 blockers, 0 majors, 2 minor test points fixed. After merge: QA cycle 3.
 - Observation O1 from QA (not fixed here, to be filed as an issue): on a property's Tenants tab the remove-tenant button sits inside the clickable user row, so Cancel or Confirm of its dialog is followed by the user-info dialog. O2: user-info dialog tabs expose no `tab` role.
 - QA data left on the dev project (human cleanup, dev Firestore): properties `qa-c2-1791304726840` (empty photos array, breaks the directory until the fix is deployed), `qa-c2-1791304569160`, `qa-c2-1791304997568`; the QA tenant has an insurance policy `qa-c2 Insurance` / `QA-1` saved (it had none before); open and closed `qa-` maintenance requests cannot be deleted from the UI.
+
+## Archive
+Archived automatically on 2026-10-06 after the production release `6c55641` ([workflow run](https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/37510468657)). That marks this lifecycle complete.
