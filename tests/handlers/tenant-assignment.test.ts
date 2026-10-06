@@ -43,10 +43,29 @@ describe('tenant-assignment: assign tenant (POST /api/property/{id}/tenants)', (
 		});
 	});
 
+	it('Scenario: re-assigning a tenant keeps their stored moveInMonth', async () => {
+		seedAdmin('admin-1');
+		db.seed('junction_user_property/tenant-1_prop-1', {
+			tenantId: 'tenant-1',
+			propertyId: 'prop-1',
+			moveInMonth: '2026-02'
+		});
+
+		await call(assignTenant, {
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' },
+			body: { tenantId: 'tenant-1' }
+		});
+
+		expect(db.peek('junction_user_property/tenant-1_prop-1')).toMatchObject({
+			moveInMonth: '2026-02'
+		});
+	});
+
 	it('Scenario: an invalid moveInMonth responds 400 and writes nothing', async () => {
 		seedAdmin('admin-1');
 
-		for (const moveInMonth of ['2026-13', '2026-8', 'August', 202608, null]) {
+		for (const moveInMonth of ['2026-13', '1026-08', '2026-8', 'August', 202608, null]) {
 			const result = await call(assignTenant, {
 				userID: 'admin-1',
 				params: { propertyId: 'prop-1' },

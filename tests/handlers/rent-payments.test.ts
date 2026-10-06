@@ -310,6 +310,56 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 		expect(result.status).toBe(500);
 	});
 
+	it('Scenario: a payment toward carried-over months clears the oldest months first', async () => {
+		seedProperty('prop-1', { rent: 1000 });
+		const event = invoiceEvent([{ description: 'Rent', amount: 150000 }]);
+		Object.assign(event.data.object.metadata, { moveInMonth: '2026-01', rentCents: '150000' });
+
+		await send(event);
+
+		const h = history() as Record<
+			string,
+			{ remainingBalance: number; transactions: { amount: number }[] }
+		>;
+		expect(h.January.remainingBalance).toBe(0);
+		expect(h.February.remainingBalance).toBe(500);
+		expect(h.March).toBeUndefined();
+		expect(h.January.transactions[0].amount).toBe(1000);
+		expect(h.February.transactions[0].amount).toBe(500);
+	});
+
+	it('Scenario: paying the whole carried-over total leaves nothing owed on /payment', async () => {
+		seedTenant('t1');
+		seedProperty('prop-1', { rent: 1000 });
+		const current = getMonthKey(new Date());
+		const start = getMonthKey(new Date(Date.UTC(current.year, current.month - 3, 15)));
+		db.seed('junction_user_property/t1_prop-1', {
+			tenantId: 't1',
+			propertyId: 'prop-1',
+			moveInMonth: start.key
+		});
+		const checkout = await call(startPayment, { userID: 't1', body: { amount: 3000 } });
+		expect(checkout.status).toBe(200);
+		const metadata =
+			services.stripe.checkout.sessions.create.mock.calls[0][0].invoice_creation.invoice_data
+				.metadata;
+		expect(metadata.moveInMonth).toBe(start.key);
+
+		await call(webhook, {
+			rawBody: JSON.stringify({
+				type: 'invoice.payment_succeeded',
+				data: { object: { created: Date.now() / 1000, metadata, lines: { data: [] } } }
+			}),
+			headers: { 'stripe-signature': VALID_STRIPE_SIGNATURE }
+		});
+
+		const parent = { userProperty: { id: 'prop-1', data: { rent: 1000 } } };
+		expect((await call(paymentLoad, { userID: 't1', parent })).data).toEqual({
+			balanceCents: 0,
+			dueDate: null
+		});
+	});
+
 	it('Scenario: Bad signature responds 400 and records nothing', async () => {
 		seedProperty('prop-1');
 

@@ -88,7 +88,7 @@ Accepted preflight gaps: `npm run check` fails on the stale local `.env` unless 
 
 
 ## Review rounds
-(none yet; one line per round: blockers, majors, fixed, rejected with reason)
+- Round 1: 1 blocker, 1 major, 3 minors, 1 nit. Fixed: blocker (webhook applied payments only to the invoice month, so carried-over months never cleared; now allocates oldest-first using `moveInMonth` in invoice metadata), major (move-in month limited to 2000-2099 and walk clamped), minor (re-assigning a tenant keeps `moveInMonth`), minor (unreadable amount logged at error level). Not fixed: minor on `isProductionProject` (matches the approved design), nit on `invalidateAll` await.
 
 ## Deferred findings
 - Duplicate webhook delivery for one invoice is not de-duplicated.

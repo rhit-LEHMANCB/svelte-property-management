@@ -5,7 +5,8 @@ import { stripe } from '$lib/server/stripe';
 import type { Stripe } from 'stripe';
 import { adminDB } from '$lib/server/admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { getMonthKey } from '$lib/server/payments';
+import { allocatePayment } from '$lib/server/payments';
+import { loadHistories } from '$lib/server/balance';
 
 const wholeCents = (value: string | undefined) =>
 	value !== undefined && /^\d+$/.test(value) ? Number(value) : undefined;
@@ -57,47 +58,58 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			const { rentCents, feeCents } = readAmounts(invoice);
 			if (!rentCents) {
-				console.log('Could not find rent payment amount');
+				console.error('Could not find rent payment amount');
 				break;
 			}
 
-			const amount = rentCents / 100;
 			const eventDate = Timestamp.fromMillis(invoice.created * 1000);
-			const { year, monthName } = getMonthKey(eventDate.toDate());
-			const transaction = {
-				date: eventDate,
-				amount,
-				...(feeCents !== undefined && { fee: feeCents / 100 })
-			};
+			const moveInMonth = invoice.metadata?.moveInMonth;
 
 			// Any failure below responds 500 so that Stripe redelivers the event.
 			try {
-				const propertyDoc = adminDB.collection('properties').doc(propertyId);
-				const currentYearDocument = propertyDoc.collection('payment_history').doc(String(year));
-				const currentYearData = (await currentYearDocument.get()).data();
-
-				let remainingBalance: number | FieldValue;
-				if (currentYearData && currentYearData[monthName]) {
-					remainingBalance = FieldValue.increment(-1 * amount);
-				} else {
-					const propertyData = (await propertyDoc.get()).data();
-
-					if (!propertyData) {
-						console.log('Could not find property details');
-						break;
-					}
-					remainingBalance = propertyData.rent - amount;
+				const propertyData = (await adminDB.collection('properties').doc(propertyId).get()).data();
+				if (!propertyData) {
+					console.log('Could not find property details');
+					break;
 				}
 
-				await currentYearDocument.set(
-					{
-						[monthName]: {
-							remainingBalance,
-							transactions: FieldValue.arrayUnion(transaction)
-						}
-					},
-					{ merge: true }
-				);
+				// A payment clears the oldest unpaid months first, the same order the balance uses.
+				const histories = await loadHistories(propertyId, moveInMonth, eventDate.toDate());
+				const allocations = allocatePayment({
+					rent: propertyData.rent,
+					moveInMonth,
+					histories,
+					now: eventDate.toDate(),
+					amountCents: rentCents
+				});
+
+				// One write per year document; the fee is recorded once, on the first transaction.
+				const years = new Map<string, Record<string, unknown>>();
+				allocations.forEach((a, index) => {
+					const amount = a.cents / 100;
+					const transaction = {
+						date: eventDate,
+						amount,
+						...(index === 0 && feeCents !== undefined && { fee: feeCents / 100 })
+					};
+					const months = years.get(String(a.month.year)) ?? {};
+					months[a.month.monthName] = {
+						remainingBalance: a.hasEntry
+							? FieldValue.increment(-1 * amount)
+							: (propertyData.rent * 100 - a.cents) / 100,
+						transactions: FieldValue.arrayUnion(transaction)
+					};
+					years.set(String(a.month.year), months);
+				});
+
+				for (const [year, months] of years) {
+					await adminDB
+						.collection('properties')
+						.doc(propertyId)
+						.collection('payment_history')
+						.doc(year)
+						.set(months, { merge: true });
+				}
 			} catch (err) {
 				console.log(err instanceof Error ? err.message : err);
 				throw error(500, 'Failed to record payment');

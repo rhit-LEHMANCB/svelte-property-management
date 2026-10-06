@@ -16,7 +16,8 @@ export const MONTH_NAMES = [
 	'December'
 ];
 
-export const MOVE_IN_MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
+// Years 2000-2099: a typo such as 1026-08 must not turn into centuries of unpaid rent.
+export const MOVE_IN_MONTH_PATTERN = /^20\d{2}-(0[1-9]|1[0-2])$/;
 
 export type MonthKey = { year: number; month: number; monthName: string; key: string };
 
@@ -50,7 +51,7 @@ export function monthsOwed(moveInMonth: string | undefined, now: Date): MonthKey
 	let month = current.month;
 	if (moveInMonth && MOVE_IN_MONTH_PATTERN.test(moveInMonth)) {
 		const [y, m] = moveInMonth.split('-').map(Number);
-		if (y < year || (y === year && m <= month)) {
+		if (y >= 2000 && (y < year || (y === year && m <= month))) {
 			year = y;
 			month = m;
 		}
@@ -78,6 +79,51 @@ export type Balance = {
 	dueDate: string | null;
 };
 
+/** What one month still owes, in cents: its `remainingBalance` (never below 0) or the full rent. */
+function monthOwedCents(rent: number, histories: Record<string, YearHistory>, m: MonthKey) {
+	const entry = histories[String(m.year)]?.[m.monthName];
+	return entry && typeof entry.remainingBalance === 'number'
+		? Math.max(0, Math.round(entry.remainingBalance * 100))
+		: Math.round(rent * 100);
+}
+
+export type Allocation = { month: MonthKey; cents: number; hasEntry: boolean };
+
+/**
+ * Splits a payment across the months owed, oldest first, so that paying a carried-over balance
+ * clears the old months and not only the current one. Anything beyond what is owed (the checkout
+ * cap normally prevents it) goes to the current month.
+ */
+export function allocatePayment(input: {
+	rent: number;
+	moveInMonth?: string;
+	histories: Record<string, YearHistory>;
+	now: Date;
+	amountCents: number;
+}): Allocation[] {
+	const months = monthsOwed(input.moveInMonth, input.now);
+	const hasEntry = (m: MonthKey) =>
+		input.histories[String(m.year)]?.[m.monthName] !== undefined &&
+		input.histories[String(m.year)]?.[m.monthName] !== null;
+	const result: Allocation[] = [];
+	let left = input.amountCents;
+	for (const m of months) {
+		if (left <= 0) break;
+		const cents = Math.min(left, monthOwedCents(input.rent, input.histories, m));
+		if (cents > 0) {
+			result.push({ month: m, cents, hasEntry: hasEntry(m) });
+			left -= cents;
+		}
+	}
+	if (left > 0) {
+		const current = months[months.length - 1];
+		const existing = result.find((a) => a.month.key === current.key);
+		if (existing) existing.cents += left;
+		else result.push({ month: current, cents: left, hasEntry: hasEntry(current) });
+	}
+	return result;
+}
+
 /**
  * What a tenant owes through the current month, in integer cents. A month with an entry in
  * payment_history owes its `remainingBalance` (never below 0); a month without one owes the rent.
@@ -95,11 +141,7 @@ export function computeBalance(input: {
 	let currentUnpaid = false;
 
 	for (const m of monthsOwed(input.moveInMonth, input.now)) {
-		const entry = input.histories[String(m.year)]?.[m.monthName];
-		const owedCents =
-			entry && typeof entry.remainingBalance === 'number'
-				? Math.max(0, Math.round(entry.remainingBalance * 100))
-				: rentCents;
+		const owedCents = monthOwedCents(input.rent, input.histories, m);
 		if (owedCents > 0) {
 			balanceCents += owedCents;
 			oldestUnpaid ??= m;

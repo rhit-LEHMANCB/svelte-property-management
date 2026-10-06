@@ -46,11 +46,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		throw error(500, 'Failed to find property info.');
 	}
 
-	const { balanceCents } = await loadBalance(
-		userProperty.id,
-		userPropertyData.rent,
-		userJunctionsQuery.docs[0].data().moveInMonth
-	);
+	const moveInMonth: string | undefined = userJunctionsQuery.docs[0].data().moveInMonth;
+	const { balanceCents } = await loadBalance(userProperty.id, userPropertyData.rent, moveInMonth);
 	if (amountCents > balanceCents) {
 		throw error(400, 'Amount is greater than the balance owed');
 	}
@@ -96,7 +93,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				metadata: {
 					propertyID: userProperty.id,
 					rentCents: String(amountCents),
-					feeCents: String(feeCents)
+					feeCents: String(feeCents),
+					// The webhook uses it to apply the payment to the oldest unpaid months first.
+					...(moveInMonth && { moveInMonth })
 				}
 			}
 		},

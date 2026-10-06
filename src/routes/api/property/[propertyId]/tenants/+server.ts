@@ -22,13 +22,18 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 		throw error(400, 'Move-in month must be in the form YYYY-MM');
 	}
 
-	return adminDB
+	const junction = adminDB
 		.collection('junction_user_property')
-		.doc(`${tenantId}_${params.propertyId}`)
+		.doc(`${tenantId}_${params.propertyId}`);
+
+	// Re-adding an assigned tenant (or a retried request) must not reset their move-in month.
+	const existingMonth = moveInMonth ?? (await junction.get()).data()?.moveInMonth;
+
+	return junction
 		.set({
 			tenantId: tenantId,
 			propertyId: params.propertyId,
-			moveInMonth: moveInMonth ?? getMonthKey(new Date()).key
+			moveInMonth: existingMonth ?? getMonthKey(new Date()).key
 		})
 		.then(() => {
 			return json({ status: 'Tenant added' });
