@@ -1,9 +1,9 @@
 # Lifecycle: add-test-suite
 
 - Branch: `add-test-suite` (from `origin/develop` at `75f789a`)
-- Stage: 4 review loop finished clean after an extra round the user requested (round 4). Ready for stage 5; waiting for the user's go-ahead. Stage 3 is complete: 33 of 33 tasks done.
+- Stage: 7 complete. Merged to `develop` (PR #53, `bba5eeb`), deployed to dev, independent QA passed, production PR opened. Waiting at Gate B for a human to verify and merge.
 - Review round: 4 done (3 plus 1 extra requested by the user); round 4 had no blockers or majors
-- QA cycle: 0 of 3
+- QA cycle: 1 of 3 (passed)
 - Started: 2026-10-05
 - Issue: #50 (related: #48)
 
@@ -90,10 +90,35 @@ Accepted preflight gaps: local `.env` out of date for develop (does not affect t
 - After a successful password reset, the Continue button navigates with an absolute URL while the superforms form is still marked tainted, so the browser shows "Leave site? Changes you made may not be saved" and, in headless Chromium, the navigation is cancelled. Recorded in the authentication spec's Known Gaps. File an issue at wrap-up.
 
 ## QA report
-(stage 6)
+Independent QA agent (fresh Sonnet 5.5, given only the dev URL, the proposal and delta spec, the QA guide and the current behavior specs). Dev site `https://lehman-realty-dev.web.app`, deployed commit `bba5eeb` on `develop`, cycle 1 of 3, 2026-10-06. **Result: PASS, 0 failing scenarios.** The change adds test tooling and no user-facing behavior, so this was a regression pass of the main flows against the behavior specs. Playwright, 9 tests, desktop Chromium.
+
+| Capability | Scenarios checked (all passed) |
+|---|---|
+| authentication | unauthenticated redirect to `/signin`; wrong password shows the error toast; admin sign-in then sign-out |
+| access-control | admin lands on `/admin` with the admin navigation; tenant navigation (Dashboard, Maintenance, Payment, Profile, Insurance, About Us) |
+| user-profile | profile loads with the right contact info for tenant and admin |
+| maintenance-requests | valid submission is listed; empty subject is refused; admin sees it and closes it with a note |
+| renters-insurance | end date not after start date is refused; admin user modal has an Insurance tab ("No insurance info") |
+| rent-payments | amount prompt opens; 5000 is refused; 1 goes to Stripe-hosted checkout in sandbox with Rent $1.00 plus a $0.33 fee line (no card entered) |
+| property-management | properties list; the QA property's edit page opens (nothing edited) |
+| user-management | users directory lists the users |
+
+Screenshots (19, redacted: emails, phone numbers and other people's rows are blacked out because the repository is public) are on the unmerged branch `qa-evidence/add-test-suite`, under `openspec/changes/add-test-suite/qa/screenshots/`, together with the QA spec `tests/qa/add-test-suite/regression.spec.ts`. The first set of images showed the QA accounts' emails and another user's contact details; it was discarded and the images were retaken with redaction. QA data (19 `qa-regression-*` maintenance requests) was verified as QA tenant data and deleted from the dev Firestore.
+
+**Observations outside the specs** (filed): the tenant closed-request list labels the closed date "Opened:" (#57); input typed or clicked before hydration is silently lost (#58); the users list sorts last names case-sensitively (#59); QA failures can leave the typed password in `test-results/error-context.md` (#60). Known gaps seen again: the payment page's hardcoded $1,000 balance (#36). Not covered by automation: anything that sends email, completing a Stripe payment and the webhook, saving profile and insurance data, property and user create, edit and delete, other browsers and phones, screen readers.
 
 ## Verification checklist for the human
-(stage 7)
+Ranked by risk. This release adds tests, CI and docs and no user-facing behavior; the production-code changes are an Auth emulator hook that is dead code in production builds and an optional, loopback-only Stripe override that is unset in production.
+
+1. **After the production merge, watch the new archive workflow run.** It is new and has never run for real (it only triggers on a push to `production`). Expect a PR titled "Archive OpenSpec changes (release ...)" into `develop` that archives `add-test-suite` and merges itself. If it does not appear, check the workflow log (`openspec-archive.yml`).
+2. **Smoke the production site once the deploy finishes** (5 minutes): sign in as an admin and a tenant at the production URL, load Maintenance and Payment. The deploy now installs the new dev dependencies (Playwright, Vitest, firebase-tools), so it will be slower; confirm it still succeeds.
+3. **Password reset email, end to end** (high). On `/profile` click Reset, open the email, follow the link, set a new password. Needs a real inbox; confirms SendGrid, Firebase and `PUBLIC_FRONTEND_URL`. Also confirm the production environment's Stripe webhook and portal settings and Firebase Auth's authorized domains use `manager.lehmanfamilyllc.com`. Known quirks: #55, #56.
+4. **Complete a payment with Stripe's test card on the dev site** (high): pay $1 with `4242 4242 4242 4242`; check the Stripe dashboard for the Rent and fee lines and `properties/{id}/payment_history/{year}` for the month entry.
+5. **Sign-in on a phone and on a slow connection** (medium): type immediately after the page loads, with autofill and by hand. Known bug: #58.
+6. **Insurance form in a real browser** (medium): the end-before-start message is a native bubble that automation cannot capture; then save a valid policy and check the admin modal and the missing-insurance badge.
+7. **Property edit page, photos and tenant assignment** (medium): assign and remove the QA tenant on the QA property and restore afterwards; upload and reorder a photo.
+8. **Small wording and ordering bugs** (low): the closed-request "Opened:" label (#57) and the users list ordering (#59).
+9. **Make the `tests` check required** in the repository's branch protection, otherwise a failing test only turns the check red and does not block a merge.
 
 ## Halted (resolved)
 The run halted after round 3 (one major). The major was fixed, the findings were filed as issues #54, #55 and #56, and the user asked for round 4, which came back clean. The original halt notes are kept in the draft PR #53 description.
