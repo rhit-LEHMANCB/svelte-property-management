@@ -2,6 +2,7 @@ import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { adminAuth, adminDB } from '$lib/server/admin';
 import { sendPasswordResetEmail } from '$lib/server/email';
+import { stripe } from '$lib/server/stripe';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	if (!locals.userID) {
@@ -16,18 +17,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const { email } = await request.json();
 
+	const userRecord = await adminAuth.createUser({ email: email }).catch((err) => {
+		console.log(err.message);
+		throw error(500, err);
+	});
+
+	const stripeCustomer = await stripe.customers.create({
+		name: 'New User',
+		email: email
+	});
+
 	const newUserDoc = {
 		email: email,
 		firstName: 'New',
 		lastName: 'User',
 		phoneNumber: '',
-		permissions: 'user'
+		permissions: 'user',
+		stripeID: stripeCustomer.id
 	};
-
-	const userRecord = await adminAuth.createUser({ email: email }).catch((err) => {
-		console.log(err.message);
-		throw error(500, err);
-	});
 
 	return adminDB
 		.collection('users')

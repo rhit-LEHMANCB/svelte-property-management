@@ -6,11 +6,12 @@ import pkg from 'firebase-admin';
 import { getStorage } from 'firebase-admin/storage';
 
 try {
+	const { privateKey } = JSON.parse(FB_PRIVATE_KEY);
 	pkg.initializeApp({
 		credential: pkg.credential.cert({
 			projectId: PUBLIC_FB_PROJECT_ID,
 			clientEmail: FB_CLIENT_EMAIL,
-			privateKey: FB_PRIVATE_KEY
+			privateKey: privateKey
 		})
 	});
 } catch (err) {

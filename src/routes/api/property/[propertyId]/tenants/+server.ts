@@ -1,17 +1,12 @@
 import { error, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { adminDB } from '$lib/server/admin';
+import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
 
 export const POST: RequestHandler = async ({ params, locals, request }) => {
-	if (!locals.userID) {
-		throw error(401, 'You must be logged in to do this.');
-	}
+	const userId = getUserIdOrError(locals.userID);
 
-	const userData = (await adminDB.collection('users').doc(locals.userID).get()).data();
-
-	if (!userData || !userData.permissions || userData.permissions !== 'admin') {
-		throw error(401, 'You must be an admin to do this.');
-	}
+	await getAdminUserDataOrError(userId);
 
 	const { tenantId } = await request.json();
 
@@ -36,15 +31,9 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 };
 
 export const DELETE: RequestHandler = async ({ params, locals, request }) => {
-	if (!locals.userID) {
-		throw error(401, 'You must be logged in to do this.');
-	}
+	const userId = getUserIdOrError(locals.userID);
 
-	const userData = (await adminDB.collection('users').doc(locals.userID).get()).data();
-
-	if (!userData || !userData.permissions || userData.permissions !== 'admin') {
-		throw error(401, 'You must be an admin to do this.');
-	}
+	await getAdminUserDataOrError(userId);
 
 	const { tenantId } = await request.json();
 

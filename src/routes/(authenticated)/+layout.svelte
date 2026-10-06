@@ -45,7 +45,7 @@
 
 <AppShell slotSidebarLeft="bg-surface-500/5 w-0 lg:w-64">
 	<svelte:fragment slot="header">
-		<AppBar shadow="shadow-xl" background="bg-secondary-400/100">
+		<AppBar shadow="shadow-xl">
 			<svelte:fragment slot="lead">
 				<div class="flex items-center">
 					<button class="lg:hidden btn btn-sm mr-4" on:click={drawerOpen}>
@@ -57,11 +57,11 @@
 							</svg>
 						</span>
 					</button>
-					<strong class="h3 text-on-primary-token">LFR Manager</strong>
+					<strong class="h3">LFR Manager</strong>
 				</div>
 			</svelte:fragment>
 			<svelte:fragment slot="trail">
-				<span class="text-on-primary-token">Welcome, {user.firstName ?? 'New User'}</span>
+				<span>Welcome, {user.firstName ?? 'New User'}</span>
 				<button type="button" on:click={signOutSSR} class="btn variant-filled-primary max-sm:hidden"
 					>Sign out<IconLogout class="ml-2" /></button
 				>

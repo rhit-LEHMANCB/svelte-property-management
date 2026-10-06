@@ -1,4 +1,5 @@
 import { SENDGRID_API_KEY } from '$env/static/private';
+import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 import { adminAuth } from './admin';
 import sgMail from '@sendgrid/mail';
 
@@ -51,7 +52,7 @@ export const sendPasswordResetEmail = (email: string, isWelcomeEmail: boolean) =
 		const actionCodeSettings = {
 			// URL you want to redirect back to. The domain (www.example.com) for
 			// this URL must be whitelisted in the Firebase Console.
-			url: 'https://lehmanfamilyrealty.com/manager'
+			url: `${PUBLIC_FRONTEND_URL}/`
 		};
 
 		adminAuth

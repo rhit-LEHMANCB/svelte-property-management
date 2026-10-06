@@ -23,7 +23,7 @@
 			} else if (form.message.startsWith('id')) {
 				successToast('Successfully created property', toastStore);
 				const id = form.message.slice(2);
-				goto(`/manager/admin/properties/${id}/edit`);
+				goto(`/admin/properties/${id}/edit`);
 			}
 		}
 	});
