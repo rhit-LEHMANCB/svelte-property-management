@@ -94,7 +94,7 @@
 												? request.dateAdded.toLocaleString('en-us', {
 														dateStyle: 'short',
 														timeStyle: 'short'
-												  })
+													})
 												: ''}</span
 										><span>Submitted By: {request.submitter}</span><span
 											>Address: <a
@@ -139,7 +139,7 @@
 												? request.dateClosed.toLocaleString('en-us', {
 														dateStyle: 'short',
 														timeStyle: 'short'
-												  })
+													})
 												: ''}</span
 										><span>Submitted By: {request.submitter}</span><span
 											>Address: <a

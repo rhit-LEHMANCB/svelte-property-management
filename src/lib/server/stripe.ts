@@ -27,6 +27,6 @@ export const stripe = new Stripe(
 				host: target.hostname,
 				port: target.port || undefined,
 				protocol: target.protocol.replace(':', '') as 'http' | 'https'
-		  }
+			}
 		: undefined
 );

@@ -139,7 +139,8 @@
 					rows="4"
 					class="textarea"
 					class:input-error={$errors.description}
-					title="Description"></textarea></label
+					title="Description"
+				></textarea></label
 			>
 		</div>
 		<div class="grid grid-cols-3 gap-4">

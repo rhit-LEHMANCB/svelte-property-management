@@ -12,8 +12,7 @@ export const load = (async (event) => {
 	const insuranceDataRaw = (await adminDB.collection('users').doc(userId).get()).data()?.insurance;
 
 	let insuranceData:
-		| { companyName: string; policyNumber: string; startDate: Date; endDate: Date }
-		| undefined;
+		{ companyName: string; policyNumber: string; startDate: Date; endDate: Date } | undefined;
 	if (insuranceDataRaw) {
 		insuranceData = {
 			companyName: insuranceDataRaw.companyName,

@@ -10,7 +10,7 @@
 	let loginError: string;
 	const toastStore = getToastStore();
 
-	$: email, password, (loginError = '');
+	$: (email, password, (loginError = ''));
 	$: if (loginError) {
 		errorToast('Your email or password is incorrect.', toastStore);
 	}

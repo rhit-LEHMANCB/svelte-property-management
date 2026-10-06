@@ -49,7 +49,8 @@
 								class="input"
 								class:input-error={$errors.description}
 								title="Description"
-								rows="6"></textarea></label
+								rows="6"
+							></textarea></label
 						>
 					</div>
 				</div>
@@ -78,7 +79,7 @@
 													? request.dateAdded.toLocaleString('en-us', {
 															dateStyle: 'short',
 															timeStyle: 'short'
-													  })
+														})
 													: ''}</span
 											><span>Submitted By: {request.submitter}</span>
 										</dt>
@@ -114,7 +115,7 @@
 													? request.dateClosed.toLocaleString('en-us', {
 															dateStyle: 'short',
 															timeStyle: 'short'
-													  })
+														})
 													: ''}</span
 											><span>Submitted By: {request.submitter}</span>
 										</dt>

@@ -108,7 +108,7 @@ export default defineConfig({
 					timeout: 300_000,
 					reuseExistingServer: false
 				}
-		  ],
+			],
 	projects: [
 		{
 			name: 'e2e',

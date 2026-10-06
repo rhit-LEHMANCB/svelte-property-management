@@ -64,9 +64,7 @@ export const propertySchema = z.object({
 		})
 		.positive('Square Feet must be greater than 0')
 		.int('Square Feet must be an integer'),
-	rent: z
-		.number({ error: 'Rent must be a number' })
-		.positive('Rent must be greater than 0'),
+	rent: z.number({ error: 'Rent must be a number' }).positive('Rent must be greater than 0'),
 	streetAddress: z
 		.string()
 		.min(1, 'Please provide a street address')

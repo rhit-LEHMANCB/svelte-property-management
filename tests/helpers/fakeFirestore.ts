@@ -12,7 +12,10 @@ import { isDeepStrictEqual } from 'node:util';
  */
 
 export class FakeTimestamp {
-	constructor(public seconds: number, public nanoseconds = 0) {}
+	constructor(
+		public seconds: number,
+		public nanoseconds = 0
+	) {}
 	static fromMillis(ms: number) {
 		return new FakeTimestamp(Math.floor(ms / 1000), (ms % 1000) * 1e6);
 	}
@@ -33,7 +36,10 @@ export class FakeTimestamp {
 type Sentinel = 'serverTimestamp' | 'increment' | 'arrayUnion' | 'arrayRemove' | 'delete';
 
 export class FakeFieldValue {
-	constructor(public kind: Sentinel, public arg?: unknown) {}
+	constructor(
+		public kind: Sentinel,
+		public arg?: unknown
+	) {}
 	static serverTimestamp() {
 		return new FakeFieldValue('serverTimestamp');
 	}
@@ -141,7 +147,10 @@ function getField(data: Data | undefined, field: string): unknown {
 const comparable = (v: unknown) => (v instanceof FakeTimestamp ? v.toMillis() : v);
 
 export class FakeSnapshot {
-	constructor(public ref: FakeDocRef, private stored: Data | undefined) {}
+	constructor(
+		public ref: FakeDocRef,
+		private stored: Data | undefined
+	) {}
 	get id() {
 		return this.ref.id;
 	}
@@ -253,7 +262,10 @@ export class FakeCollectionRef extends FakeQuery {
 }
 
 export class FakeDocRef {
-	constructor(private db: FakeFirestore, public path: string) {}
+	constructor(
+		private db: FakeFirestore,
+		public path: string
+	) {}
 	get id() {
 		return this.path.split('/').pop() as string;
 	}
