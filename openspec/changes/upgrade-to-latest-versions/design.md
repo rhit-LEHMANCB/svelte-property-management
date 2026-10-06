@@ -26,6 +26,8 @@ Current stack: SvelteKit 1.27, Svelte 4.1, Vite 4.4, Tailwind 3.3 with `tailwind
 7. **Firebase packages to latest** in the same PR after the framework steps, since failures there are in auth/Firestore code and are easier to attribute once the framework is stable. `src/lib/server/admin.ts` init and the client `firebase.ts` are the touch points.
 8. **Lint config** moves with the tools: ESLint (flat config if required by plugins), Prettier 3 (drop `--plugin-search-dir`), `svelte-check`, typescript-eslint. Format changes caused by Prettier 3 are applied in a separate commit.
 
+9. **SvelteKit stays on 2.x until Firebase's SSR wrapper supports 3.** Decided during implementation, after the Kit 3 migration itself worked (builds, 193 unit tests, 31 e2e tests). Firebase Hosting's frameworks support runs the app through `firebase-frameworks` (latest 0.11.8, with `firebase-tools` 15.32.1), whose SvelteKit entry imports `@sveltejs/kit/node/polyfills`; SvelteKit 3 no longer exports it, so the deployed function would fail on startup (`ERR_PACKAGE_PATH_NOT_EXPORTED`). The interview approved shipping the completed steps and filing an issue for the rest. The Kit 3 work (config moved into `vite.config.ts`, `#lib` imports, `src/env.ts` with `$app/env/*`, `$app/state`, `tsconfig` extending `$app/tsconfig`, `Handle` from `@sveltejs/kit/hooks`) is kept on `wip/sveltekit-3-migration`.
+
 ## Implementation notes
 
 - **Node 24 check (task 4.4):** after Tailwind 4, `npm run build` and `npm test` pass on Node 24.21, so the old jiti restriction is gone. The project stays on Node 22 (supported, and the version Firebase and CI are pinned to); moving to 24 is a one-line follow-up.

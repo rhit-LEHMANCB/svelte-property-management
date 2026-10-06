@@ -38,11 +38,11 @@
 - [x] 5.4 Port the app shell (AppShell, AppBar, Drawer) and navigation; verify role-based navigation and phone-width layout
 - [x] 5.5 Verify `npm run lint`, `npm run check`, `npm test`, `npm run build` and `npm run test:e2e` pass; add or update e2e tests for dialogs, notifications and autocomplete behavior listed in the spec
 
-## 6. SvelteKit 3 and Vite 8
+## 6. Vite 8 (SvelteKit 3 deferred)
 
-- [ ] 6.1 Upgrade `@sveltejs/kit` to 3 and `vite` to 8 (and matching plugins); apply the Kit 3 migration notes; verify `npm run check` is clean
-- [ ] 6.2 Confirm `adapter-auto` and Firebase Hosting frameworks support still build the SSR function; verify `npm run build` and a preview deploy build in CI pass
-- [ ] 6.3 Verify `npm run lint`, `npm test` and `npm run test:e2e` pass
+- [x] 6.1 Upgrade `vite` to 8 with `@sveltejs/vite-plugin-svelte` 7, Vitest 5, TypeScript 6, superforms 3 and `adapter-auto` 7 (the newest that accepts SvelteKit 2); verify `npm run check` is clean
+- [x] 6.2 Check whether Firebase Hosting frameworks support can serve SvelteKit 3 (design decision 9); outcome: it cannot (the `firebase-frameworks` SSR entry imports `@sveltejs/kit/node/polyfills`, removed in Kit 3), so SvelteKit stays on 2.70 and the finished Kit 3 migration is kept on branch `wip/sveltekit-3-migration` for a follow-up issue
+- [x] 6.3 Verify `npm run lint`, `npm test`, `npm run build` and `npm run test:e2e` pass
 
 ## 7. Remaining dependencies
 
