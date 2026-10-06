@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { errorToast } from '$lib/Hooks/toasts';
 	import { getModalStore, getToastStore, type ModalSettings } from '@skeletonlabs/skeleton';
 	import { ZodError, z } from 'zod';
@@ -31,7 +30,7 @@
 		});
 		if (fetchResponse.ok) {
 			const body = await fetchResponse.json();
-			goto(body.url);
+			window.location.assign(body.url);
 		} else {
 			errorToast('Error starting payment process.', toastStore);
 		}
@@ -43,7 +42,7 @@
 		});
 		if (response.ok) {
 			const body = await response.json();
-			goto(body.url);
+			window.location.assign(body.url);
 		} else {
 			errorToast('Error starting customer portal.', toastStore);
 		}

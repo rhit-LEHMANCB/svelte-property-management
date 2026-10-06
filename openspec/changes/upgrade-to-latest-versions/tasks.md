@@ -11,10 +11,10 @@
 
 ## 2. SvelteKit 2 and Vite 5
 
-- [ ] 2.1 Upgrade `@sveltejs/kit` to 2, `vite` to 5, `@sveltejs/vite-plugin-svelte`, `adapter-auto`, `vitest` and `vite-plugin-tailwind-purgecss` as needed; verify `npm ci` resolves without forced peer overrides
-- [ ] 2.2 Apply the Kit 2 migration (redirect/error no longer thrown, `cookies.set` path required, `preloadData`, tsconfig, `resolvePath`, etc.) and verify `npm run check` is clean
-- [ ] 2.3 Fix Vitest breakage from the bump; verify `npm test` passes with unchanged assertions
-- [ ] 2.4 Verify `npm run lint`, `npm run build` and `npm run test:e2e` pass
+- [x] 2.1 Upgrade `@sveltejs/kit` to 2, `vite` to 5, `@sveltejs/vite-plugin-svelte`, `adapter-auto`, `vitest` and `vite-plugin-tailwind-purgecss` as needed; verify `npm ci` resolves without forced peer overrides
+- [x] 2.2 Apply the Kit 2 migration (redirect/error no longer thrown, `cookies.set` path required, `preloadData`, tsconfig, `resolvePath`, etc.) and verify `npm run check` is clean
+- [x] 2.3 Fix Vitest breakage from the bump; verify `npm test` passes with unchanged assertions
+- [x] 2.4 Verify `npm run lint`, `npm run build` and `npm run test:e2e` pass
 
 ## 3. Svelte 5 and superforms
 
