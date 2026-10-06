@@ -1,7 +1,7 @@
 # Lifecycle: add-test-suite
 
 - Branch: `add-test-suite` (from `origin/develop` at `75f789a`)
-- Stage: 2 Propose and preflight, waiting at Gate A
+- Stage: 3 Implement (unattended run started after Gate A)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-05
@@ -23,8 +23,8 @@ Reconstructed from the conversation and the existing proposal, design and tasks;
 Interview approved: yes (carried over from the conversation)
 
 ## Gate A
-Approved: no
-Accepted preflight gaps: none yet
+Approved: yes, 2026-10-05
+Accepted preflight gaps: local `.env` out of date for develop (does not affect tests or CI; noted in #48). Local build checks use per-command env overrides instead.
 
 ## Preflight (2026-10-05)
 
@@ -38,7 +38,8 @@ Accepted preflight gaps: none yet
 | Java for emulators | pass | OpenJDK 26.0.2 installed. |
 | Playwright installed | not yet | Created by this change. |
 | `qa` project exists | not yet | Added to tasks 5.4 and the design in this preflight; created by this change. |
-| QA credentials set | **fail** | `QA_ADMIN_EMAIL`, `QA_ADMIN_PASSWORD`, `QA_TENANT_EMAIL`, `QA_TENANT_PASSWORD` are not set, and no QA accounts are known to exist in `lehman-realty-dev`. |
+| QA credentials set | pass (fixed at Gate A) | QA admin and tenant created in `lehman-realty-dev` (tenant through the dev app's own add-user endpoint, so it has a Stripe customer), plus a permanent `qa-property (do not delete)` and the tenant link. Credentials are in the gitignored `.env.qa` (mode 600). Verified on the dev site: tenant `/maintenance` 200, admin `/admin/users` 200, tenant `/admin/users` 401. |
+| Local `.env` points at | note | `lehman-realty` = **production**. Never used for tests or QA. |
 | Dev deploy passing on `develop` | pass | Last completed run succeeded; the run for #51 was in progress. |
 | Secrets for this change | pass | None needed. |
 
