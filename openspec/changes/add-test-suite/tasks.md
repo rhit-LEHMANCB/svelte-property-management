@@ -36,16 +36,16 @@
 - [x] 5.1 Add `firebase-tools` and `@playwright/test`, add a separate `firebase.emulators.json` (so the deploy config in `firebase.json` stays untouched) with the `emulators` section and permissive `firestore.rules` and `storage.rules` for auth, firestore and storage under project `demo-lehman-realty`; verify `firebase emulators:exec --config firebase.emulators.json --project demo-lehman-realty --only auth,firestore,storage "echo ok"` succeeds (needs a JRE)
 - [x] 5.2 Add the `import.meta.env.MODE === 'e2e'` emulator hook in `src/lib/firebase.ts` and the optional `STRIPE_API_BASE_URL` override in `src/lib/server/stripe.ts`; verify `npm run build` output is unchanged for production mode and `npm run check` passes
 - [x] 5.3 Write the seed script (admin user, tenant user, property, junction) and the fake Stripe server; verify by running the seed against the emulator and checking the documents exist
-- [x] 5.4 Write `playwright.config.ts` with two projects: `e2e` (webServer `vite dev --mode e2e`, env block with generated admin key, fixed port, one worker, CI retry, report on failure) and `qa` (reads `BASE_URL` for the deployed dev site and the `QA_*` credentials from the environment or the gitignored `.env.qa`, starts no server or emulators, traces and screenshots on); verify `npx playwright test --list` shows both projects and the app reaches `/signin` in the emulator setup
+- [x] 5.4 Write `playwright.config.ts` with two projects: `e2e` (webServer `vite build --mode e2e` then `vite preview`, env block with generated admin key, fixed port, one worker, CI retry, report on failure) and `qa` (reads `BASE_URL` for the deployed dev site and the `QA_*` credentials from the environment or the gitignored `.env.qa`, starts no server or emulators, traces and screenshots on); verify `npx playwright test --list` shows both projects and the app reaches `/signin` in the emulator setup
 - [x] 5.5 Add npm script `test:e2e` wrapping `firebase emulators:exec`; verify one placeholder test passes through the script
 
 ## 6. Layer 3: smoke tests
 
-- [ ] 6.1 Sign-in test: tenant signs in and lands on `/`, invalid password shows the error, sign-out clears the cookie; verify it passes, including the `Secure` cookie on `http://localhost`
-- [ ] 6.2 Maintenance flow: tenant submits a request and sees it listed; admin sees it and closes it with a note; tenant sees it closed; verify it passes end to end
-- [ ] 6.3 Property flow: admin creates a property and finds it in the list; verify it passes and the document exists in the emulator
-- [ ] 6.4 Payment start: tenant enters an amount on `/payment` and is redirected to the fake Stripe URL, with the fee line present in the request the fake received; verify it passes
-- [ ] 6.5 Verify the e2e suite passes three times in a row locally and the whole run stays under a few minutes
+- [x] 6.1 Sign-in test: tenant signs in and lands on `/`, invalid password shows the error, sign-out clears the cookie; verify it passes, including the `Secure` cookie on `http://localhost`
+- [x] 6.2 Maintenance flow: tenant submits a request and sees it listed; admin sees it and closes it with a note; tenant sees it closed; verify it passes end to end
+- [x] 6.3 Property flow: admin creates a property and finds it in the list; verify it passes and the document exists in the emulator
+- [x] 6.4 Payment start: tenant enters an amount on `/payment` and is redirected to the fake Stripe URL, with the fee line present in the request the fake received; verify it passes
+- [x] 6.5 Verify the e2e suite passes three times in a row locally and the whole run stays under a few minutes
 
 ## 7. CI and documentation
 

@@ -66,10 +66,12 @@ export default defineConfig({
 					reuseExistingServer: !process.env.CI
 				},
 				{
-					command: `npx vite dev --mode e2e --host 127.0.0.1 --port ${APP_PORT} --strictPort`,
+					// A production build served by `vite preview`: no dependency re-bundling or page reloads,
+					// and it exercises the built output. `--mode e2e` turns on the Auth emulator hook.
+					command: `npx vite build --mode e2e && npx vite preview --mode e2e --host 127.0.0.1 --port ${APP_PORT} --strictPort`,
 					url: `${APP_URL}/signin`,
 					env: appEnv,
-					timeout: 120_000,
+					timeout: 300_000,
 					reuseExistingServer: false
 				}
 		  ],

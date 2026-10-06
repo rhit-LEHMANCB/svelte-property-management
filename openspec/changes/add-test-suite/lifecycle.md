@@ -50,7 +50,10 @@ Accepted preflight gaps: local `.env` out of date for develop (does not affect t
 ## Implementation notes
 - Emulator config lives in `firebase.emulators.json`, not in `firebase.json`, so the deploy config is untouched (task 5.1 text updated).
 - `firebase-tools` and `@playwright/test` add about 8,700 lockfile lines. The app's own dependencies are unchanged; 25 transitive packages moved within their semver ranges.
-- The dev server logs "default Firebase app already exists" in e2e mode because `admin.ts` is evaluated twice; it is caught by the existing try/catch and is not new.
+- The e2e app is a production build served by `vite preview`, not `vite dev` (a cold dev server re-bundles dependencies and reloads the page mid-login; see design.md). The e2e build writes to `.svelte-kit/output` like `npm run build`.
+- Verified assumptions: `Secure` session cookie is accepted on `http://127.0.0.1` in Chromium; the Auth emulator works with `createSessionCookie` through the Admin SDK.
+- Mutation spot checks: six deliberately broken behaviors were each caught by the handler tests.
+- Three consecutive local e2e runs: 15 of 15 passed each time, about 73 seconds per run.
 - Local `npm run lint`, `check` and `build` need three env overrides (see Preflight) because the local `.env` is stale.
 
 ## Review rounds

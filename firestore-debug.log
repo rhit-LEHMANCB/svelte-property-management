@@ -7,7 +7,7 @@ WARNING: java.lang.System::loadLibrary has been called by io.netty.util.internal
 WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
 WARNING: Restricted methods will be blocked in a future release unless native access is enabled
 
-Oct 06, 2026 12:05:10 AM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketServer start
+Oct 06, 2026 12:25:30 AM com.google.cloud.datastore.emulator.firestore.websocket.WebSocketServer start
 INFO: Started WebSocket server on ws://127.0.0.1:9150
 
 API endpoint: http://127.0.0.1:8080
@@ -25,15 +25,19 @@ If you are running a Firestore in Datastore Mode project, run:
 Note: Support for Datastore Mode is in preview. If you encounter any bugs please file at https://github.com/firebase/firebase-tools/issues.
 Dev App Server is now running.
 
-Oct 06, 2026 12:05:18 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+Oct 06, 2026 12:26:24 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
 INFO: Detected non-HTTP/2 connection.
-Oct 06, 2026 12:05:18 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+Oct 06, 2026 12:26:24 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
 INFO: Detected HTTP/2 connection.
-Oct 06, 2026 12:05:19 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+Oct 06, 2026 12:26:24 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
 INFO: Detected HTTP/2 connection.
-Oct 06, 2026 12:05:20 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+Oct 06, 2026 12:26:26 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+INFO: Detected HTTP/2 connection.
+Oct 06, 2026 12:26:36 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
 INFO: Detected non-HTTP/2 connection.
-Oct 06, 2026 12:05:20 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+Oct 06, 2026 12:26:36 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
+INFO: Detected non-HTTP/2 connection.
+Oct 06, 2026 12:26:41 AM io.gapi.emulators.netty.HttpVersionRoutingHandler channelRead
 INFO: Detected non-HTTP/2 connection.
 *** shutting down gRPC server since JVM is shutting down
 *** server shut down
