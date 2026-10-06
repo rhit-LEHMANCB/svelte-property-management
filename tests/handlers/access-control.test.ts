@@ -128,6 +128,5 @@ describe('access-control: data is not shared between tenants', () => {
 
 		expect(first.data.userProperty.data.title).toBe('One');
 		expect(second.data.userProperty.data.title).toBe('Two');
-		expect(db.peek('properties/p2')).toBeDefined();
 	});
 });

@@ -75,7 +75,7 @@ jobs:
             ~/.cache/firebase/emulators
           key: e2e-tools-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
       - name: Upload Playwright report
-        if: failure()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report

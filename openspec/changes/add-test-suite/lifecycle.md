@@ -1,8 +1,8 @@
 # Lifecycle: add-test-suite
 
 - Branch: `add-test-suite` (from `origin/develop` at `75f789a`)
-- Stage: 4 Review loop (stage 3 complete: 33 of 33 tasks done)
-- Review round: 2 of 3 done (fixes applied, round 3 next)
+- Stage: **HALTED** at stage 4 (review loop). Stage 3 is complete: 33 of 33 tasks done.
+- Review round: 3 of 3 done; round 3 still had 1 major, so the run halted
 - QA cycle: 0 of 3
 - Started: 2026-10-05
 - Issue: #50 (related: #48)
@@ -72,6 +72,13 @@ Accepted preflight gaps: local `.env` out of date for develop (does not affect t
 - Minor: the over-balance e2e check no longer depends on the placeholder balance of 1000; the wrong-mode e2e no longer pins the response status; reset specs use a unique user per attempt so a CI retry can run; the CI cache is now saved even when tests fail and the job has a 20 minute timeout; dropped a test that only exercised the doubles.
 - Nit: the `qa` project refuses a `BASE_URL` that is not the dev site or a local server (checked against both production hostnames); the fake Firestore now rejects `undefined` field values like the real SDK (no handler wrote one).
 
+**Round 3** (blockers 0, **majors 1**, minors 6, nits 4). The skill says a third round that still has a major halts the run, so it halted here.
+- Major (fixed after the round, NOT re-reviewed): the QA `BASE_URL` guard in `playwright.config.ts` ran before `.env.qa` was loaded, so a production URL kept in that file would have skipped the check. The file is now loaded first, then guarded; an empty `BASE_URL` is treated as unset. Verified by hand with a temporary `.env.qa` containing each production hostname (blocked), an empty value and the dev URL (allowed).
+- Minor, fixed: `.env.qa` read errors are no longer swallowed (only a missing file is ignored, and a missing `process.loadEnvFile` gives a clear message); the Stripe base-URL override is honored only for a loopback host (new `tests/handlers/stripe-client.test.ts`); the Playwright report is uploaded whenever the run is not cancelled, so a test that only passed on retry stays visible; README notes that QA output can hold failure screenshots and that `test:qa` is POSIX-shell syntax.
+- Nit, fixed: stale comment in the sign-in helper; a vacuous assertion removed.
+- Not changed: the CI cache is scoped per PR ref by GitHub, so a new PR starts cold (it still helps re-runs of the same PR); the network block covers `fetch`, `http` and `https` but not raw sockets (the Firebase and Stripe modules are already doubled); `firebase-tools` is a large dev dependency.
+- Question from the reviewer: `lifecycle.md` contains no secrets or account data, only the git author email already in the commit history.
+
 ## Deferred findings
 - `POST /api/signin` sets the cookie with `maxAge: expiresIn`, and `expiresIn` is 5 days in milliseconds. SvelteKit cookie `maxAge` is in seconds, so the browser cookie lives about 13.7 years. The session itself still expires after 5 days at Firebase, so the practical effect is limited, but the value is wrong. Not in the specs' Known Gaps; tests assert only httpOnly, secure and path. File an issue at wrap-up.
 - `/reset` with a wrong `mode` responds 500 (page text "500 Invalid action"), not the intended 400: the `error(400)` is thrown inside the component while rendering. Found by the e2e test; recorded in the authentication spec's Known Gaps. File an issue at wrap-up.
@@ -82,3 +89,12 @@ Accepted preflight gaps: local `.env` out of date for develop (does not affect t
 
 ## Verification checklist for the human
 (stage 7)
+
+## Halted
+- **Stage:** 4, review loop (round 3 of 3).
+- **Reason:** round 3 returned one major (the QA `BASE_URL` guard ordering). The rule is to halt when round 3 still has a blocker or major.
+- **State of the branch:** `add-test-suite`, all 33 tasks done and ticked. The major and the cheap findings were fixed after round 3 but have not been through another review. Local checks on the final code: lint clean, `svelte-check` 0 errors, 188 handler and unit tests, production build, 22 e2e tests, all passing. Nothing has been merged or deployed.
+- **Next step for a human (choose one):**
+  1. Accept the post-review fix (a small, hand-verified change to the QA guard plus a loopback restriction on the Stripe override) and tell the run to continue. It then goes to stage 5: PR to `develop`, merge, dev deploy, independent QA, then the production PR.
+  2. Ask for one more independent review round on the final diff first, then continue.
+  3. Review the draft PR yourself and merge it by hand.

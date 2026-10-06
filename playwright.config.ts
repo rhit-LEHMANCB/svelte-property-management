@@ -12,21 +12,34 @@ import {
 // and no emulators and does no seeding.
 const isQa = Boolean(process.env.PLAYWRIGHT_QA);
 
+const DEV_QA_URL = 'https://lehman-realty-dev.web.app';
+
 if (isQa) {
+	// QA accounts live in the gitignored .env.qa unless the variables are already set. It is loaded
+	// before the BASE_URL check below, so a BASE_URL kept in that file is checked too.
+	if (typeof process.loadEnvFile !== 'function') {
+		throw new Error('QA runs need Node 20.12 or newer (run `nvm use`).');
+	}
+	try {
+		process.loadEnvFile('.env.qa');
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+			throw new Error(`Could not read .env.qa: ${(error as Error).message}`);
+		}
+		// No file: the variables must come from the environment.
+	}
+
 	// QA signs in with real dev accounts, so it must never be pointed at production.
 	const allowedHosts = ['lehman-realty-dev.web.app', 'localhost', '127.0.0.1'];
-	if (process.env.BASE_URL && !allowedHosts.includes(new URL(process.env.BASE_URL).hostname)) {
+	const requested = process.env.BASE_URL?.trim();
+	if (requested && !allowedHosts.includes(new URL(requested).hostname)) {
 		throw new Error(
 			`BASE_URL must be the dev site or a local server (allowed: ${allowedHosts.join(', ')}).`
 		);
 	}
-	// QA accounts live in the gitignored .env.qa unless the variables are already set.
-	try {
-		process.loadEnvFile('.env.qa');
-	} catch {
-		// Not present: the variables must come from the environment.
-	}
 }
+
+const qaBaseUrl = process.env.BASE_URL?.trim() || DEV_QA_URL;
 
 // The e2e app signs sessions with a throwaway key generated on every run, so no key is committed.
 const { privateKey } = generateKeyPairSync('rsa', {
@@ -93,7 +106,7 @@ export default defineConfig({
 			testDir: './tests/qa',
 			use: {
 				...devices['Desktop Chrome'],
-				baseURL: process.env.BASE_URL ?? 'https://lehman-realty-dev.web.app',
+				baseURL: qaBaseUrl,
 				// Traces and video record what is typed, which would include the QA account passwords.
 				trace: 'off',
 				video: 'off'
