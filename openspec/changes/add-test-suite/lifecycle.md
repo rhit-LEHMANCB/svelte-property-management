@@ -1,7 +1,7 @@
 # Lifecycle: add-test-suite
 
 - Branch: `add-test-suite` (from `origin/develop` at `75f789a`)
-- Stage: 3 Implement (unattended run started after Gate A)
+- Stage: 4 Review loop (stage 3 complete: 33 of 33 tasks done)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-05
@@ -53,6 +53,7 @@ Accepted preflight gaps: local `.env` out of date for develop (does not affect t
 - The e2e app is a production build served by `vite preview`, not `vite dev` (a cold dev server re-bundles dependencies and reloads the page mid-login; see design.md). The e2e build writes to `.svelte-kit/output` like `npm run build`.
 - Verified assumptions: `Secure` session cookie is accepted on `http://127.0.0.1` in Chromium; the Auth emulator works with `createSessionCookie` through the Admin SDK.
 - Mutation spot checks: six deliberately broken behaviors were each caught by the handler tests.
+- Integration check (task 7.4): a throwaway PR (#52, closed) removed the close-request validation. The new `tests` job failed at "Unit and handler tests" on exactly the covering test (1 failed, 176 passed) and `build_and_preview` failed on ESLint; after the revert both jobs passed, including the e2e step on the CI runner (tests job 3m20s).
 - Three consecutive local e2e runs: 15 of 15 passed each time, about 73 seconds per run.
 - Local `npm run lint`, `check` and `build` need three env overrides (see Preflight) because the local `.env` is stale.
 

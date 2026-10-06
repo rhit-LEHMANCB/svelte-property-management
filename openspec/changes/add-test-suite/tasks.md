@@ -49,10 +49,10 @@
 
 ## 7. CI and documentation
 
-- [ ] 7.1 Update `.github/workflows/firebase-hosting-pull-request.yml` with setup-java (21), Playwright browser install, and the unit, handler and e2e steps ahead of the build, with explicit test env values and report upload on failure; verify the PR check passes on a draft PR
+- [x] 7.1 Update `.github/workflows/firebase-hosting-pull-request.yml` with setup-java (21), Playwright browser install, and the unit, handler and e2e steps ahead of the build, with explicit test env values and report upload on failure; verify the PR check passes on a draft PR
 - [x] 7.2 Add a "Testing" section to `README.md` (layers, scripts, JRE requirement, how tests map to specs, the `qa` project and its `QA_*` variables) and an `.env.example` listing every variable the server and client import, with the format of each (for example `FB_PRIVATE_KEY` is a JSON string `{"privateKey": "..."}`); verify the commands run as written on a clean checkout and that a `.env` copied from the example builds
 - [x] 7.3 Update issue #48 to add the Vitest bump to the Vite upgrade step and to make this change the prerequisite; verify the issue shows the changes
-- [ ] 7.4 Integration check: break one covered behavior on a throwaway branch and verify the PR check fails on it, then revert and verify it passes
+- [x] 7.4 Integration check: break one covered behavior on a throwaway branch and verify the PR check fails on it, then revert and verify it passes
 
 ## Workflow follow-up
 
