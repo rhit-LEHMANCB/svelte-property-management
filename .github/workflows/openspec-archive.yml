@@ -5,6 +5,7 @@ name: Archive OpenSpec changes after production merge
       - production
   workflow_dispatch:
 permissions:
+  actions: write
   contents: write
   pull-requests: write
 concurrency:
@@ -31,7 +32,7 @@ jobs:
       - name: Validate specs
         if: steps.archive.outputs.archived != '0'
         run: openspec validate --specs
-      - name: Open and merge the archive PR into develop
+      - name: Open the archive PR into develop and merge it when its checks pass
         if: steps.archive.outputs.archived != '0'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -42,6 +43,11 @@ jobs:
             --title "Archive OpenSpec changes (release ${GITHUB_SHA::7})" \
             --body-file "$RUNNER_TEMP/summary.md")"
           echo "Opened $url"
-          if ! gh pr merge "$url" --merge --delete-branch; then
-            echo "::warning::Could not merge $url automatically: develop requires the tests and build_and_preview checks, and pull requests opened by the Actions bot do not start them. Close and reopen the pull request to run the checks, then merge it."
+          # develop requires the tests and build_and_preview checks. A pull request opened with the
+          # built-in token does not start them, but a workflow_dispatch run does, and its check runs
+          # attach to the branch head under the same names.
+          gh workflow run firebase-hosting-pull-request.yml --ref "$branch"
+          # Merge as soon as the required checks pass.
+          if ! gh pr merge "$url" --auto --merge; then
+            echo "::warning::Could not turn on auto-merge for $url. Once its checks pass, merge it by hand."
           fi
