@@ -1,7 +1,7 @@
 # Lifecycle: p0-payments-and-access-fixes
 
 - Branch: `p0-payments-and-access-fixes`
-- Stage: 4 Review (resumed 2026-10-06 on the user's instruction: "fix everything and run another round, if it passes continue along")
+- Stage: 5 Ship to develop (review passed in round 4; resumed 2026-10-06 on the user's instruction: "fix everything and run another round, if it passes continue along")
 - Review round: 3 of 3 done; round 4 run on the user's instruction after the halt
 - QA cycle: 0 of 3
 - Started: 2026-10-06
@@ -98,8 +98,15 @@ Accepted preflight gaps: `npm run check` fails on the stale local `.env` unless 
   - minor: key guard treats an empty or unknown project id as production; consider an explicit allowlist.
   - minor: concurrent-webhook race (already a Known Gap). Nit: 2000-01 lower bound.
 - Round 3 fixes (before round 4): webhook now runs in one transaction with a `recorded_invoices/{id}` marker (idempotent redelivery, no concurrent overwrite, no partial multi-year write); fake Firestore batch and transaction are all-or-nothing and the test asserts nothing is left behind; `hasEntry` matches `monthOwedCents`; re-assign scenario added to the spec; empty project id throws in the key guard; move-in month limited to 5 years back; cleared month input is reverted with a toast. Not changed: stale `moveInMonth` in invoice metadata (accepted, documented in design).
+- Round 4: 0 blockers, 0 majors, 3 minors, 2 nits. Passed. All deferred below.
 
 ## Deferred findings
+- A future `moveInMonth` (e.g. 2099-12) is accepted; add an upper bound.
+- No test that `stripe.ts` calls the key guard (only the guard function is tested).
+- The five-year and future-month limits are tested through POST but not PATCH.
+- POST re-assign reads then sets the junction (not atomic against a concurrent PATCH).
+- `arrayUnion` merges two identical transactions (same second, amount, fee); balances stay right.
+- Two checkouts started before the first webhook lands can together exceed the balance.
 
 ## QA report
 (filled in stage 6; link to the QA evidence branch)
