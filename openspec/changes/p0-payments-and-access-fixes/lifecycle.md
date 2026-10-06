@@ -1,0 +1,100 @@
+# Lifecycle: p0-payments-and-access-fixes
+
+- Branch: `p0-payments-and-access-fixes`
+- Stage: 2 Propose done, awaiting Gate A
+- Review round: 0 of 3
+- QA cycle: 0 of 3
+- Started: 2026-10-06
+
+## Interview summary
+(approved: yes, 2026-10-06)
+
+**Goal.** Close the five P0 issues: #54 session cookie lifetime, #42 tenant routes accept admins, #37 Stripe webhook reliability, #36 payment page uses a fake balance, #83 Stripe test/live separation. One change, one PR.
+
+**Scope**
+- **#54:** `maxAge` in seconds (`expiresIn / 1000`); handler test asserts 432000.
+- **#42:** shared role guard for `/maintenance`, `/insurance`, `/payment`: admins get a 303 to `/admin`. Also add a server-side admin check to `/admin/+page` so it is not protected only by the `/` redirect.
+- **#37:** await every Firestore write in the webhook (failure returns 500 so Stripe retries); record the "Transaction Fee" line on the transaction as `fee` (it does not change the balance); pick the month in `America/Indiana/Indianapolis`, not server locale; find the rent line by something sturdier than the literal description "Rent" (invoice line metadata).
+- **#36:** real balance and due date; server rejects amounts above the balance (400); confirmation page for Stripe success and cancel URLs; round `amount * 100`.
+- **#83 (revised after dashboard check):** the user reports dev and production are both in Stripe test mode and test mode cannot be turned off, so the account is probably not activated for live payments and dev and production likely share one test account. Code: a startup guard that refuses a live key (`sk_live_`/`rk_live_`) outside production and only logs a loud warning for a test key in production (it must not break the production deploy). Docs next to `.env.example`: which key goes where, creating a separate Stripe sandbox for dev, activating the account for live mode, replacing customer ids at the switch. The sandbox and activation steps are human tasks, not code.
+
+**Out of scope:** auto-pay, receipts, notifications, SendGrid (#90), the other P1+ issues, Stripe API-version bump.
+
+**Roles.** Tenants: pay and see their balance. Admins: redirected away from tenant pages; set a tenant's move-in month. Unauthenticated: unchanged.
+
+**Data changes**
+- `junction_user_property/{tenantId}_{propertyId}` gets `moveInMonth` (`"YYYY-MM"`). Admin sets it when assigning a tenant and can edit it later on the property's Tenants tab. Existing junctions have none.
+- `payment_history/{year}.{Month}.transactions[]` entries gain optional `fee`.
+- No migration script: a junction without `moveInMonth` is treated as "current month only", so no carry-over until an admin sets it.
+
+**Balance rule (#36).** For each month from `moveInMonth` through the current month (US Eastern), owed = rent; paid = sum of that month's transactions' `amount` (a month with a `remainingBalance` entry uses it). Balance = sum of unpaid remainders, never below 0 (an overpayment in one month does not offset another beyond zero for that month; extra credit is not tracked). Due date = the 1st of the current month if the current month is unpaid; otherwise "nothing to pay". Carry-over spans year boundaries by reading each year's document.
+
+**Payment cap (confirmed by user).** A tenant can never pay more than the remaining balance: the maximum for one payment is the total owed through the current month (unpaid past months plus this month's remainder). No prepaying future months, no overpayment. Enforced on the server (400) and in the client.
+
+**Edge cases**
+- No `moveInMonth`: balance = current month's remainder only.
+- Webhook for unknown property: logged and acknowledged 200 (retrying cannot help); Firestore failure: 500 (retry).
+- Duplicate webhook delivery for the same invoice: out of scope, noted as a deferred finding.
+- Amount with more than 2 decimals or above the balance: 400 from the server, same toast text as today in the client.
+
+**Security.** The over-balance check is the server's, not just the client's. Role guard runs server-side in the layout `load`. The key-mode guard reads the key prefix only and never prints it.
+
+**Acceptance (WHEN/THEN)**
+- WHEN a user signs in THEN the cookie `Max-Age` is 432000 seconds.
+- WHEN an admin opens `/payment`, `/maintenance` or `/insurance` THEN they are redirected to `/admin`.
+- WHEN a tenant with rent 1000 and no payments opens `/payment` THEN the page shows $1,000.00 due on the 1st of this month.
+- WHEN they pay $400 THEN the webhook records amount 400 and the fee, and `/payment` shows $600.00.
+- WHEN a tenant with `moveInMonth` two months ago and no payments opens `/payment` THEN the balance is 3 × rent.
+- WHEN a request amount exceeds the balance THEN the server responds 400 and no Stripe session is created.
+- WHEN a Firestore write fails in the webhook THEN it responds 500.
+- WHEN Stripe returns from Checkout THEN the tenant lands on a confirmation page; cancel returns to `/payment`.
+- WHEN a non-production environment starts with an `sk_live_` key THEN startup fails with a clear message; WHEN production starts with an `sk_test_` key THEN it starts and logs a warning.
+
+**Rollout notes**
+- No new secrets or variables. The guard relies on `PUBLIC_FB_PROJECT_ID` (`lehman-realty-dev` is the dev project) to tell environments apart.
+- Human tasks, not blocking this change: create a separate Stripe sandbox for dev (own keys and webhook for the dev site, put in the `develop` GitHub environment); activate the Stripe account for live mode, then replace production's keys and webhook secret and fix users' test customer ids. Until then production "payments" are test payments.
+- Existing tenants have no `moveInMonth` until an admin sets it.
+- Production currently uses a test key, so the guard only warns there; it cannot break the production deploy.
+
+**Dashboard checklist (done by the user; outcome: both environments in test mode, live mode unavailable; remaining items become production-PR human tasks)**
+1. In Stripe, confirm the key in the GitHub `develop` environment is a test or sandbox key and the one in `production` is a live key from the production account (the key's first characters show `sk_test_`/`rk_test_` vs `sk_live_`/`rk_live_`).
+2. Confirm two webhook endpoints exist: `https://lehman-realty-dev.web.app/api/stripe/webhook` (test mode) and the production domain's (live mode), each with its own signing secret matching that environment's `STRIPE_ENDPOINT_SECRET`.
+3. Confirm production user documents hold live customer ids (`cus_` created in live mode) and dev ones hold test ids.
+
+**Assumptions:** `America/Indiana/Indianapolis` is the business timezone; the rent due date is the 1st; amounts are USD; one property per tenant (#39 not fixed here).
+
+## Gate A
+Approved: no
+Accepted preflight gaps: none
+
+## Preflight
+| Check | Result |
+|---|---|
+| git identity and push access | OK (Caleb Lehman; `origin` reachable) |
+| `gh auth` scopes | OK (`repo`, `workflow`) |
+| `gh pr merge` permitted in this session | **Needs user confirmation** (cannot be tested without merging) |
+| Playwright `qa` project + browsers | OK (`qa` project present; chromium installed) |
+| QA credentials | OK: all four set in `.env.qa` (mode 600, untracked); not in env |
+| Dev deploy workflow on `develop` | OK (latest 5 runs success) |
+| `npm run lint` | OK |
+| `npm run test:unit` / `test:handlers` | OK (46 and 152 passed) |
+| `npm run check` | **Gap**: fails on a stale local `.env` (missing `PUBLIC_FRONTEND_URL`, `STRIPE_ENDPOINT_SECRET`); passes with those two set on the command line, so the run uses that |
+| Java for e2e emulators | OpenJDK 26 found (CI uses Temurin 21); e2e not yet run locally |
+| `openspec` CLI | Not installed; using pinned `@fission-ai/openspec@1.14.1` from the scratchpad |
+| Secrets/variables needed in `develop` environment | None |
+
+
+## Review rounds
+(none yet; one line per round: blockers, majors, fixed, rejected with reason)
+
+## Deferred findings
+- Duplicate webhook delivery for one invoice is not de-duplicated.
+
+## QA report
+(filled in stage 6; link to the QA evidence branch)
+
+## Verification checklist for the human
+(filled in stage 7)
+
+## Halted
+(only if the run halted: stage, reason, evidence, next step for a human)
