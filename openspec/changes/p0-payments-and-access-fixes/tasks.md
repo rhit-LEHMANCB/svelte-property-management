@@ -2,12 +2,12 @@
 
 ## 1. Session cookie lifetime (#54)
 
-- [ ] 1.1 In `src/routes/api/signin/+server.ts` set the cookie `maxAge` in seconds, and extend the authentication handler test to assert `Max-Age` 432000; verify `npm run test:handlers` passes.
+- [x] 1.1 In `src/routes/api/signin/+server.ts` set the cookie `maxAge` in seconds, and extend the authentication handler test to assert `Max-Age` 432000; verify `npm run test:handlers` passes.
 
 ## 2. Role guard (#42)
 
-- [ ] 2.1 In `src/routes/(authenticated)/+layout.server.ts` redirect admins (303 to `/admin`) when `event.route.id` is `/(authenticated)/maintenance`, `/(authenticated)/insurance` or under `/(authenticated)/payment`; verify handler tests for each of the three routes plus `/payment/success` (admin redirected, tenant loads).
-- [ ] 2.2 Add `src/routes/(authenticated)/admin/+page.server.ts` that requires an admin; verify a handler test (tenant gets 401, admin loads) passes and update the Known Gaps in `openspec/specs/access-control/spec.md`.
+- [x] 2.1 In `src/routes/(authenticated)/+layout.server.ts` redirect admins (303 to `/admin`) when `event.route.id` is `/(authenticated)/maintenance`, `/(authenticated)/insurance` or under `/(authenticated)/payment`; verify handler tests for each of the three routes plus `/payment/success` (admin redirected, tenant loads).
+- [x] 2.2 Add `src/routes/(authenticated)/admin/+page.server.ts` that requires an admin; verify a handler test (tenant gets 401, admin loads) passes and update the Known Gaps in `openspec/specs/access-control/spec.md`.
 
 ## 3. Balance logic
 

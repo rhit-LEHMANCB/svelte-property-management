@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { load as adminPageLoad } from '../../src/routes/(authenticated)/admin/+page.server';
 import { load as layoutLoad } from '../../src/routes/(authenticated)/+layout.server';
 import { load as homeLoad } from '../../src/routes/(authenticated)/+page.server';
 import { call } from '../helpers/callHandler';
@@ -61,6 +62,54 @@ describe('access-control: tenant property context (authenticated layout)', () =>
 		expect(result.status).toBe(200);
 		expect(result.data.user).toMatchObject({ permissions: 'admin' });
 		expect(result.data).not.toHaveProperty('userProperty');
+	});
+});
+
+describe('access-control: tenant-only routes redirect admins', () => {
+	const routes = [
+		'/(authenticated)/maintenance',
+		'/(authenticated)/insurance',
+		'/(authenticated)/payment',
+		'/(authenticated)/payment/success'
+	];
+
+	it.each(routes)('Scenario: an admin opening %s is redirected 303 to /admin', async (routeId) => {
+		seedAdmin('a1');
+
+		const result = await call(layoutLoad, { userID: 'a1', routeId });
+
+		expect(result).toMatchObject({ status: 303, redirect: '/admin' });
+	});
+
+	it.each(routes)('Scenario: a tenant opening %s loads', async (routeId) => {
+		seedTenant('t1');
+		seedProperty('p1');
+		linkTenant('t1', 'p1');
+
+		const result = await call(layoutLoad, { userID: 't1', routeId });
+
+		expect(result.status).toBe(200);
+	});
+
+	it('Scenario: an admin on other routes is not redirected', async () => {
+		seedAdmin('a1');
+
+		for (const routeId of [
+			'/(authenticated)/admin',
+			'/(authenticated)/admin/users',
+			'/(authenticated)/paymentx'
+		]) {
+			expect((await call(layoutLoad, { userID: 'a1', routeId })).status).toBe(200);
+		}
+	});
+
+	it('Scenario: /admin requires an admin (tenant 401, admin loads)', async () => {
+		seedTenant('t1');
+		seedAdmin('a1');
+
+		expect((await call(adminPageLoad, { userID: 't1' })).status).toBe(401);
+		expect((await call(adminPageLoad, { userID: null })).status).toBe(401);
+		expect((await call(adminPageLoad, { userID: 'a1' })).status).toBe(200);
 	});
 });
 
