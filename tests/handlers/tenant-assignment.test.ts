@@ -273,6 +273,26 @@ describe('tenant-assignment: assignable users (property edit page load)', () => 
 	});
 });
 
+describe('tenant-assignment: tenant id is validated', () => {
+	it('Scenario: a tenant id containing a slash responds 400 for POST and PATCH', async () => {
+		seedAdmin('admin-1');
+
+		const post = await call(assignTenant, {
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' },
+			body: { tenantId: 'a/b' }
+		});
+		const patch = await call(updateTenant, {
+			method: 'PATCH',
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' },
+			body: { tenantId: 'a/b', moveInMonth: '2026-01' }
+		});
+
+		expect([post.status, patch.status]).toEqual([400, 400]);
+	});
+});
+
 describe('tenant-assignment: change move-in month (PATCH /api/property/{id}/tenants)', () => {
 	it('Scenario: an admin updates the junction moveInMonth', async () => {
 		seedAdmin('admin-1');

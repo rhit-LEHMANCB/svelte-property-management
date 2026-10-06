@@ -83,7 +83,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					amountCents: rentCents
 				});
 
-				// One write per year document; the fee is recorded once, on the first transaction.
+				// One entry per year document; the fee is recorded once, on the first transaction.
 				const years = new Map<string, Record<string, unknown>>();
 				allocations.forEach((a, index) => {
 					const amount = a.cents / 100;
@@ -102,14 +102,21 @@ export const POST: RequestHandler = async ({ request }) => {
 					years.set(String(a.month.year), months);
 				});
 
+				// One batch, so a payment spanning two years is recorded completely or not at all and a
+				// retry after a failure starts from the same state.
+				const batch = adminDB.batch();
 				for (const [year, months] of years) {
-					await adminDB
-						.collection('properties')
-						.doc(propertyId)
-						.collection('payment_history')
-						.doc(year)
-						.set(months, { merge: true });
+					batch.set(
+						adminDB
+							.collection('properties')
+							.doc(propertyId)
+							.collection('payment_history')
+							.doc(year),
+						months,
+						{ merge: true }
+					);
 				}
+				await batch.commit();
 			} catch (err) {
 				console.log(err instanceof Error ? err.message : err);
 				throw error(500, 'Failed to record payment');

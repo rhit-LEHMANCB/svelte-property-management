@@ -360,6 +360,37 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 		});
 	});
 
+	it('Scenario: a payment across a year boundary is recorded in both year documents', async () => {
+		seedProperty('prop-1', { rent: 1000 });
+		const event = invoiceEvent([{ description: 'Rent', amount: 150000 }]);
+		event.data.object.created = Date.UTC(2026, 0, 15, 12) / 1000;
+		Object.assign(event.data.object.metadata, { moveInMonth: '2025-12', rentCents: '150000' });
+
+		const result = await send(event);
+
+		expect(result.status).toBe(200);
+		expect(db.peek('properties/prop-1/payment_history/2025')).toMatchObject({
+			December: { remainingBalance: 0 }
+		});
+		expect(history()).toMatchObject({ January: { remainingBalance: 500 } });
+	});
+
+	it('Scenario: a failed write in a multi-year payment responds 500', async () => {
+		seedProperty('prop-1', { rent: 1000 });
+		const event = invoiceEvent([{ description: 'Rent', amount: 150000 }]);
+		event.data.object.created = Date.UTC(2026, 0, 15, 12) / 1000;
+		Object.assign(event.data.object.metadata, { moveInMonth: '2025-12', rentCents: '150000' });
+		const failing = vi
+			.spyOn(FakeDocRef.prototype, 'set')
+			.mockImplementationOnce(async () => {})
+			.mockRejectedValue(new Error('boom'));
+
+		const result = await send(event);
+
+		failing.mockRestore();
+		expect(result.status).toBe(500);
+	});
+
 	it('Scenario: Bad signature responds 400 and records nothing', async () => {
 		seedProperty('prop-1');
 

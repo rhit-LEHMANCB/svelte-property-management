@@ -67,3 +67,4 @@ The system SHALL display the tenant's actual remaining balance and due date from
 - A duplicate webhook delivery for one invoice is recorded twice (no de-duplication).
 - Two checkouts started before the first webhook lands can together exceed the balance.
 - Production runs with a Stripe test-mode key until the account is activated for live payments; the key-mode guard only warns there.
+- Two webhook events for the same month processed at the same instant can overwrite each other's `remainingBalance` when the month has no entry yet.

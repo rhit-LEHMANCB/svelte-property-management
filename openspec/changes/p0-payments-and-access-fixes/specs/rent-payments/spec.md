@@ -38,6 +38,11 @@ The system SHALL verify the Stripe signature on `POST /api/stripe/webhook` and, 
 - **WHEN** the month entry exists
 - **THEN** `remainingBalance` is decremented by the amount and the transaction is appended
 
+#### Scenario: Payment covers carried-over months
+- **WHEN** the invoice metadata carries a `moveInMonth` and the payment exceeds the current month's remainder
+- **THEN** the payment is applied to the oldest unpaid months first, each affected month gets its own transaction and `remainingBalance`, and the fee is recorded on the first transaction
+- **AND** all writes for the payment are committed in one batch, so a failure leaves nothing recorded
+
 #### Scenario: Month near midnight
 - **WHEN** an invoice is created at 23:30 on the last day of a month in the business time zone
 - **THEN** the payment is recorded under that month, not the next one

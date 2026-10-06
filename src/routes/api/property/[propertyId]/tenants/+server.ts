@@ -4,6 +4,9 @@ import { adminDB } from '$lib/server/admin';
 import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
 import { MOVE_IN_MONTH_PATTERN, getMonthKey } from '$lib/server/payments';
 
+const isValidId = (value: unknown): value is string =>
+	typeof value === 'string' && value.length > 0 && !value.includes('/');
+
 const isValidMonth = (value: unknown): value is string =>
 	typeof value === 'string' && MOVE_IN_MONTH_PATTERN.test(value);
 
@@ -14,7 +17,7 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 
 	const { tenantId, moveInMonth } = await request.json();
 
-	if (!tenantId) {
+	if (!tenantId || !isValidId(tenantId)) {
 		throw error(400, 'Please provide a Tenant Id');
 	}
 
@@ -75,7 +78,7 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
 
 	const { tenantId, moveInMonth } = await request.json();
 
-	if (!tenantId) {
+	if (!tenantId || !isValidId(tenantId)) {
 		throw error(400, 'Please provide a Tenant Id');
 	}
 

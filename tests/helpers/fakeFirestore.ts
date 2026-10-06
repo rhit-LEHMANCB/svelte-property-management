@@ -7,8 +7,8 @@ import { isDeepStrictEqual } from 'node:util';
  * arrayUnion, arrayRemove, delete. It exists so handler tests run without Java or an emulator;
  * the Playwright layer covers real Firestore behavior.
  *
- * Not modeled: composite-index requirements, the 10-value limit on `in` and `not-in`, transactions
- * and batches, security rules, and consistency or latency.
+ * Not modeled: composite-index requirements, the 10-value limit on `in` and `not-in`, transactions,
+ * atomicity of batches (they are applied in order), security rules, and consistency or latency.
  */
 
 export class FakeTimestamp {
@@ -323,6 +323,20 @@ export class FakeFirestore {
 	}
 	doc(path: string) {
 		return new FakeDocRef(this, path);
+	}
+	/** Writes are queued and applied on commit(); the real SDK applies them atomically. */
+	batch() {
+		const ops: (() => Promise<void>)[] = [];
+		const batch = {
+			set(ref: FakeDocRef, data: Data, options?: { merge?: boolean }) {
+				ops.push(() => ref.set(data, options));
+				return batch;
+			},
+			async commit() {
+				for (const op of ops) await op();
+			}
+		};
+		return batch;
 	}
 
 	// Storage primitives used by the refs above.

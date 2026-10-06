@@ -2,7 +2,7 @@
 
 - Branch: `p0-payments-and-access-fixes`
 - Stage: 4 Review (implementation done 2026-10-06; all tasks ticked; lint, check, unit, handlers, build, e2e pass locally)
-- Review round: 0 of 3
+- Review round: 2 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-06
 
@@ -89,6 +89,7 @@ Accepted preflight gaps: `npm run check` fails on the stale local `.env` unless 
 
 ## Review rounds
 - Round 1: 1 blocker, 1 major, 3 minors, 1 nit. Fixed: blocker (webhook applied payments only to the invoice month, so carried-over months never cleared; now allocates oldest-first using `moveInMonth` in invoice metadata), major (move-in month limited to 2000-2099 and walk clamped), minor (re-assigning a tenant keeps `moveInMonth`), minor (unreadable amount logged at error level). Not fixed: minor on `isProductionProject` (matches the approved design), nit on `invalidateAll` await.
+- Round 2: 0 blockers, 2 majors, 5 minors, 1 nit. Fixed: major (allocation now in the delta spec and design), major (webhook writes all year documents in one batch), minor (tenant id validated), minors (cross-year and failure tests; concurrent-webhook race added to Known Gaps). Accepted: stale `moveInMonth` in invoice metadata (documented in design), 2000-01 lower bound (admin-editable), cleared month input.
 
 ## Deferred findings
 - Duplicate webhook delivery for one invoice is not de-duplicated.
