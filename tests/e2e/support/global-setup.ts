@@ -19,13 +19,13 @@ export default async function globalSetup() {
 		);
 	}
 
-	await fetch(`http://${AUTH_EMULATOR}/emulator/v1/projects/${PROJECT_ID}/accounts`, {
-		method: 'DELETE'
-	});
-	await fetch(
-		`http://${FIRESTORE_EMULATOR}/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`,
-		{ method: 'DELETE' }
-	);
+	for (const url of [
+		`http://${AUTH_EMULATOR}/emulator/v1/projects/${PROJECT_ID}/accounts`,
+		`http://${FIRESTORE_EMULATOR}/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`
+	]) {
+		const response = await fetch(url, { method: 'DELETE' });
+		if (!response.ok) throw new Error(`Could not reset the emulator (${response.status}): ${url}`);
+	}
 
 	const auth = adminAuth();
 	const db = adminDb();

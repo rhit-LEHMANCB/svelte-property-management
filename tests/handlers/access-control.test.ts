@@ -87,8 +87,11 @@ describe('access-control: first login redirect', () => {
 		seedProperty('p1');
 		linkTenant('t1', 'p1');
 
-		expect((await call(layoutLoad, { userID: 'a1' })).redirect).toBeUndefined();
-		expect((await call(layoutLoad, { userID: 't1' })).redirect).toBeUndefined();
+		for (const userID of ['a1', 't1']) {
+			const result = await call(layoutLoad, { userID });
+			expect(result.redirect).toBeUndefined();
+			expect(result.status).toBe(200);
+		}
 	});
 });
 

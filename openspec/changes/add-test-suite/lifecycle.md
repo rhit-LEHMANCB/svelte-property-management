@@ -1,8 +1,8 @@
 # Lifecycle: add-test-suite
 
 - Branch: `add-test-suite` (from `origin/develop` at `75f789a`)
-- Stage: **HALTED** at stage 4 (review loop). Stage 3 is complete: 33 of 33 tasks done.
-- Review round: 3 of 3 done; round 3 still had 1 major, so the run halted
+- Stage: 4 review loop finished clean after an extra round the user requested (round 4). Ready for stage 5; waiting for the user's go-ahead. Stage 3 is complete: 33 of 33 tasks done.
+- Review round: 4 done (3 plus 1 extra requested by the user); round 4 had no blockers or majors
 - QA cycle: 0 of 3
 - Started: 2026-10-05
 - Issue: #50 (related: #48)
@@ -79,6 +79,11 @@ Accepted preflight gaps: local `.env` out of date for develop (does not affect t
 - Not changed: the CI cache is scoped per PR ref by GitHub, so a new PR starts cold (it still helps re-runs of the same PR); the network block covers `fetch`, `http` and `https` but not raw sockets (the Firebase and Stripe modules are already doubled); `firebase-tools` is a large dev dependency.
 - Question from the reviewer: `lifecycle.md` contains no secrets or account data, only the git author email already in the commit history.
 
+**Round 4** (extra round requested by the user after the halt; blockers 0, **majors 0**, minors 6, nits 3). The exit criterion is met.
+- Fixed: the BASE_URL guard now runs whenever the config loads (not only for `npm run test:qa`), `PLAYWRIGHT_QA` must be exactly `1`, and a malformed URL gives a readable error (checked for the npm script, a direct `--project=qa`, an unflagged run and a malformed value); the Stripe override ignores a malformed URL with a warning, drops the `[::1]` form, and has tests for `localhost` and a malformed value; the e2e setup fails loudly if the emulator wipe fails; a handler test also asserts status 200; the design and tasks now describe the `qa` project and the separate `tests` job as built.
+- Not changed: failure screenshots stay on for the `qa` project (the README says so; passwords are masked); the cache save step still runs after a failed job because the emulator jars are only downloaded during the e2e step, so a partial download could in principle be cached (per-PR scope limits the damage); actions are pinned by major tag, as in the existing workflow.
+- Needs a repository setting, not code: for a failing test to block a merge, the `tests` check must be marked required.
+
 ## Deferred findings
 - `POST /api/signin` sets the cookie with `maxAge: expiresIn`, and `expiresIn` is 5 days in milliseconds. SvelteKit cookie `maxAge` is in seconds, so the browser cookie lives about 13.7 years. The session itself still expires after 5 days at Firebase, so the practical effect is limited, but the value is wrong. Not in the specs' Known Gaps; tests assert only httpOnly, secure and path. File an issue at wrap-up.
 - `/reset` with a wrong `mode` responds 500 (page text "500 Invalid action"), not the intended 400: the `error(400)` is thrown inside the component while rendering. Found by the e2e test; recorded in the authentication spec's Known Gaps. File an issue at wrap-up.
@@ -90,11 +95,5 @@ Accepted preflight gaps: local `.env` out of date for develop (does not affect t
 ## Verification checklist for the human
 (stage 7)
 
-## Halted
-- **Stage:** 4, review loop (round 3 of 3).
-- **Reason:** round 3 returned one major (the QA `BASE_URL` guard ordering). The rule is to halt when round 3 still has a blocker or major.
-- **State of the branch:** `add-test-suite`, all 33 tasks done and ticked. The major and the cheap findings were fixed after round 3 but have not been through another review. Local checks on the final code: lint clean, `svelte-check` 0 errors, 188 handler and unit tests, production build, 22 e2e tests, all passing. Nothing has been merged or deployed.
-- **Next step for a human (choose one):**
-  1. Accept the post-review fix (a small, hand-verified change to the QA guard plus a loopback restriction on the Stripe override) and tell the run to continue. It then goes to stage 5: PR to `develop`, merge, dev deploy, independent QA, then the production PR.
-  2. Ask for one more independent review round on the final diff first, then continue.
-  3. Review the draft PR yourself and merge it by hand.
+## Halted (resolved)
+The run halted after round 3 (one major). The major was fixed, the findings were filed as issues #54, #55 and #56, and the user asked for round 4, which came back clean. The original halt notes are kept in the draft PR #53 description.

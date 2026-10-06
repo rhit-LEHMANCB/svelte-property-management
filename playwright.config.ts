@@ -10,7 +10,10 @@ import {
 
 // `npm run test:qa` sets PLAYWRIGHT_QA: it targets the deployed dev site, so it starts no server
 // and no emulators and does no seeding.
-const isQa = Boolean(process.env.PLAYWRIGHT_QA);
+const isQa =
+	process.env.PLAYWRIGHT_QA === '1' ||
+	process.argv.includes('--project=qa') ||
+	process.argv.some((arg, i) => arg === '--project' && process.argv[i + 1] === 'qa');
 
 const DEV_QA_URL = 'https://lehman-realty-dev.web.app';
 
@@ -28,11 +31,22 @@ if (isQa) {
 		}
 		// No file: the variables must come from the environment.
 	}
+}
 
-	// QA signs in with real dev accounts, so it must never be pointed at production.
-	const allowedHosts = ['lehman-realty-dev.web.app', 'localhost', '127.0.0.1'];
-	const requested = process.env.BASE_URL?.trim();
-	if (requested && !allowedHosts.includes(new URL(requested).hostname)) {
+// QA signs in with real dev accounts, so it must never be pointed at production. This runs whenever
+// the config loads, not only for `npm run test:qa`, because BASE_URL only ever feeds the qa project.
+const allowedHosts = ['lehman-realty-dev.web.app', 'localhost', '127.0.0.1'];
+const requested = process.env.BASE_URL?.trim();
+if (requested) {
+	let host: string;
+	try {
+		host = new URL(requested).hostname;
+	} catch {
+		throw new Error(
+			'BASE_URL must be a full URL such as https://lehman-realty-dev.web.app (or a local server).'
+		);
+	}
+	if (!allowedHosts.includes(host)) {
 		throw new Error(
 			`BASE_URL must be the dev site or a local server (allowed: ${allowedHosts.join(', ')}).`
 		);

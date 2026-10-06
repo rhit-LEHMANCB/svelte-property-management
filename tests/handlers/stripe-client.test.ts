@@ -38,6 +38,22 @@ describe('rent-payments: Stripe client configuration', () => {
 		expect(options).toEqual({ host: '127.0.0.1', port: '12111', protocol: 'http' });
 	});
 
+	it('Scenario: localhost is accepted as a loopback host too', async () => {
+		const [, options] = (await loadClient('http://localhost:9999')) as [string, object];
+
+		expect(options).toEqual({ host: 'localhost', port: '9999', protocol: 'http' });
+	});
+
+	it('Scenario: a malformed override is ignored with a warning instead of breaking every import', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+		const [key, options] = (await loadClient('not a url')) as [string, unknown];
+
+		expect(key).toBe('sk_test_fixture');
+		expect(options).toBeUndefined();
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining('not a valid URL'));
+	});
+
 	it('Scenario: an override that is not a loopback address is ignored, so the secret key cannot be sent elsewhere', async () => {
 		const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
