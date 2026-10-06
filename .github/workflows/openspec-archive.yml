@@ -1,0 +1,47 @@
+name: Archive OpenSpec changes after production merge
+'on':
+  push:
+    branches:
+      - production
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: openspec-archive
+  cancel-in-progress: false
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Install OpenSpec
+        run: npm install -g @fission-ai/openspec@1.14.1
+      - name: Archive shipped changes
+        id: archive
+        run: |
+          git switch -c "archive-specs/${GITHUB_SHA::7}-${GITHUB_RUN_ID}"
+          .github/scripts/archive-shipped-changes.sh "$GITHUB_SHA" "$RUNNER_TEMP/summary.md"
+      - name: Validate specs
+        if: steps.archive.outputs.archived != '0'
+        run: openspec validate --specs
+      - name: Open and merge the archive PR into develop
+        if: steps.archive.outputs.archived != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="$(git branch --show-current)"
+          git push origin "$branch"
+          url="$(gh pr create --base develop --head "$branch" \
+            --title "Archive OpenSpec changes (release ${GITHUB_SHA::7})" \
+            --body-file "$RUNNER_TEMP/summary.md")"
+          echo "Opened $url"
+          if ! gh pr merge "$url" --merge --delete-branch; then
+            echo "::warning::Could not merge $url automatically. Merge it by hand."
+          fi
