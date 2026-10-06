@@ -94,7 +94,9 @@ At most 3 QA cycles in total. If the third still fails, **halt**.
 **Gate B (human):** the human reviews the report, performs the recommended tests, and merges. Do not merge, re-run the deploy, or delete the evidence branch.
 
 ### 8. Wrap-up (when the user returns after merging)
-Confirm the production deploy succeeded, run the OpenSpec archive workflow (`openspec-archive-change`) with spec sync, file issues for deferred findings and QA observations, delete the `qa-evidence/<name>` branch, and mark the lifecycle complete.
+Confirm the production deploy succeeded. Archiving is automatic: the `openspec-archive.yml` workflow runs on every push to `production`, archives each shipped change whose tasks are all checked, and opens and merges a PR into `develop` titled "Archive OpenSpec changes". Verify that PR was opened and merged (`gh pr list --state merged --search "Archive OpenSpec changes"`) and that the change is under `openspec/changes/archive/`. If the workflow failed or skipped the change, find out why from its log and run `openspec-archive-change` with spec sync on a branch off `develop` as a fallback. Then file issues for deferred findings and QA observations, delete the `qa-evidence/<name>` branch, and mark the lifecycle complete.
+
+The workflow archives only changes with every task checked, so this skill must tick every task in `tasks.md` as it implements (stage 3). An unticked task means the change is skipped, not archived.
 
 ## Halt procedure
 
