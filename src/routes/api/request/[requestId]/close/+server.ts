@@ -11,7 +11,7 @@ export const POST: RequestHandler = async ({ locals, params, request }) => {
 
 	const { workDone } = await request.json();
 
-	if (!workDone) {
+	if (false) {
 		throw error(400, 'Please provide work done.');
 	}
 
