@@ -1,7 +1,8 @@
 schema: spec-driven
 
 context: |
-  SvelteKit 1 + Svelte 4 app (Skeleton/Tailwind, Firebase auth/Firestore/storage, SendGrid) for property management.
+  SvelteKit 2 + Svelte 5 app (Vite 8, Tailwind 4, Skeleton 5 CSS with small local UI components in src/lib/ui, Firebase auth/Firestore/storage, SendGrid) for property management.
+  SvelteKit stays on 2.x until the Firebase Hosting SSR wrapper supports SvelteKit 3 (see the upgrade-to-latest-versions change). Stripe requests pin API version 2023-10-16.
   Requires Node 22 (see .nvmrc and package.json engines; the Cloud Function runtime follows engines.node).
   Branch flow: feature branches -> develop -> production. CI runs lint, svelte-check and build on PRs.
 

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { errorToast } from '$lib/Hooks/toasts';
 	import { auth } from '$lib/firebase';
@@ -9,20 +8,21 @@
 		popup,
 		type ModalSettings,
 		type PopupSettings
-	} from '@skeletonlabs/skeleton';
+	} from '$lib/ui';
 	import { error } from '@sveltejs/kit';
 	import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 	import type { PageData } from './$types';
-	import { superForm } from 'sveltekit-superforms/client';
+	import { superForm } from 'sveltekit-superforms';
+	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
 	import { passwordChangeSchema } from '$lib/schemas';
 	import { IconQuestionMark } from '@tabler/icons-svelte';
 	import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 
 	export let data: PageData;
 
-	const { form, errors, validate, enhance } = superForm(data.form, {
+	const { form, errors, validateForm, enhance } = superForm(data.form, {
 		customValidity: true,
-		validators: passwordChangeSchema,
+		validators: zodClient(passwordChangeSchema),
 		validationMethod: 'onblur'
 	});
 
@@ -52,7 +52,7 @@
 			throw error(400, 'Invalid action');
 		}
 
-		const result = await validate();
+		const result = await validateForm({ update: true });
 
 		if (!result.valid) {
 			return;
@@ -73,7 +73,7 @@
 							body: 'Your password was reset successfully. Press continue to proceed.',
 							buttonTextCancel: 'Continue',
 							// TRUE if confirm pressed, FALSE if cancel pressed
-							response: () => goto(continueUrl ?? `${PUBLIC_FRONTEND_URL}/`)
+							response: () => window.location.assign(continueUrl ?? `${PUBLIC_FRONTEND_URL}/`)
 						};
 						modalStore.trigger(modal);
 						// TODO: create a modal that confirms success and then on confirm sends user to login page
@@ -98,10 +98,10 @@
 					<label class="label"
 						><div class="flex flex-row gap-2">
 							<span>New Password</span><button
-								class="badge-icon variant-outline-primary [&>*]:pointer-events-none"
+								class="badge-icon preset-outlined-primary-500 [&>*]:pointer-events-none"
 								use:popup={popupHover}><IconQuestionMark /></button
 							>
-							<div class="card p-4 variant-filled-primary w-64" data-popup="popupHover">
+							<div class="card p-4 preset-filled-primary-500 w-64" data-popup="popupHover">
 								<ul>
 									<li>- At least 8 characters</li>
 									<li>- Less than 32 characters</li>
@@ -109,7 +109,7 @@
 									<li>- One lowercase letter</li>
 									<li>- A number or special character</li>
 								</ul>
-								<div class="arrow variant-filled-primary" />
+								<div class="arrow preset-filled-primary-500"></div>
 							</div>
 						</div>
 						<input
@@ -137,7 +137,7 @@
 			</div>
 			<button
 				on:click={(event) => handleVerifyPasswordReset(event)}
-				class="btn variant-filled-primary mt-5">Change Password</button
+				class="btn preset-filled-primary-500 mt-5">Change Password</button
 			>
 		</form>
 	</div>

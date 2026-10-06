@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { load as layoutLoad } from '../../src/routes/(authenticated)/+layout.server';
 import { load as homeLoad } from '../../src/routes/(authenticated)/+page.server';
 import { call } from '../helpers/callHandler';
-import { db, linkTenant, seedAdmin, seedProperty, seedTenant } from '../helpers/seed';
+import { linkTenant, seedAdmin, seedProperty, seedTenant } from '../helpers/seed';
 
 describe('access-control: tenant property context (authenticated layout)', () => {
 	it('Scenario: anonymous callers are rejected with 401', async () => {

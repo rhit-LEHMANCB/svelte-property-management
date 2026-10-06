@@ -28,7 +28,7 @@
 
 	function onDragLeave(e: DragEvent) {
 		const dragged = getDraggedParent(e.target);
-		isOver === dragged.id && (isOver = false);
+		if (isOver === dragged.id) isOver = false;
 	}
 
 	function onDrop(e: DragEvent) {
@@ -53,7 +53,7 @@
 	<ul class="list-none p-0 flex flex-row flex-wrap">
 		{#each list as item, index (item.id)}
 			<li
-				class="card card-hover bg-surface-200 border-2 border-dashed p-2 transition-all cursor-grab"
+				class="card hover:preset-tonal bg-surface-200 border-2 border-dashed p-2 transition-all cursor-grab"
 				class:border-transparent={item.id !== isOver}
 				class:border-surface-500={item.id === isOver}
 				data-index={index}

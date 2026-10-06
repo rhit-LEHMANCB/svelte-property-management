@@ -26,6 +26,19 @@ Current stack: SvelteKit 1.27, Svelte 4.1, Vite 4.4, Tailwind 3.3 with `tailwind
 7. **Firebase packages to latest** in the same PR after the framework steps, since failures there are in auth/Firestore code and are easier to attribute once the framework is stable. `src/lib/server/admin.ts` init and the client `firebase.ts` are the touch points.
 8. **Lint config** moves with the tools: ESLint (flat config if required by plugins), Prettier 3 (drop `--plugin-search-dir`), `svelte-check`, typescript-eslint. Format changes caused by Prettier 3 are applied in a separate commit.
 
+9. **SvelteKit stays on 2.x until Firebase's SSR wrapper supports 3.** Decided during implementation, after the Kit 3 migration itself worked (builds, 193 unit tests, 31 e2e tests). Firebase Hosting's frameworks support runs the app through `firebase-frameworks` (latest 0.11.8, with `firebase-tools` 15.32.1), whose SvelteKit entry imports `@sveltejs/kit/node/polyfills`; SvelteKit 3 no longer exports it, so the deployed function would fail on startup (`ERR_PACKAGE_PATH_NOT_EXPORTED`). The interview approved shipping the completed steps and filing an issue for the rest. The Kit 3 work (config moved into `vite.config.ts`, `#lib` imports, `src/env.ts` with `$app/env/*`, `$app/state`, `tsconfig` extending `$app/tsconfig`, `Handle` from `@sveltejs/kit/hooks`) is kept on `wip/sveltekit-3-migration`.
+
+## Implementation notes
+
+- **Node 24 check (task 4.4):** after Tailwind 4, `npm run build` and `npm test` pass on Node 24.21, so the old jiti restriction is gone. The project stays on Node 22 (supported, and the version Firebase and CI are pinned to); moving to 24 is a one-line follow-up.
+- **Skeleton 5 port:** Skeleton 5 provides CSS (themes, presets, buttons, forms) and low-level Zag components, not the store-driven Modal, Toast, Drawer, Popup and Autocomplete of Skeleton 2. The app keeps its call-site API through small local components in `src/lib/ui/` (toast and modal stores, `ModalHost`, `ToastHost`, `Drawer`, `popup` action, `Tab`/`TabGroup`, `Paginator`, `Avatar`, `Autocomplete`) styled with Skeleton 5 classes. The custom theme is `src/theme.css`.
+- **Modal body is plain text:** the old modal rendered `body` as HTML, which put user-entered names and titles into HTML. It now renders text and keeps line breaks.
+
+- **Dependencies left behind on purpose (task 7.4):** `@sveltejs/kit` 3 and `@sveltejs/adapter-auto` 8 (decision 9); `@types/node` stays on 22 to match the runtime; `typescript` stays on 6 because `typescript-eslint` and SvelteKit 2 accept it and not 7 yet. Two moderate `npm audit` findings remain in production dependencies (`uuid` below 11.1.1 through `gaxios`) and several in `firebase-tools` and its tree, none fixable without breaking changes.
+- **Stripe API version pinned:** `stripe` 23 would send API version `2026-09-30.endive`; the old SDK sent `2023-10-16`. `src/lib/server/stripe.ts` pins `2023-10-16` so requests behave as before. Moving to a newer API version needs its own Stripe test-mode pass.
+- **ESLint 10 flat config:** `eslint-plugin-svelte` 3's recommended set adds three rules the existing code breaks (`no-navigation-without-resolve`, `require-each-key`, `no-reactive-reassign`); they are turned off in `eslint.config.js` and left for a cleanup.
+- **firebase-admin 14:** the app now initializes with `initializeApp` and `cert` from `firebase-admin/app`.
+
 ## Risks / Trade-offs
 
 - [Skeleton 5 is a rewrite, not a bump] → Wrapper helpers, port page by page, rely on e2e plus QA scenarios; fallback ships earlier steps and files an issue.

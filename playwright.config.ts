@@ -27,7 +27,7 @@ if (isQa) {
 		process.loadEnvFile('.env.qa');
 	} catch (error) {
 		if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-			throw new Error(`Could not read .env.qa: ${(error as Error).message}`);
+			throw new Error(`Could not read .env.qa: ${(error as Error).message}`, { cause: error });
 		}
 		// No file: the variables must come from the environment.
 	}
@@ -108,7 +108,7 @@ export default defineConfig({
 					timeout: 300_000,
 					reuseExistingServer: false
 				}
-		  ],
+			],
 	projects: [
 		{
 			name: 'e2e',

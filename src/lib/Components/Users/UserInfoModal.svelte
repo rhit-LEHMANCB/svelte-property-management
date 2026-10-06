@@ -1,13 +1,5 @@
 <script lang="ts">
-	import {
-		getModalStore,
-		type CssClasses,
-		type ModalSettings,
-		getToastStore,
-		Tab,
-		TabGroup,
-		Avatar
-	} from '@skeletonlabs/skeleton';
+	import { getModalStore, type ModalSettings, getToastStore, Tab, TabGroup, Avatar } from '$lib/ui';
 	import type { DocumentWithId } from '../../../app';
 	import {
 		IconClipboardList,
@@ -23,29 +15,6 @@
 	const toastStore = getToastStore();
 
 	export let user: DocumentWithId;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	export let parent: any;
-
-	// Props (modal)
-	/** Provide classes to style the modal background. */
-	export let background: CssClasses = 'bg-surface-100-800-token';
-	/** Provide classes to style the modal width. */
-	export let width: CssClasses = 'w-modal';
-	/** Provide classes to style the modal height. */
-	export let height: CssClasses = 'h-auto';
-	/** Provide classes to style the modal padding. */
-	export let padding: CssClasses = 'p-4';
-	/** Provide classes to style the modal spacing. */
-	export let spacing: CssClasses = 'space-y-4';
-	/** Provide classes to style the modal border radius. */
-	export let rounded: CssClasses = 'rounded-container-token';
-	/** Provide classes to style modal box shadow. */
-	export let shadow: CssClasses = 'shadow-xl';
-	const cModal = 'block overflow-y-auto'; // max-h-full overflow-y-auto overflow-x-hidden
-
-	$: classesModal = `${cModal} ${background} ${width} ${height} ${padding} ${spacing} ${rounded} ${shadow} ${
-		$modalStore[0]?.modalClasses ?? ''
-	}`;
 
 	function deleteUserClicked() {
 		modalStore.close();
@@ -107,84 +76,82 @@
 	let tabSet = 0;
 </script>
 
-{#if $modalStore[0]}
-	<div class="modal card grid grid-flow-row {classesModal}">
-		<TabGroup>
-			<Tab bind:group={tabSet} name="info" value={0}>
-				<div class="flex gap-2">
-					<IconInfoCircle />
-					<span>Info</span>
-				</div>
-			</Tab>
-			<Tab bind:group={tabSet} name="insurance" value={1}
-				><div class="flex gap-2">
-					<IconClipboardList />
-					<span>Insurance</span>
-				</div></Tab
-			>
-			<Tab bind:group={tabSet} name="emergency" value={2}
-				><div class="flex gap-2">
-					<IconUserExclamation />
-					<span>Emergency Info</span>
-				</div></Tab
-			>
-			<!-- Tab Panels --->
-			<svelte:fragment slot="panel">
-				{#if tabSet === 0}
-					<div class="flex flex-col gap-2">
-						<div class="flex flex-row gap-5 items-center">
-							<Avatar
-								src={user.data.photoUrl}
-								initials={`${user.data.firstName[0]}${user.data.lastName[0]}`}
-							/>
-							<strong class="h3">{`${user.data.firstName} ${user.data.lastName}`}</strong>
-						</div>
-						<div class="flex flex-col gap-2 flex-wrap">
-							<p>Email: {user.data.email}</p>
-							<p>Phone Number: {user.data.phoneNumber}</p>
-						</div>
-						{#if userProperty === false}
-							<div class="placeholder animate-pulse w-32" />
-						{:else if !userProperty?.data || !userProperty?.id}
-							<strong>Not renting a property</strong>
-						{:else}
-							<span>
-								<span>Property:</span>
-								<a
-									on:click={() => modalStore.close()}
-									class="text-secondary-500 underline"
-									href={`/admin/properties/${userProperty.id}/edit`}
-								>
-									{formattedAddress}
-								</a>
-							</span>
-						{/if}
+<div
+	class="card bg-surface-100-900 grid w-[min(92vw,32rem)] grid-flow-row space-y-4 overflow-y-auto p-4 shadow-xl"
+>
+	<TabGroup>
+		<Tab bind:group={tabSet} name="info" value={0}>
+			<div class="flex gap-2">
+				<IconInfoCircle />
+				<span>Info</span>
+			</div>
+		</Tab>
+		<Tab bind:group={tabSet} name="insurance" value={1}
+			><div class="flex gap-2">
+				<IconClipboardList />
+				<span>Insurance</span>
+			</div></Tab
+		>
+		<Tab bind:group={tabSet} name="emergency" value={2}
+			><div class="flex gap-2">
+				<IconUserExclamation />
+				<span>Emergency Info</span>
+			</div></Tab
+		>
+		<!-- Tab Panels --->
+		<svelte:fragment slot="panel">
+			{#if tabSet === 0}
+				<div class="flex flex-col gap-2">
+					<div class="flex flex-row gap-5 items-center">
+						<Avatar
+							src={user.data.photoUrl}
+							initials={`${user.data.firstName[0]}${user.data.lastName[0]}`}
+						/>
+						<strong class="h3">{`${user.data.firstName} ${user.data.lastName}`}</strong>
 					</div>
-				{:else if tabSet === 1}
-					{#if user.data.insurance}
-						<div class="flex flex-col gap-2">
-							<span>Company Name: {user.data.insurance.companyName}</span>
-							<span>Policy Number: {user.data.insurance.policyNumber}</span>
-							<span
-								>Effective from {user.data.insurance.startDate} to {user.data.insurance
-									.endDate}</span
-							>
-						</div>
+					<div class="flex flex-col gap-2 flex-wrap">
+						<p>Email: {user.data.email}</p>
+						<p>Phone Number: {user.data.phoneNumber}</p>
+					</div>
+					{#if userProperty === false}
+						<div class="placeholder animate-pulse w-32"></div>
+					{:else if !userProperty?.data || !userProperty?.id}
+						<strong>Not renting a property</strong>
 					{:else}
-						<p class="text-center my-12 text-lg font-bold">No insurance info</p>
+						<span>
+							<span>Property:</span>
+							<a
+								on:click={() => modalStore.close()}
+								class="text-secondary-500 underline"
+								href={`/admin/properties/${userProperty.id}/edit`}
+							>
+								{formattedAddress}
+							</a>
+						</span>
 					{/if}
-				{:else if tabSet === 2}
-					<div />
+				</div>
+			{:else if tabSet === 1}
+				{#if user.data.insurance}
+					<div class="flex flex-col gap-2">
+						<span>Company Name: {user.data.insurance.companyName}</span>
+						<span>Policy Number: {user.data.insurance.policyNumber}</span>
+						<span
+							>Effective from {user.data.insurance.startDate} to {user.data.insurance.endDate}</span
+						>
+					</div>
+				{:else}
+					<p class="text-center my-12 text-lg font-bold">No insurance info</p>
 				{/if}
-			</svelte:fragment>
-		</TabGroup>
-		<footer class="modal-footer {parent.regionFooter}">
-			<button on:click={deleteUserClicked} class="btn variant-filled-error"
-				><IconUserMinus class="mr-2" />Delete</button
-			>
-			<button type="button" class="btn {parent.buttonNeutral}" on:click={() => modalStore.close()}
-				>Close</button
-			>
-		</footer>
-	</div>
-{/if}
+			{:else if tabSet === 2}
+				<div></div>
+			{/if}
+		</svelte:fragment>
+	</TabGroup>
+	<footer class="flex justify-end gap-2">
+		<button on:click={deleteUserClicked} class="btn preset-filled-error-500"
+			><IconUserMinus class="mr-2" />Delete</button
+		>
+		<button type="button" class="btn preset-tonal" on:click={() => modalStore.close()}>Close</button
+		>
+	</footer>
+</div>

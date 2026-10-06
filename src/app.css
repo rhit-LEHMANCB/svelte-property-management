@@ -1,0 +1,57 @@
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+
+@import '@skeletonlabs/skeleton';
+@import '@skeletonlabs/skeleton-svelte';
+@import './theme.css';
+
+/* Skeleton and the app use the `dark` class for dark mode. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Write your global styles here */
+
+html,
+body {
+	@apply h-full overflow-hidden;
+}
+
+/*
+	Skeleton 2 gave `card` a surface background and added list helpers; Skeleton 5 does not, so the
+	pages keep those here. They sit in the components layer so utility classes still override them.
+*/
+@layer components {
+	.card {
+		background-color: var(--color-surface-100-900);
+	}
+	.list {
+		display: flex;
+		flex-direction: column;
+		gap: calc(var(--spacing) * 2);
+		list-style: none;
+	}
+	.list > li {
+		display: flex;
+		align-items: center;
+		gap: calc(var(--spacing) * 4);
+	}
+	.list-dl {
+		display: flex;
+		flex-direction: column;
+		gap: calc(var(--spacing) * 4);
+	}
+	.list-dl > div {
+		display: flex;
+		align-items: center;
+		gap: calc(var(--spacing) * 4);
+	}
+}
+
+/* Elements shown by the `popup` action (src/lib/ui/popup.ts) stay hidden until it positions them. */
+[data-popup] {
+	display: none;
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 50;
+	width: max-content;
+}

@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { profileSchema } from '$lib/schemas';
-	import { Avatar, getToastStore } from '@skeletonlabs/skeleton';
+	import { Avatar, getToastStore } from '$lib/ui';
 	import type { PageData } from './$types';
-	import { superForm } from 'sveltekit-superforms/client';
+	import { superForm } from 'sveltekit-superforms';
+	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
 	import { invalidateAll } from '$app/navigation';
 	import { enhance } from '$app/forms';
 	import { MaskedTextChangedListener } from 'ts-input-mask';
@@ -24,7 +25,7 @@
 		enhance: enhanceContact
 	} = superForm(data.form, {
 		customValidity: true,
-		validators: profileSchema,
+		validators: zodClient(profileSchema),
 		onUpdated({ form }) {
 			if (form.message === 'Form submitted') {
 				// Display the message using a toast library
@@ -107,7 +108,7 @@
 						>
 					</div>
 				</div>
-				<button type="submit" class="btn variant-filled-secondary mt-5">Save</button>
+				<button type="submit" class="btn preset-filled-secondary-500 mt-5">Save</button>
 			</form>
 		</div>
 	</div>
@@ -140,7 +141,7 @@
 							on:click={() => {
 								invalidateAll();
 							}}
-							class="btn btn-sm variant-filled-secondary">Upload</button
+							class="btn btn-sm preset-filled-secondary-500">Upload</button
 						>
 					</div>
 				</div>
@@ -150,7 +151,7 @@
 			<div class="h-auto m-5">
 				<strong class="h3">Password</strong>
 				<div>
-					<button on:click={handleResetPasswordClicked} class="btn variant-filled-secondary mt-5"
+					<button on:click={handleResetPasswordClicked} class="btn preset-filled-secondary-500 mt-5"
 						>Reset</button
 					>
 				</div>

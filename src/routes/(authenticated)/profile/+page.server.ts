@@ -1,5 +1,6 @@
 import type { PageServerLoad } from './$types';
 import { message, superValidate } from 'sveltekit-superforms/server';
+import { zod4 as zod } from 'sveltekit-superforms/adapters';
 import { adminAuth, adminDB, adminStorage } from '$lib/server/admin';
 import { error, fail } from '@sveltejs/kit';
 import { profileSchema } from '$lib/schemas';
@@ -11,7 +12,7 @@ export const load = (async (event) => {
 	const userId = getUserIdOrError(event.locals.userID);
 	const userData = await getUserDataOrError(userId);
 
-	const form = await superValidate(userData, profileSchema);
+	const form = await superValidate(userData, zod(profileSchema));
 	return {
 		form
 	};
@@ -19,7 +20,7 @@ export const load = (async (event) => {
 
 export const actions = {
 	contact: async (event) => {
-		const form = await superValidate(event, profileSchema);
+		const form = await superValidate(event, zod(profileSchema));
 
 		const userId = getUserIdOrError(event.locals.userID);
 

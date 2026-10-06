@@ -1,4 +1,5 @@
 import { message, superValidate } from 'sveltekit-superforms/server';
+import { zod4 as zod } from 'sveltekit-superforms/adapters';
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { maintenanceSchema } from '$lib/schemas';
@@ -54,7 +55,7 @@ export const load = (async (event) => {
 		} as MaintenanceRequest;
 	});
 
-	const form = await superValidate(maintenanceSchema);
+	const form = await superValidate(zod(maintenanceSchema));
 	return {
 		form,
 		openMaintenanceRequests,
@@ -64,7 +65,7 @@ export const load = (async (event) => {
 
 export const actions = {
 	default: async (event) => {
-		const form = await superValidate(event, maintenanceSchema);
+		const form = await superValidate(event, zod(maintenanceSchema));
 
 		const userId = getUserIdOrError(event.locals.userID);
 

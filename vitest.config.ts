@@ -12,6 +12,7 @@ export default defineConfig({
 		alias: [
 			{ find: '$env/static/private', replacement: path('./tests/fixtures/env-private.ts') },
 			{ find: '$env/static/public', replacement: path('./tests/fixtures/env-public.ts') },
+			{ find: '$app/server', replacement: path('./tests/fixtures/app-server.ts') },
 			{ find: /^\$lib\/(.*)$/, replacement: path('./src/lib') + '/$1' },
 			{ find: '$lib', replacement: path('./src/lib') }
 		]
