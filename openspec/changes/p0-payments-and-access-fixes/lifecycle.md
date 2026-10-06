@@ -1,8 +1,8 @@
 # Lifecycle: p0-payments-and-access-fixes
 
 - Branch: `p0-payments-and-access-fixes`
-- Stage: 4 Review (implementation done 2026-10-06; all tasks ticked; lint, check, unit, handlers, build, e2e pass locally)
-- Review round: 2 of 3
+- Stage: 4 Review - HALTED (round 3 ended with 2 majors; implementation complete, all tasks ticked, lint/check/unit/handlers/build/e2e pass locally)
+- Review round: 3 of 3 (HALTED)
 - QA cycle: 0 of 3
 - Started: 2026-10-06
 
@@ -90,6 +90,13 @@ Accepted preflight gaps: `npm run check` fails on the stale local `.env` unless 
 ## Review rounds
 - Round 1: 1 blocker, 1 major, 3 minors, 1 nit. Fixed: blocker (webhook applied payments only to the invoice month, so carried-over months never cleared; now allocates oldest-first using `moveInMonth` in invoice metadata), major (move-in month limited to 2000-2099 and walk clamped), minor (re-assigning a tenant keeps `moveInMonth`), minor (unreadable amount logged at error level). Not fixed: minor on `isProductionProject` (matches the approved design), nit on `invalidateAll` await.
 - Round 2: 0 blockers, 2 majors, 5 minors, 1 nit. Fixed: major (allocation now in the delta spec and design), major (webhook writes all year documents in one batch), minor (tenant id validated), minors (cross-year and failure tests; concurrent-webhook race added to Known Gaps). Accepted: stale `moveInMonth` in invoice metadata (documented in design), 2000-01 lower bound (admin-editable), cleared month input.
+- Round 3: 0 blockers, 2 majors, 4 minors, 1 nit. NOT fixed (max rounds reached, so the run halted):
+  - major: `increment` in the webhook is not idempotent, so a redelivery after a lost 500 response double-decrements `remainingBalance`. This is the duplicate-delivery gap already recorded as deferred; the fix is to store the invoice id and skip recorded invoices.
+  - major: the multi-year failure test only checks 500; the fake batch is not atomic, so the test would pass without the batch. Fix: make the fake batch all-or-nothing and assert neither year document exists.
+  - minor: `hasEntry` should be `typeof entry.remainingBalance === 'number'` to match `monthOwedCents`.
+  - minor: re-assign keeping `moveInMonth` has no spec scenario.
+  - minor: key guard treats an empty or unknown project id as production; consider an explicit allowlist.
+  - minor: concurrent-webhook race (already a Known Gap). Nit: 2000-01 lower bound.
 
 ## Deferred findings
 - Duplicate webhook delivery for one invoice is not de-duplicated.
@@ -101,4 +108,5 @@ Accepted preflight gaps: `npm run check` fails on the stale local `.env` unless 
 (filled in stage 7)
 
 ## Halted
-(only if the run halted: stage, reason, evidence, next step for a human)
+Stage 4 (review loop), 2026-10-06. Reason: review round 3 still had 2 majors (see Review rounds). Evidence: findings above; local checks all green at commit HEAD.
+Next step for a human: decide whether to (a) fix the two majors and the `hasEntry` minor on this branch and re-run the review/ship stages (`/dev-lifecycle p0-payments-and-access-fixes`, resume at stage 4), or (b) accept them and ship, with duplicate-delivery idempotency filed as a follow-up. Nothing has been merged or deployed.
