@@ -10,7 +10,7 @@ node_modules
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .firebaserc
-firebase-debug.log
+*-debug.log
 lehman-realty-firebase-adminsdk-41bes-ca46611d63.json
 npm-debug.log
 
