@@ -23,7 +23,7 @@
 		}
 		try {
 			emailSchema.parse(response);
-		} catch (error) {
+		} catch {
 			errorToast('Please enter a valid email.', toastStore);
 			return;
 		}

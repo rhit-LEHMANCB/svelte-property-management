@@ -10,6 +10,8 @@
 	let loginError: string;
 	const toastStore = getToastStore();
 
+	// Clears the error whenever either field changes.
+	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 	$: (email, password, (loginError = ''));
 	$: if (loginError) {
 		errorToast('Your email or password is incorrect.', toastStore);

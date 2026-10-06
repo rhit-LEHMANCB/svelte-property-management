@@ -28,7 +28,7 @@
 
 	function onDragLeave(e: DragEvent) {
 		const dragged = getDraggedParent(e.target);
-		isOver === dragged.id && (isOver = false);
+		if (isOver === dragged.id) isOver = false;
 	}
 
 	function onDrop(e: DragEvent) {
