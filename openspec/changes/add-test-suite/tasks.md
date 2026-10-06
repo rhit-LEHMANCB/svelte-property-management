@@ -5,7 +5,7 @@
 - [x] 1.1 Run `npm install` on current `develop` (a stale `node_modules` is missing `stripe`) and verify `npm run build` still succeeds
 - [x] 1.2 Add `vitest@^0.34` as a dev dependency, with `vitest.config.ts` using plain `$lib` and `$env/static/*` aliases and no SvelteKit plugin; verify `npx vitest run` starts and reports "no tests"
 - [x] 1.3 Add `tests/fixtures/env-private.ts` and `env-public.ts` with fake values for every variable the server code imports; verify a throwaway test can import `$env/static/private` and read one
-- [ ] 1.4 Add npm scripts `test:unit` (schemas and helpers), `test:handlers` and `test`; verify each script runs and exits 0 when its folder has a passing test
+- [x] 1.4 Add npm scripts `test:unit` (schemas and helpers), `test:handlers` and `test`; verify each script runs and exits 0 when its folder has a passing test
 - [x] 1.5 Make sure `eslint` and `prettier` pass on the new config and test folders; verify `npm run lint` is green
 
 ## 2. Layer 1: unit tests
@@ -16,9 +16,9 @@
 
 ## 3. Layer 2: handler test infrastructure
 
-- [ ] 3.1 Write the in-memory Firestore fake in `tests/helpers/` covering the calls listed in design.md; verify with its own tests for `where(==)`, `where(not-in)`, `orderBy` with `limit`, subcollections, `arrayUnion`, `increment` and `serverTimestamp`
-- [ ] 3.2 Write `callHandler` and the Admin, Stripe and SendGrid doubles, with a per-test reset; verify a trivial handler call returns its `Response` and a thrown `error()` comes back as a status
-- [ ] 3.3 Verify a handler test passes with all real credentials unset and the network disabled (for example `env -i` plus a run with no connectivity), since the spec requires hermetic runs
+- [x] 3.1 Write the in-memory Firestore fake in `tests/helpers/` covering the calls listed in design.md; verify with its own tests for `where(==)`, `where(not-in)`, `orderBy` with `limit`, subcollections, `arrayUnion`, `increment` and `serverTimestamp`
+- [x] 3.2 Write `callHandler` and the Admin, Stripe and SendGrid doubles, with a per-test reset; verify a trivial handler call returns its `Response` and a thrown `error()` comes back as a status
+- [x] 3.3 Verify a handler test passes with all real credentials unset and the network disabled (for example `env -i` plus a run with no connectivity), since the spec requires hermetic runs
 
 ## 4. Layer 2: handler tests per capability
 

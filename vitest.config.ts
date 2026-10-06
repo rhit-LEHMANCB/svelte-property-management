@@ -17,6 +17,6 @@ export default defineConfig({
 	test: {
 		environment: 'node',
 		include: ['tests/unit/**/*.test.ts', 'tests/handlers/**/*.test.ts'],
-		restoreMocks: true
+		setupFiles: ['./tests/helpers/setup.ts']
 	}
 });
