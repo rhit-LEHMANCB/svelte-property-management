@@ -43,5 +43,5 @@ jobs:
             --body-file "$RUNNER_TEMP/summary.md")"
           echo "Opened $url"
           if ! gh pr merge "$url" --merge --delete-branch; then
-            echo "::warning::Could not merge $url automatically. Merge it by hand."
+            echo "::warning::Could not merge $url automatically: develop requires the tests and build_and_preview checks, and pull requests opened by the Actions bot do not start them. Close and reopen the pull request to run the checks, then merge it."
           fi
