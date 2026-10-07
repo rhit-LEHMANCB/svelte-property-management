@@ -50,12 +50,27 @@ The system SHALL redirect users flagged `isFirstLogin` to `/profile` before show
 - **WHEN** a user with `isFirstLogin` loads any authenticated page
 - **THEN** they are redirected 303 to `/profile`
 
-### Requirement: Admin route enforcement (not yet implemented)
-The system SHALL deny non-admins access to `/admin/*` pages, not just the admin API.
+### Requirement: Admin route enforcement
+The system SHALL deny non-admins access to `/admin/*` pages, including `/admin` itself, on the server and not only in the admin API.
 
 #### Scenario: Tenant opens an admin URL
 - **WHEN** a tenant navigates to `/admin/users`
 - **THEN** the server rejects with 401
+
+#### Scenario: Tenant opens the admin home
+- **WHEN** a tenant navigates to `/admin`
+- **THEN** the server rejects with 401
+
+### Requirement: Tenant-only routes
+The system SHALL redirect admins who open `/maintenance`, `/insurance`, `/payment` or any page under `/payment` to `/admin`, and SHALL NOT error.
+
+#### Scenario: Admin opens a tenant page
+- **WHEN** an admin loads `/payment`, `/maintenance` or `/insurance`
+- **THEN** the response is a 303 redirect to `/admin`
+
+#### Scenario: Tenant opens a tenant page
+- **WHEN** a tenant with one property loads `/payment`
+- **THEN** the page loads as before
 
 ## Known Gaps
 - `isFirstLogin` is read but never written anywhere, so the redirect never triggers for users created by `/api/user/add`.
