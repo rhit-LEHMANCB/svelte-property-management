@@ -115,6 +115,37 @@
 		}
 	}
 
+	let selectedMoveInMonth = '';
+
+	function moveInMonthOf(tenantId: string) {
+		return (data.tenants as { id: string; moveInMonth?: string }[]).find((t) => t.id === tenantId)
+			?.moveInMonth;
+	}
+
+	async function updateMoveInMonth(tenantId: string, event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const moveInMonth = input.value;
+		if (!moveInMonth) {
+			// A move-in month cannot be cleared; show the stored one again.
+			input.value = moveInMonthOf(tenantId) ?? '';
+			errorToast('A move-in month is required.', toastStore);
+			return;
+		}
+		const response = await fetch(`/api/property/${$page.params.propertyId}/tenants`, {
+			method: 'PATCH',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({ tenantId, moveInMonth })
+		});
+		if (response.ok) {
+			successToast('Move-in month updated.', toastStore);
+			await invalidateAll();
+		} else {
+			errorToast('Error updating move-in month.', toastStore);
+		}
+	}
+
 	async function addTenant() {
 		if (!selectedTenantName || !selectedTenantId) {
 			return;
@@ -124,12 +155,16 @@
 			headers: {
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify({ tenantId: selectedTenantId })
+			body: JSON.stringify({
+				tenantId: selectedTenantId,
+				...(selectedMoveInMonth && { moveInMonth: selectedMoveInMonth })
+			})
 		});
 		if (response.ok) {
 			successToast('Successfully added tenant.', toastStore);
 			selectedTenantId = '';
 			selectedTenantName = '';
+			selectedMoveInMonth = '';
 			invalidateAll();
 		} else {
 			errorToast('Error adding tenant.', toastStore);
@@ -224,6 +259,13 @@
 						placeholder="Search..."
 						use:popup={popupSettings}
 					/>
+					<input
+						class="input col-span-3"
+						type="month"
+						name="moveInMonth"
+						aria-label="Move-in month"
+						bind:value={selectedMoveInMonth}
+					/>
 					<div class="justify-self-start">
 						<button on:click={addTenant} class="btn preset-filled-secondary-500">Add</button>
 					</div>
@@ -244,6 +286,13 @@
 				{#if data.tenants.length > 0}
 					<UsersListView users={data.tenants} class="pt-2">
 						<svelte:fragment slot="actionButton" let:user>
+							<input
+								class="input w-40 mr-2"
+								type="month"
+								aria-label="Move-in month for {user.data.firstName} {user.data.lastName}"
+								value={moveInMonthOf(user.id) ?? ''}
+								on:change={(event) => updateMoveInMonth(user.id, event)}
+							/>
 							<button
 								on:click={() => confirmModal(user)}
 								class="btn-icon btn-sm preset-filled-error-500"><IconLinkMinus /></button

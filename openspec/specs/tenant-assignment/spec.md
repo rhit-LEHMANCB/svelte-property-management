@@ -53,3 +53,4 @@ The system SHALL allow a tenant to be linked to at most one property.
 - Assignment does not verify that the user or property exists.
 - The "not-in" query for assignable users fails once a property has more than 10 tenants (Firestore limit).
 - Admins, whose role has no property, appear in the assignable list.
+- Tenants assigned before `moveInMonth` existed have none and are charged the current month only until an admin sets it.

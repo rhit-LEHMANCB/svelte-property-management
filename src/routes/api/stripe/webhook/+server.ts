@@ -5,6 +5,25 @@ import { stripe } from '$lib/server/stripe';
 import type { Stripe } from 'stripe';
 import { adminDB } from '$lib/server/admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { allocatePayment } from '$lib/server/payments';
+import { loadHistories } from '$lib/server/balance';
+
+const wholeCents = (value: string | undefined) =>
+	value !== undefined && /^\d+$/.test(value) ? Number(value) : undefined;
+
+/**
+ * The rent and fee of a paid invoice, in cents. Invoices created by the app carry both in their
+ * metadata; invoices from before that fall back to the line items by description.
+ */
+function readAmounts(invoice: Stripe.Invoice) {
+	const rentCents = wholeCents(invoice.metadata?.rentCents);
+	if (rentCents) {
+		return { rentCents, feeCents: wholeCents(invoice.metadata?.feeCents) };
+	}
+	const line = (description: string) =>
+		invoice.lines.data.find((l) => l.description === description)?.amount;
+	return { rentCents: line('Rent'), feeCents: line('Transaction Fee') };
+}
 
 export const POST: RequestHandler = async ({ request }) => {
 	const sig = request.headers.get('stripe-signature');
@@ -30,74 +49,92 @@ export const POST: RequestHandler = async ({ request }) => {
 	// Handle the event
 	switch (event.type) {
 		case 'invoice.payment_succeeded': {
-			const invoicePaymentSucceeded = event.data.object;
-			if (!invoicePaymentSucceeded.metadata) {
-				console.log('No metadata provided');
+			const invoice = event.data.object;
+			const propertyId = invoice.metadata?.propertyID;
+			if (!propertyId) {
+				console.log('No property in invoice metadata');
 				break;
 			}
 
-			let amount = invoicePaymentSucceeded.lines.data.find(
-				(line) => line.description === 'Rent'
-			)?.amount;
-
-			if (!amount) {
-				console.log('Could not find rent payment amount');
+			const { rentCents, feeCents } = readAmounts(invoice);
+			if (!rentCents) {
+				console.error('Could not find rent payment amount');
 				break;
 			}
 
-			amount = amount / 100;
-			const eventDate = Timestamp.fromMillis(invoicePaymentSucceeded.created * 1000);
-			const curMonthString = eventDate.toDate().toLocaleString('en-us', { month: 'long' });
-			const curYearString = eventDate.toDate().toLocaleString('en-us', { year: 'numeric' });
+			const eventDate = Timestamp.fromMillis(invoice.created * 1000);
+			const moveInMonth = invoice.metadata?.moveInMonth;
 
-			const propertyDoc = adminDB
-				.collection('properties')
-				.doc(invoicePaymentSucceeded.metadata.propertyID);
-			const currentYearDocument = propertyDoc.collection('payment_history').doc(curYearString);
+			// Any failure below responds 500 so that Stripe redelivers the event. Everything is read and
+			// written in one transaction: concurrent events cannot overwrite each other, a payment
+			// spanning two years is recorded completely or not at all, and the invoice is marked as
+			// recorded in the same commit, so a redelivery never counts a payment twice.
+			try {
+				const propertyRef = adminDB.collection('properties').doc(propertyId);
+				const outcome = await adminDB.runTransaction(async (tx) => {
+					const recordedRef = invoice.id
+						? propertyRef.collection('recorded_invoices').doc(invoice.id)
+						: undefined;
+					if (recordedRef && (await tx.get(recordedRef)).exists) {
+						return 'already-recorded';
+					}
 
-			const currentYearData = (await currentYearDocument.get()).data();
+					const propertyData = (await tx.get(propertyRef)).data();
+					if (!propertyData) {
+						return 'unknown-property';
+					}
 
-			if (currentYearData && currentYearData[curMonthString]) {
-				currentYearDocument
-					.set(
-						{
-							[curMonthString]: {
-								remainingBalance: FieldValue.increment(-1 * amount),
-								transactions: FieldValue.arrayUnion({
-									date: eventDate,
-									amount: amount
-								})
-							}
-						},
-						{ merge: true }
-					)
-					.catch((err) => {
-						throw error(500, err);
+					// A payment clears the oldest unpaid months first, the same order the balance uses.
+					const histories = await loadHistories(
+						propertyId,
+						moveInMonth,
+						eventDate.toDate(),
+						(ref) => tx.get(ref)
+					);
+					const allocations = allocatePayment({
+						rent: propertyData.rent,
+						moveInMonth,
+						histories,
+						now: eventDate.toDate(),
+						amountCents: rentCents
 					});
-			} else {
-				const propertyData = (await propertyDoc.get()).data();
 
-				if (!propertyData) {
+					// One entry per year document; the fee is recorded once, on the first transaction.
+					const years = new Map<string, Record<string, unknown>>();
+					allocations.forEach((a, index) => {
+						const amount = a.cents / 100;
+						const transaction = {
+							date: eventDate,
+							amount,
+							...(index === 0 && feeCents !== undefined && { fee: feeCents / 100 })
+						};
+						const months = years.get(String(a.month.year)) ?? {};
+						months[a.month.monthName] = {
+							remainingBalance: a.hasEntry
+								? FieldValue.increment(-1 * amount)
+								: (propertyData.rent * 100 - a.cents) / 100,
+							transactions: FieldValue.arrayUnion(transaction)
+						};
+						years.set(String(a.month.year), months);
+					});
+
+					for (const [year, months] of years) {
+						tx.set(propertyRef.collection('payment_history').doc(year), months, { merge: true });
+					}
+					if (recordedRef) {
+						tx.set(recordedRef, { recordedAt: eventDate });
+					}
+					return 'recorded';
+				});
+
+				if (outcome === 'unknown-property') {
 					console.log('Could not find property details');
-					break;
+				} else if (outcome === 'already-recorded') {
+					console.log('Invoice already recorded; ignoring redelivery');
 				}
-
-				currentYearDocument
-					.set(
-						{
-							[curMonthString]: {
-								remainingBalance: propertyData.rent - amount,
-								transactions: FieldValue.arrayUnion({
-									date: eventDate,
-									amount: amount
-								})
-							}
-						},
-						{ merge: true }
-					)
-					.catch((err) => {
-						throw error(500, err);
-					});
+			} catch (err) {
+				console.log(err instanceof Error ? err.message : err);
+				throw error(500, 'Failed to record payment');
 			}
 			break;
 		}

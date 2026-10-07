@@ -23,6 +23,7 @@ describe('authentication: session establishment (POST /api/signin)', () => {
 		expect(cookie.name).toBe('__session');
 		expect(cookie.value).toBe('session-cookie-value');
 		expect(cookie.options).toMatchObject({ httpOnly: true, secure: true, path: '/' });
+		expect(cookie.options.maxAge).toBe(FIVE_DAYS_MS / 1000);
 	});
 
 	it('Scenario: Stale ID token responds 401 "Recent sign in required!" and sets no cookie', async () => {

@@ -1,5 +1,9 @@
 import { STRIPE_API_KEY } from '$env/static/private';
+import { PUBLIC_FB_PROJECT_ID } from '$env/static/public';
 import Stripe from 'stripe';
+import { checkStripeKeyMode } from './stripeKeyGuard';
+
+checkStripeKeyMode(STRIPE_API_KEY, PUBLIC_FB_PROJECT_ID);
 
 // STRIPE_API_BASE_URL is set only by the end-to-end tests, which point the client at a local fake
 // instead of api.stripe.com. It is read at runtime, so it is not a required variable, and it is

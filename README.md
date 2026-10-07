@@ -23,6 +23,13 @@ the example shows the format.
 
 Node 22 is required (`.nvmrc`; run `nvm use`). `package.json` `engines.node` pins the Cloud Function runtime to the same version.
 
+## Stripe
+
+Dev and local environments use Stripe test-mode keys; only production may use a live key. The server
+checks this at startup (a live key outside production fails, a test key in production logs a
+warning). Setup steps for the dev sandbox, the webhooks and going live are in
+[docs/stripe-setup.md](docs/stripe-setup.md).
+
 ## Testing
 
 There are three layers. The specs in `openspec/specs/` are the test plan: each WHEN/THEN scenario of
