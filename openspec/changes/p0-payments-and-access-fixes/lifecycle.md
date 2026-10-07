@@ -1,9 +1,9 @@
 # Lifecycle: p0-payments-and-access-fixes
 
 - Branch: `p0-payments-and-access-fixes`
-- Stage: 5 Ship to develop (review passed in round 4; resumed 2026-10-06 on the user's instruction: "fix everything and run another round, if it passes continue along")
-- Review round: 3 of 3 done; round 4 run on the user's instruction after the halt
-- QA cycle: 0 of 3
+- Stage: 7 Production PR (QA passed in cycle 3; waiting for Gate B, a human merges)
+- Review round: 4 (round 4 run on the user's instruction after the halt at round 3)
+- QA cycle: 3 of 3 (cycles 1 and 2 failed on the environment, cycle 3 passed)
 - Started: 2026-10-06
 
 ## Interview summary
@@ -106,14 +106,75 @@ Accepted preflight gaps: `npm run check` fails on the stale local `.env` unless 
 - The five-year and future-month limits are tested through POST but not PATCH.
 - POST re-assign reads then sets the junction (not atomic against a concurrent PATCH).
 - `arrayUnion` merges two identical transactions (same second, amount, fee); balances stay right.
+- The move-in month field on the Tenants tab is narrow ("September 202" is cut off on desktop).
 - Two checkouts started before the first webhook lands can together exceed the balance.
 
 ## QA report
-(filled in stage 6; link to the QA evidence branch)
+### QA report: p0-payments-and-access-fixes
+
+- Deployed commit: `a4aa41b` on `develop` (dev site: https://lehman-realty-dev.web.app)
+- QA cycle: 3 of 3 (cycles 1 and 2 failed for environment reasons, see below)
+- Run at: 2026-10-07
+- Result: **PASS** (0 failing scenarios)
+
+Evidence (screenshots, QA specs, a webhook e2e spec): branch `qa-evidence/p0-payments-and-access-fixes` (not merged).
+
+**Earlier cycles.** Cycle 1: a paid checkout did not lower the balance because the dev Stripe webhook was not configured. Cycle 2: every payment returned 500 because the dev API key pointed at the production sandbox, where the QA tenant's customer id did not exist. Both were fixed in Stripe and GitHub settings with no code change; the same webhook handler also passed on the Firestore emulator (`tests/e2e/specs/webhook.spec.ts` on the evidence branch).
+
+#### End-to-end payment on the dev site
+Balance $1,000.00 before; $1.00 payment created a Checkout session with Rent $1.00 and Transaction Fee $0.33; Stripe's back arrow returned to `/payment` with the balance unchanged; paying with the 4242 test card landed on `/payment/success` and the balance dropped to $999.00 via the webhook; with the move-in month two months back (balance $2,999.00) a $5.00 payment dropped it to $2,994.00.
+
+#### Scenarios
+| Capability | Scenario | Result | Evidence |
+|---|---|---|---|
+| authentication | Cookie `Max-Age` is 432000 | pass | ![authentication-cookie-lifetime](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/authentication-cookie-lifetime.png?raw=true) |
+| access-control | Admin opens /payment, /maintenance, /insurance, /payment/success: 303 to /admin | pass | ![access-control-admin-opens-tenant-page-payment](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/access-control-admin-opens-tenant-page-payment.png?raw=true) |
+| access-control | Tenant opens /payment | pass | ![access-control-tenant-opens-tenant-page](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/access-control-tenant-opens-tenant-page.png?raw=true) |
+| access-control | Tenant opens /admin and /admin/users: 401 | pass | ![access-control-tenant-opens-admin-admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/access-control-tenant-opens-admin-admin.png?raw=true) |
+| rent-payments | Real balance and due date | pass | ![rent-payments-no-payments-yet](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/rent-payments-no-payments-yet.png?raw=true) |
+| rent-payments | Valid amount: session with Rent and fee lines | pass | ![rent-payments-stripe-checkout-reached](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/rent-payments-stripe-checkout-reached.png?raw=true) |
+| rent-payments | Invalid, fractional-cent, zero, negative and over-balance amounts: 400 | pass | ![rent-payments-over-balance-refused](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/rent-payments-over-balance-refused.png?raw=true) |
+| rent-payments | Cancel returns to /payment | pass | ![rent-payments-return-pages-cancel](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/rent-payments-return-pages-cancel.png?raw=true) |
+| rent-payments | Success returns to /payment/success | pass | ![rent-payments-return-pages-success](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/rent-payments-return-pages-success.png?raw=true) |
+| rent-payments | Partial payment lowers the balance (webhook) | pass | ![rent-payments-partial-payment](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/rent-payments-partial-payment.png?raw=true) |
+| rent-payments | Unpaid past months carry over | pass | ![rent-payments-past-months-carry-over](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/rent-payments-past-months-carry-over.png?raw=true) |
+| rent-payments | Carry-over across a year boundary | pass | ![rent-payments-carry-over-year-boundary](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/rent-payments-carry-over-year-boundary.png?raw=true) |
+| rent-payments | Payment toward carried-over months | pass | ![rent-payments-carry-over-payment-balance](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/rent-payments-carry-over-payment-balance.png?raw=true) |
+| tenant-assignment | Change move-in month (toast, persists) | pass | ![tenant-assignment-change-move-in-month](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/tenant-assignment-change-move-in-month.png?raw=true) |
+| tenant-assignment | Invalid month rejected, 5-year bound | pass | ![tenant-assignment-invalid-month-nothing-written](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/tenant-assignment-invalid-month-nothing-written.png?raw=true) |
+| tenant-assignment | Re-assign keeps the month | pass | ![tenant-assignment-reassign-keeps-month](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/tenant-assignment-reassign-keeps-month.png?raw=true) |
+| tenant-assignment | Non-admin PATCH: 401 | pass | ![tenant-assignment-non-admin-patch](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/tenant-assignment-non-admin-patch.png?raw=true) |
+| regression | Tenant top-level pages | pass | ![regression-tenant-insurance](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/regression-tenant-insurance.png?raw=true) |
+| regression | Admin top-level pages | pass | ![regression-admin-home](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/p0-payments-and-access-fixes/openspec/changes/p0-payments-and-access-fixes/qa/screenshots/regression-admin-home.png?raw=true) |
+
+#### Observations outside the specs
+- (low) On the Tenants tab the move-in month field is narrow: "September 202" is cut off at desktop width. Cosmetic; deferred.
+- (low) "No move-in month" with an empty field could not be reproduced: the UI cannot clear it and the junction already had a month.
+- (low) The QA tenant now has $6.00 of sandbox payments recorded in the dev QA property's history.
+
+#### Not covered by automation
+Webhook bad signature, redelivery, failed write and unknown property through real Stripe (covered by handler tests and the emulator e2e spec); month near midnight; startup key guards; paid-in-full state; a payment spanning several months checked in Firestore (verified through the balance only); a fresh assign without a month; phone layouts.
+
 
 ## Verification checklist for the human
-(filled in stage 7)
+### Human verification checklist (ranked by risk)
+
+**Before merging (production configuration)**
+1. **Production Stripe webhook** (high). No webhook endpoint exists for production, so payments there would never be recorded. In the Stripe account production uses, add an endpoint `https://manager.lehmanfamilyllc.com/api/stripe/webhook` (event `invoice.payment_succeeded`), put its signing secret in `STRIPE_ENDPOINT_SECRET` in the GitHub `production` environment, and let the production deploy pick it up. If dev and production share one Stripe account, each endpoint also receives the other's events; an event for a property that is not in that Firestore is ignored and logged.
+2. **Stripe key mode on production** (high). Production runs a test-mode key, so the startup guard only logs a warning there and payments are test payments. Confirm the production deploy starts normally and the log shows that warning. When the account is activated for live mode, follow `docs/stripe-setup.md` (live key, live webhook and secret, live customer ids) and make one small real payment.
+3. **Set `moveInMonth` for existing tenants** (high). Existing junctions have none, so they owe only the current month until an admin sets it on the property's Tenants tab. Decide each tenant's real move-in month before announcing the balances.
+
+**After the production deploy**
+4. **One test payment on production** (high). As a tenant, pay a small amount with the Stripe test card; expect `/payment/success`, and the balance on `/payment` to drop by that amount within a minute. Check the Stripe webhook delivery log shows 200 and `properties/{id}/payment_history/{year}` has the transaction with `fee`.
+5. **Webhook resend and bad signature** (medium). Resend a processed `invoice.payment_succeeded` event: expect 200 and no second change in the balance. A request with a wrong signature should return 400.
+6. **Payment across several months** (medium). Set a move-in month two months back, pay more than the current month's remainder (not just $5) and look at Firestore: oldest month paid first, one transaction per month, the fee on the first transaction only.
+7. **Paid in full** (medium). Pay the whole balance as a tenant: expect "You have nothing to pay" and a disabled "Make a Payment".
+8. **Admin redirect and tenant pages in real browsers** (low). As an admin open `/payment`, `/maintenance`, `/insurance`: expect `/admin`. As a tenant open `/admin`: expect an error page, not the admin page.
+9. **Phone layout and session cookie** (low). `/payment`, `/payment/success` and the Tenants tab month field on a phone (the field is narrow on desktop too); `__session` expires in about 5 days (check Safari).
+
 
 ## Halted
-Stage 4 (review loop), 2026-10-06. Reason: review round 3 still had 2 majors (see Review rounds). Evidence: findings above; local checks all green at commit HEAD.
-Next step for a human: decide whether to (a) fix the two majors and the `hasEntry` minor on this branch and re-run the review/ship stages (`/dev-lifecycle p0-payments-and-access-fixes`, resume at stage 4), or (b) accept them and ship, with duplicate-delivery idempotency filed as a follow-up. Nothing has been merged or deployed.
+The run halted three times and was resumed each time; it is not halted now.
+- Stage 4, 2026-10-06: review round 3 ended with 2 majors. The user asked for them to be fixed and for another round; round 4 passed.
+- Stage 6, 2026-10-06 (QA cycle 1): the dev Stripe webhook was not configured. The user added it.
+- Stage 6, 2026-10-07 (QA cycle 2): the dev API key pointed at the production sandbox, so the QA tenant's Stripe customer did not exist. The user repointed the key and fixed the data. Tracking issue: #92.
