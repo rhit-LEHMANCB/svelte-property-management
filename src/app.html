@@ -4,15 +4,16 @@
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width" />
+		<!-- !important because the app stylesheet is linked after this block and would otherwise win. -->
 		<noscript>
 			<style>
 				html:not([data-hydrated]) [data-needs-hydration] {
-					pointer-events: auto;
-					cursor: auto;
-					opacity: 1;
+					pointer-events: auto !important;
+					cursor: auto !important;
+					opacity: 1 !important;
 				}
 				html:not([data-hydrated]) [data-needs-hydration]::after {
-					display: none;
+					display: none !important;
 				}
 			</style>
 		</noscript>

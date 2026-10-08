@@ -169,6 +169,25 @@ test.describe('authentication: sign-in before hydration', () => {
 	});
 });
 
+test.describe('app-platform: no scripts', () => {
+	test('Scenario: the Sign in button is clickable and signs in without JavaScript', async ({
+		browser
+	}) => {
+		const context = await browser.newContext({ javaScriptEnabled: false });
+		const page = await context.newPage();
+		await page.goto('/signin');
+		const button = page.getByRole('button', { name: 'Sign in' });
+
+		await expect(button).toHaveCSS('pointer-events', 'auto');
+		await page.getByLabel('Email').fill(TENANT.email);
+		await page.getByLabel('Password').fill(TENANT.password);
+		await button.click();
+
+		await expect(page).not.toHaveURL(/\/signin/);
+		await context.close();
+	});
+});
+
 test.describe('app-platform: controls wait for hydration', () => {
 	test('Scenario: Make a Payment is inert with a spinner until hydration, then opens its dialog', async ({
 		page
