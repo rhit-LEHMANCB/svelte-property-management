@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
 import { POST as addUser } from '../../src/routes/api/user/add/+server';
 import { DELETE as deleteUser } from '../../src/routes/api/user/[userId]/+server';
@@ -28,6 +28,19 @@ describe('user-management: create user (POST /api/user/add)', () => {
 			stripeID: 'cus_new'
 		});
 		expect(services.sendPasswordResetEmail).toHaveBeenCalledWith('new@example.com', true);
+	});
+
+	it('Scenario: Welcome email failure still creates the user and returns New User Created', async () => {
+		seedAdmin('admin-1');
+		services.sendPasswordResetEmail.mockRejectedValue(new Error('email provider down'));
+		const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		const result = await call(addUser, { userID: 'admin-1', body: { email: 'new@example.com' } });
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(result).toMatchObject({ status: 200, json: { status: 'New User Created' } });
+		expect(logged).toHaveBeenCalled();
+		logged.mockRestore();
 	});
 
 	it('Scenario: Auth creation fails responds 500 and creates nothing else', async () => {

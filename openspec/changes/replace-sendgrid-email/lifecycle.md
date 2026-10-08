@@ -1,7 +1,7 @@
 # Lifecycle: replace-sendgrid-email
 
 - Branch: `claude/replace-sendgrid-email`
-- Stage: 2 Propose + preflight (awaiting Gate A)
+- Stage: 3 Implement (done, moving to 4 Review)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-07
@@ -44,8 +44,8 @@
 **Assumptions.** `resend` SDK; sender is a constant, no env var; e2e and PR checks use a dummy key; handler tests mock the SDK; automated QA never sends real mail (e2e cannot reach the provider).
 
 ## Gate A
-Approved: no
-Accepted preflight gaps: none
+Approved: yes, 2026-10-07 (user: "approve")
+Accepted preflight gaps: local lint/check fail on this Windows checkout (CI authoritative); gh pr merge permission not tested, the run halts at stage 5 if refused. Resolved after approval: RESEND_API_KEY added to develop; .env.qa copied from main checkout (untracked, 600).
 
 ## Preflight
 | Check | Result |

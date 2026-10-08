@@ -75,7 +75,7 @@ const appEnv = {
 	PUBLIC_FRONTEND_URL: APP_URL,
 	FB_CLIENT_EMAIL: `e2e@${PROJECT_ID}.iam.gserviceaccount.com`,
 	FB_PRIVATE_KEY: JSON.stringify({ privateKey }),
-	SENDGRID_API_KEY: 'SG.e2e',
+	RESEND_API_KEY: 're_e2e',
 	STRIPE_API_KEY: 'sk_test_e2e',
 	STRIPE_ENDPOINT_SECRET: 'whsec_e2e',
 	STRIPE_API_BASE_URL: FAKE_STRIPE_URL,
