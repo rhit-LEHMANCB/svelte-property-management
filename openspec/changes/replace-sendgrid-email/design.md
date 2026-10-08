@@ -21,7 +21,7 @@ See proposal.md - Why. Today `src/lib/server/email.ts` builds a Firebase reset l
 | Firebase Auth built-in emails | No provider, but no separate welcome email and limited sender control. Not chosen. |
 | Postmark / Mailgun | Paid or trial-limited. Not chosen. |
 
-**Templates as code.** A new `src/lib/server/email-templates.ts` exports `renderPasswordResetEmail(link)` and `renderWelcomeEmail(link)`, each returning `{ subject, html, text }`. The link is HTML attribute-escaped. Subjects: "Reset your password" and "Welcome to Lehman Family Realty". Alternative, dashboard templates, rejected because it couples code to a provider API and drifts from the repo.
+**Templates as code.** A new `src/lib/server/email-templates.ts` exports `renderPasswordResetEmail(link)` and `renderWelcomeEmail(link)`, each returning `{ subject, html, text }`. The link is HTML attribute-escaped. Subjects: "Reset your password" and "Welcome to Lehman Family LLC". Alternative, dashboard templates, rejected because it couples code to a provider API and drifts from the repo.
 
 **Provider seam.** `email.ts` defines `sendEmail(message: { to, subject, html, text }): Promise<void>` implemented with the `resend` SDK (`new Resend(RESEND_API_KEY)` created lazily so tests and builds without a key do not throw at import). Resend returns `{ data, error }`; a non-null `error` is thrown so callers keep their existing rejection to 500 path. `sendPasswordResetEmail(email, isWelcomeEmail)` keeps its signature and resolves with `void`; the callers ignore the resolved value (to be verified in tasks).
 

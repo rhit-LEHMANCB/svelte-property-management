@@ -38,7 +38,7 @@
 
 <div class="h-screen flex items-center justify-center">
 	<form method="POST" on:submit={handleSubmit} class="card p-8">
-		<strong class="h3">Lehman Family Realty</strong>
+		<strong class="h3">Lehman Family LLC</strong>
 		<p>Please sign in to continue.</p>
 		<div class="grid grid-cols-1 gap-2 mt-2">
 			<!-- A value binding would make hydration reset text typed before it finished, so the input only
