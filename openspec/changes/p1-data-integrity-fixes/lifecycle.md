@@ -1,9 +1,9 @@
 # Lifecycle: p1-data-integrity-fixes
 
 - Branch: `p1-data-integrity-fixes`
-- Stage: 5 Ship to develop
+- Stage: 6 QA on the dev site (halted, see Halted)
 - Review round: 1 of 3
-- QA cycle: 0 of 3
+- QA cycle: 1 of 3
 - Started: 2026-10-07
 
 ## Interview summary
@@ -64,7 +64,8 @@ Run 2026-10-07.
 | GitHub `develop` environment secrets | OK, no new secrets needed (uses existing `FB_API_KEY`) |
 
 ## Review rounds
-Round 1 (2026-10-08, fresh Sonnet reviewer): blockers 0, majors 0, minors 5, nits 1. Nothing to fix; exited the loop. Minors deferred below.
+Round 1 (2026-10-08, fresh Sonnet reviewer, PR #110): blockers 0, majors 0, minors 5, nits 1. Nothing to fix; exited the loop. Minors deferred below.
+Fix round (PR #113, QA finding): fresh reviewer, blockers 0, majors 0, nits 2 (cookie assertion in the new e2e test; only the sign-in button is exercised). Not changed.
 
 ## Implementation notes
 Stage 3 done 2026-10-08: 21/21 tasks. `npm test` 292 pass, `npm run check` clean, eslint clean, Prettier clean with `--end-of-line auto`, `npm run build` ok, full e2e 53 pass. `npm run check:server` fails on Windows only (pre-existing path bug in scripts/check-server-imports.mjs: `C:C:...`); CI on Linux runs it.
@@ -81,10 +82,26 @@ Stage 3 done 2026-10-08: 21/21 tasks. `npm test` 292 pass, `npm run check` clean
 - `scripts/check-server-imports.mjs` fails on Windows (`C:C:...` path); CI on Linux is unaffected.
 
 ## QA report
-(filled in stage 6; link to the QA evidence branch)
+Cycle 1 (2026-10-08 04:45 UTC, deployed develop incl. PR #110 merge 6d4a43a): 28 QA tests, 27 pass, 1 fail. Evidence: branch `qa-evidence/p1-data-integrity-fixes` (30 screenshots in `openspec/changes/p1-data-integrity-fixes/qa/screenshots/`, specs in `tests/qa/p1-data-integrity-fixes/`).
+
+- **App bug (fixed, PR #113):** with JavaScript off, the Sign in button stayed `pointer-events: none` with a spinner, because the `<noscript>` override had the same specificity as the app stylesheet and was linked before it. Enter-key sign-in worked; mouse clicks did not. Fixed with `!important`; new e2e test with `javaScriptEnabled: false`.
+- **Environment / test bug (needs a human):** the QA agent's cleanup helper matched the QA tenant (`...+qa-tenant@...`) and deleted it through the app's Delete user endpoint. The QA tenant login in `.env.qa` no longer works (INVALID_LOGIN_CREDENTIALS). The helper is fixed. The QA admin survived (the app refuses to delete the signed-in admin). All tenant-side checks were not run: tenant regression pass, Make a Payment before hydration, tenant profile scenarios, and a tenant of a deleted property loading the app.
+- Passed: assignment (assign, missing tenant, unknown user/property, admin as tenant, options, 409, same property), delete property cascade (property + junction rows), create user (new user, duplicate Auth, welcome-email failure rolls back with no user document left), delete user (user and junction row gone), profile invalid form and wrong/missing password (email unchanged), sign-in before hydration (no JS, scripts blocked, typed early, wrong credentials), click before hydration inert with spinner, after hydration works, admin regression (5 pages, no console errors).
+- Not covered by automation: property delete over 500 docs and failure retry; maintenance/payment_history/storage removal; Stripe-call and Firestore-write failure injection; delete self (400) deliberately not exercised; profile valid update and correct-password email change (would alter a shared account); more than 10 tenants (dev has 3 users).
+- Observations: the assignable dropdown shows names only (every new user is "New User"); the Add User failure toast is generic ("Error creating user.") even though the API returns the Resend message; Resend rejects example.com recipients so Add User only works with real or `delivered+...@resend.dev` addresses on dev.
 
 ## Verification checklist for the human
 (filled in stage 7)
 
 ## Halted
-(only if the run halted: stage, reason, evidence, next step for a human)
+**HALTED at stage 6 (QA), 2026-10-08.** Not a code failure.
+
+- **Reason:** environment. The QA agent's own cleanup helper deleted the QA tenant account in the dev project, so `QA_TENANT_EMAIL` / `QA_TENANT_PASSWORD` in `.env.qa` no longer sign in (INVALID_LOGIN_CREDENTIALS). A tenant cannot be recreated unattended: Add User sends a password-setup email that only a human with that inbox can complete. Cycle 2 cannot cover the tenant side without it.
+- **State:** PR #110 and the QA-found fix PR #113 are merged to `develop`; both deploys to the dev site succeeded (#113's deploy was started by the merge). QA cycle 1 result: 27 of 28 pass, the one failure (no-JS sign-in button) is fixed by #113 and has an e2e test. The production PR has NOT been opened.
+- **Evidence:** branch `qa-evidence/p1-data-integrity-fixes` (screenshots, QA specs). Not merged, do not delete.
+- **Next step for a human:**
+  1. Recreate the QA tenant in the dev project: as the QA admin, Add User with the tenant email (a real inbox you control), open the welcome email, set a password, and make `.env.qa` match. Assign the tenant to a `qa-` property if one is needed.
+  2. Resume the lifecycle at stage 6: run QA cycle 2 against the current `develop` (the QA specs from cycle 1 are on the evidence branch and the cleanup helper is fixed), covering the tenant-only checks: tenant regression pass, Make a Payment before hydration, a tenant of a deleted property loading the app, tenant profile scenarios, plus a recheck of the no-JS sign-in click.
+  3. Then stage 7: open the production PR (`--base production --head develop`).
+  Alternatively, accept the tenant-side gap and go straight to stage 7; the recommended human tests in the QA report already cover those checks.
+- **Spec conflict to settle before archive:** see Deferred findings (welcome-email failure behavior vs the `replace-sendgrid-email` change).
