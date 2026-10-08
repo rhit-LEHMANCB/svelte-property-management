@@ -1,7 +1,7 @@
 # Lifecycle: p1-data-integrity-fixes
 
 - Branch: `p1-data-integrity-fixes`
-- Stage: 2 Propose + preflight (awaiting Gate A)
+- Stage: 3 Implement
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-07
@@ -43,8 +43,8 @@ Approved: yes (2026-10-07)
 **Assumptions.** Maintenance requests and payment history of a deleted user are retained. Stripe customer deletion is irreversible and accepted. Rolling back a profile change restores the previous name/email/phone on Stripe and the previous email on Auth.
 
 ## Gate A
-Approved: no
-Accepted preflight gaps: none
+Approved: yes (2026-10-07, by the user in chat). `gh pr merge` confirmed allowed. `.env.qa` copied from the main checkout (4 QA variables present, gitignored).
+Accepted preflight gaps: none (CRLF-only Prettier warnings are local and environmental)
 
 ## Preflight
 Run 2026-10-07.

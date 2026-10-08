@@ -34,7 +34,7 @@ const bucket = {
 const storage = { bucket: vi.fn(), log: storageLog };
 
 const stripe = {
-	customers: { create: vi.fn(), update: vi.fn() },
+	customers: { create: vi.fn(), update: vi.fn(), del: vi.fn() },
 	checkout: { sessions: { create: vi.fn() } },
 	billingPortal: { sessions: { create: vi.fn() } },
 	webhooks: { constructEvent: vi.fn() }
@@ -83,6 +83,7 @@ function reset() {
 		.mockReset()
 		.mockImplementation(async (args: object) => ({ id: 'cus_new', ...args }));
 	stripe.customers.update.mockReset().mockResolvedValue({});
+	stripe.customers.del.mockReset().mockResolvedValue({ deleted: true });
 	stripe.checkout.sessions.create
 		.mockReset()
 		.mockResolvedValue({ id: 'cs_test_1', url: 'https://checkout.test/session' });

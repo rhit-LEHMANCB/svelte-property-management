@@ -2,9 +2,9 @@
 
 ## 1. Shared helpers
 
-- [ ] 1.1 Add `batch()` (set/update/delete/commit) to `tests/helpers/fakeFirestore.ts` and a test in `fakeFirestore.test.ts`; verify `npm run test:handlers` passes
-- [ ] 1.2 Add `src/lib/server/firestoreDelete.ts` (`deleteDocs` in chunks of 500, `deleteSubcollections`) with a unit test that deletes 1,200 docs; verify the test passes
-- [ ] 1.3 Add `src/lib/server/verifyPassword.ts` (Firebase REST `signInWithPassword`, emulator-aware, never logs the password) and `setSessionCookie` shared with `/api/signin`; verify unit tests with a mocked `fetch` cover success, wrong password and emulator host
+- [x] 1.1 Add `batch()` (set/update/delete/commit) to `tests/helpers/fakeFirestore.ts` and a test in `fakeFirestore.test.ts`; verify `npm run test:handlers` passes
+- [x] 1.2 Add `src/lib/server/firestoreDelete.ts` (`deleteDocs` in chunks of 500, `deleteSubcollections`) with a unit test that deletes 1,200 docs; verify the test passes
+- [x] 1.3 Add `src/lib/server/verifyPassword.ts` (Firebase REST `signInWithPassword`, emulator-aware, never logs the password) and `setSessionCookie` shared with `/api/signin`; verify unit tests with a mocked `fetch` cover success, wrong password and emulator host
 
 ## 2. #38 Delete property
 
