@@ -3,7 +3,7 @@ import { FakeFirestore } from './fakeFirestore';
 import { STRIPE_ENDPOINT_SECRET } from '$env/static/private';
 
 /**
- * The doubles that replace Firebase Admin, Stripe and SendGrid in handler tests. They are
+ * The doubles that replace Firebase Admin, Stripe and the email provider in handler tests. They are
  * singletons that the module mocks in `setup.ts` hand out; `reset()` runs before every test.
  */
 export const VALID_STRIPE_SIGNATURE = 'valid-signature';
@@ -104,7 +104,7 @@ function reset() {
 			return JSON.parse(Buffer.from(payload).toString());
 		});
 
-	sendPasswordResetEmail.mockReset().mockResolvedValue({ statusCode: 202 });
+	sendPasswordResetEmail.mockReset().mockResolvedValue(undefined);
 	verifyPassword
 		.mockReset()
 		.mockImplementation(async (_email: string, password: string) =>

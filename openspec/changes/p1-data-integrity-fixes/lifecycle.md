@@ -70,6 +70,7 @@ Round 1 (2026-10-08, fresh Sonnet reviewer): blockers 0, majors 0, minors 5, nit
 Stage 3 done 2026-10-08: 21/21 tasks. `npm test` 292 pass, `npm run check` clean, eslint clean, Prettier clean with `--end-of-line auto`, `npm run build` ok, full e2e 53 pass. `npm run check:server` fails on Windows only (pre-existing path bug in scripts/check-server-imports.mjs: `C:C:...`); CI on Linux runs it.
 
 ## Deferred findings
+- **SPEC CONFLICT for the human at Gate B:** the in-flight `replace-sendgrid-email` change (merged to develop while this ran) specifies "Welcome email failure: the user is still created ... as the welcome email is not awaited". This change, by the user's explicit interview decision, awaits the email and rolls the whole create back on failure (#40). Merge resolution kept this change's behavior and removed the upstream test that asserted the old behavior. Whichever behavior is wanted, `openspec/changes/replace-sendgrid-email/specs/authentication/spec.md` (Welcome email failure) and this change's `user-management` delta must be reconciled before archive.
 (minors, nits and known gaps to turn into issues at wrap-up)
 - Raw provider error text (Firebase, Stripe, storage) is returned in 500 bodies on property delete, user delete and user create; keep detail in logs (not a regression).
 - Sign-in action: map Firebase `USER_DISABLED` / `TOO_MANY_ATTEMPTS_TRY_LATER` to a specific message, and wrap `setSessionCookie` in the same try/catch so a verify failure shows the form error, not a bare 500.

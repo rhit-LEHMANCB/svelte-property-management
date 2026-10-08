@@ -16,7 +16,7 @@ Goal: remove ambiguity before anything is proposed, without asking what the code
 - **Goal and scope:** the problem, who has it, what "done" looks like, what is explicitly out of scope.
 - **Roles:** which of admin and tenant (`permissions: admin | user`) can do what; what an unauthenticated user sees.
 - **Data:** new or changed Firestore collections or fields, who writes them, migrations for existing documents, storage paths, Stripe objects.
-- **Behavior and edge cases:** empty states, limits, concurrent edits, failure of Stripe, SendGrid or Firebase calls, partial failures.
+- **Behavior and edge cases:** empty states, limits, concurrent edits, failure of Stripe, the email provider or Firebase calls, partial failures.
 - **Security and privacy:** access rules, what must not leak between tenants, secrets, email content.
 - **UI:** which pages, forms and navigation entries; reuse of existing components.
 - **Acceptance:** concrete WHEN/THEN examples the user would check by hand.
