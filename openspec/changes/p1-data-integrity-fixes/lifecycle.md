@@ -1,8 +1,8 @@
 # Lifecycle: p1-data-integrity-fixes
 
 - Branch: `p1-data-integrity-fixes`
-- Stage: 4 Review (round 0 of 3 starting)
-- Review round: 0 of 3
+- Stage: 5 Ship to develop
+- Review round: 1 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-07
 
@@ -64,13 +64,20 @@ Run 2026-10-07.
 | GitHub `develop` environment secrets | OK, no new secrets needed (uses existing `FB_API_KEY`) |
 
 ## Review rounds
-(none yet; one line per round: blockers, majors, fixed, rejected with reason)
+Round 1 (2026-10-08, fresh Sonnet reviewer): blockers 0, majors 0, minors 5, nits 1. Nothing to fix; exited the loop. Minors deferred below.
 
 ## Implementation notes
 Stage 3 done 2026-10-08: 21/21 tasks. `npm test` 292 pass, `npm run check` clean, eslint clean, Prettier clean with `--end-of-line auto`, `npm run build` ok, full e2e 53 pass. `npm run check:server` fails on Windows only (pre-existing path bug in scripts/check-server-imports.mjs: `C:C:...`); CI on Linux runs it.
 
 ## Deferred findings
 (minors, nits and known gaps to turn into issues at wrap-up)
+- Raw provider error text (Firebase, Stripe, storage) is returned in 500 bodies on property delete, user delete and user create; keep detail in logs (not a regression).
+- Sign-in action: map Firebase `USER_DISABLED` / `TOO_MANY_ATTEMPTS_TRY_LATER` to a specific message, and wrap `setSessionCookie` in the same try/catch so a verify failure shows the form error, not a bare 500.
+- Hydration gating uses `pointer-events: none` only; keyboard activation (Tab then Enter/Space) before hydration is still dropped. Consider `aria-disabled`/`disabled` on server-rendered buttons.
+- Profile password check verifies against the Firestore email, not the Auth email; if the two already disagree a correct password is rejected. Consider `adminAuth.getUser(userId).email`.
+- User delete runs the irreversible Stripe delete first; a later failure leaves a user whose `stripeID` is dead until the delete is repeated (accepted in design; retry is tested).
+- Property delete of a non-existent id returns 200 (keeps repeat deletes idempotent).
+- `scripts/check-server-imports.mjs` fails on Windows (`C:C:...` path); CI on Linux is unaffected.
 
 ## QA report
 (filled in stage 6; link to the QA evidence branch)
