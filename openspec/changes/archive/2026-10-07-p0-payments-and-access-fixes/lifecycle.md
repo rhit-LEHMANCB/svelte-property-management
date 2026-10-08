@@ -1,7 +1,7 @@
 # Lifecycle: p0-payments-and-access-fixes
 
 - Branch: `p0-payments-and-access-fixes`
-- Stage: 7 Production PR (QA passed in cycle 3; waiting for Gate B, a human merges)
+- Stage: **complete (archived automatically on 2026-10-07 after the production release `5815a72`)**
 - Review round: 4 (round 4 run on the user's instruction after the halt at round 3)
 - QA cycle: 3 of 3 (cycles 1 and 2 failed on the environment, cycle 3 passed)
 - Started: 2026-10-06
@@ -178,3 +178,6 @@ The run halted three times and was resumed each time; it is not halted now.
 - Stage 4, 2026-10-06: review round 3 ended with 2 majors. The user asked for them to be fixed and for another round; round 4 passed.
 - Stage 6, 2026-10-06 (QA cycle 1): the dev Stripe webhook was not configured. The user added it.
 - Stage 6, 2026-10-07 (QA cycle 2): the dev API key pointed at the production sandbox, so the QA tenant's Stripe customer did not exist. The user repointed the key and fixed the data. Tracking issue: #92.
+
+## Archive
+Archived automatically on 2026-10-07 after the production release `5815a72` ([workflow run](https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/37705106349)). That marks this lifecycle complete.
