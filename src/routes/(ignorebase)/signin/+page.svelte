@@ -5,19 +5,12 @@
 	import { errorToast } from '$lib/Hooks/toasts';
 	import { getToastStore } from '$lib/ui';
 
-	let email: string;
-	let password: string;
-	let loginError: string;
+	// Set when the server rendered the form again after a failed sign-in without scripts.
+	export let form: { email?: string; error?: string } | null = null;
+
 	const toastStore = getToastStore();
 
-	// Clears the error whenever either field changes.
-	// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-	$: (email, password, (loginError = ''));
-	$: if (loginError) {
-		errorToast('Your email or password is incorrect.', toastStore);
-	}
-
-	async function signIn() {
+	async function signIn(email: string, password: string) {
 		const credential = await signInWithEmailAndPassword(auth, email, password);
 
 		const idToken = await credential.user.getIdToken();
@@ -31,49 +24,67 @@
 		});
 	}
 
-	async function handleSignIn() {
-		await signIn()
-			.then(() => goto('/'))
-			.catch((error) => (loginError = error.code));
-	}
+	// The values are read from the form when it is submitted, not from bound variables, so text typed
+	// before the page hydrated is never lost.
+	async function handleSubmit(event: SubmitEvent) {
+		event.preventDefault();
+		const data = new FormData(event.currentTarget as HTMLFormElement);
 
-	function onKeyDown(e: KeyboardEvent) {
-		switch (e.code) {
-			case 'Enter':
-				handleSignIn();
-				break;
-		}
+		await signIn(String(data.get('email') ?? ''), String(data.get('password') ?? ''))
+			.then(() => goto('/'))
+			.catch(() => errorToast('Your email or password is incorrect.', toastStore));
 	}
 </script>
 
 <div class="h-screen flex items-center justify-center">
-	<div class="card p-8">
+	<form method="POST" on:submit={handleSubmit} class="card p-8">
 		<strong class="h3">Lehman Family Realty</strong>
 		<p>Please sign in to continue.</p>
 		<div class="grid grid-cols-1 gap-2 mt-2">
-			<label class="label"
-				><span>Email</span><input
-					bind:value={email}
-					class="input"
-					title="Email"
-					type="email"
-				/></label
-			>
+			<!-- A value binding would make hydration reset text typed before it finished, so the input only
+				gets a value when the server sent one back after a failed sign-in without scripts. -->
+			{#if form?.email}
+				<label class="label"
+					><span>Email</span><input
+						name="email"
+						value={form.email}
+						autocomplete="username"
+						class="input"
+						title="Email"
+						type="email"
+						required
+					/></label
+				>
+			{:else}
+				<label class="label"
+					><span>Email</span><input
+						name="email"
+						autocomplete="username"
+						class="input"
+						title="Email"
+						type="email"
+						required
+					/></label
+				>
+			{/if}
 			<label class="label"
 				><span>Password</span><input
-					bind:value={password}
+					name="password"
+					autocomplete="current-password"
 					class="input"
 					title="Password"
 					type="password"
+					required
 				/></label
 			>
 		</div>
+		{#if form?.error}
+			<p class="text-error-500 mt-2" role="alert">{form.error}</p>
+		{/if}
 		<div>
-			<button type="button" on:click={handleSignIn} class="btn preset-filled-primary-500 mt-5"
+			<button type="submit" data-needs-hydration class="btn preset-filled-primary-500 mt-5"
 				>Sign in</button
 			>
 		</div>
-	</div>
+	</form>
 </div>
-
-<svelte:window on:keydown={onKeyDown} />

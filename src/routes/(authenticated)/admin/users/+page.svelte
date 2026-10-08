@@ -90,7 +90,10 @@
 </script>
 
 <div class="card m-5 grid grid-flow-row p-5 gap-5">
-	<button on:click={addUserClicked} class="btn btn-sm preset-filled-primary-500 justify-self-start"
+	<button
+		data-needs-hydration
+		on:click={addUserClicked}
+		class="btn btn-sm preset-filled-primary-500 justify-self-start"
 		><IconUserPlus class="mr-2" />Add User</button
 	>
 	<UsersListView users={data.users} paginated>

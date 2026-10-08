@@ -13,7 +13,7 @@ import {
 import { load as listLoad } from '../../src/routes/(authenticated)/admin/properties/+page.server';
 import { call } from '../helpers/callHandler';
 import { services } from '../helpers/services';
-import { db, seedAdmin, seedProperty, seedTenant } from '../helpers/seed';
+import { db, linkTenant, seedAdmin, seedProperty, seedTenant } from '../helpers/seed';
 
 const validForm = {
 	title: 'Maple Court',
@@ -266,6 +266,83 @@ describe('property-management: delete property (DELETE /api/property/{id})', () 
 		// Other properties and their requests are untouched.
 		expect(db.peek('properties/prop-2')).toBeDefined();
 		expect(db.peek('maintenance/m3')).toBeDefined();
+	});
+
+	it('Scenario: Cascade also removes the tenant links of the property and payment history', async () => {
+		seedAdmin('admin-1');
+		seedTenant('tenant-1');
+		seedTenant('tenant-2');
+		seedProperty('prop-1');
+		seedProperty('prop-2');
+		linkTenant('tenant-1', 'prop-1');
+		linkTenant('tenant-2', 'prop-2');
+		db.seed('properties/prop-1/payment_history/2026', { August: { remainingBalance: 0 } });
+		db.seed('properties/prop-1/payment_history/2025', { May: { remainingBalance: 0 } });
+		db.seed('properties/prop-2/payment_history/2026', { August: { remainingBalance: 5 } });
+
+		const result = await call(deleteProperty, {
+			method: 'DELETE',
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' }
+		});
+
+		expect(result.status).toBe(200);
+		expect(db.peek('junction_user_property/tenant-1_prop-1')).toBeUndefined();
+		expect(db.peek('properties/prop-1/payment_history/2026')).toBeUndefined();
+		expect(db.peek('properties/prop-1/payment_history/2025')).toBeUndefined();
+		// Other properties keep their links and history.
+		expect(db.peek('junction_user_property/tenant-2_prop-2')).toBeDefined();
+		expect(db.peek('properties/prop-2/payment_history/2026')).toBeDefined();
+	});
+
+	it('Scenario: Large property removes more than 500 documents', async () => {
+		seedAdmin('admin-1');
+		seedProperty('prop-1');
+		for (let i = 0; i < 1100; i++) {
+			db.seed(`maintenance/m${i}`, { propertyId: 'prop-1', status: 'Open' });
+		}
+
+		const result = await call(deleteProperty, {
+			method: 'DELETE',
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' }
+		});
+
+		expect(result.status).toBe(200);
+		expect((await db.collection('maintenance').get()).size).toBe(0);
+	});
+
+	it('Scenario: Failure responds 500, keeps the property, and repeating the delete finishes the cleanup', async () => {
+		seedAdmin('admin-1');
+		seedTenant('tenant-1');
+		seedProperty('prop-1');
+		linkTenant('tenant-1', 'prop-1');
+		db.seed('maintenance/m1', { propertyId: 'prop-1', status: 'Open' });
+		services.storage.bucket.mockReturnValueOnce({
+			deleteFiles: async () => {
+				throw new Error('storage unavailable');
+			}
+		});
+
+		const failed = await call(deleteProperty, {
+			method: 'DELETE',
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' }
+		});
+
+		expect(failed.status).toBe(500);
+		expect(db.peek('properties/prop-1')).toBeDefined();
+
+		const retried = await call(deleteProperty, {
+			method: 'DELETE',
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' }
+		});
+
+		expect(retried.status).toBe(200);
+		expect(db.peek('properties/prop-1')).toBeUndefined();
+		expect(db.peek('junction_user_property/tenant-1_prop-1')).toBeUndefined();
+		expect(db.peek('maintenance/m1')).toBeUndefined();
 	});
 
 	it('Scenario: a non-admin is rejected with 401 and nothing is deleted', async () => {

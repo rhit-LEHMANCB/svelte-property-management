@@ -26,15 +26,20 @@
 	} = superForm(data.form, {
 		customValidity: true,
 		validators: zodClient(profileSchema),
-		onUpdated({ form }) {
-			if (form.message === 'Form submitted') {
+		onUpdated({ form: updated }) {
+			if (updated.message === 'Form submitted') {
 				// Display the message using a toast library
 				successToast('Successfully updated user info.', toastStore);
+				$form.currentPassword = '';
+			} else if (updated.message) {
+				errorToast(updated.message, toastStore);
 			}
 		}
 	});
 
 	$: photoUrl = data.user.photoUrl;
+	// Changing the email asks for the current password.
+	$: emailChanged = $form.email !== data.form.data.email;
 
 	async function handleResetPasswordClicked() {
 		const response = await fetch('/api/signin/reset', {
@@ -94,6 +99,20 @@
 							/></label
 						>
 					</div>
+					{#if emailChanged}
+						<div>
+							<label class="label"
+								><span>Current password (required to change your email)</span><input
+									name="currentPassword"
+									bind:value={$form.currentPassword}
+									autocomplete="current-password"
+									class="input"
+									title="Current password"
+									type="password"
+								/></label
+							>
+						</div>
+					{/if}
 					<div>
 						<label class="label"
 							><span>Phone Number</span><input

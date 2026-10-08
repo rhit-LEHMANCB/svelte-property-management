@@ -219,3 +219,34 @@ describe('FakeFirestore: subcollections', () => {
 		expect(await ids(db.doc('properties/p1').collection('payment_history'))).toEqual(['2026']);
 	});
 });
+
+describe('FakeFirestore: batches', () => {
+	it('applies set, update and delete together on commit', async () => {
+		db.seed('c/a', { n: 1 });
+		db.seed('c/b', { n: 2 });
+		const batch = db.batch();
+		batch.set(db.doc('c/new'), { n: 3 });
+		batch.update(db.doc('c/a'), { n: 10 });
+		batch.delete(db.doc('c/b'));
+		expect(db.peek('c/new')).toBeUndefined();
+		await batch.commit();
+		expect(db.peek('c/new')).toEqual({ n: 3 });
+		expect(db.peek('c/a')).toEqual({ n: 10 });
+		expect(db.peek('c/b')).toBeUndefined();
+	});
+
+	it('rolls everything back when one write fails', async () => {
+		db.seed('c/a', { n: 1 });
+		const batch = db.batch();
+		batch.delete(db.doc('c/a'));
+		batch.update(db.doc('c/missing'), { n: 1 });
+		await expect(batch.commit()).rejects.toThrow();
+		expect(db.peek('c/a')).toEqual({ n: 1 });
+	});
+
+	it('refuses more than 500 operations, as Firestore does', async () => {
+		const batch = db.batch();
+		for (let i = 0; i < 501; i++) batch.delete(db.doc(`c/${i}`));
+		await expect(batch.commit()).rejects.toThrow(/500/);
+	});
+});

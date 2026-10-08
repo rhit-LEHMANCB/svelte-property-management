@@ -13,6 +13,8 @@ import { db, linkTenant, seedAdmin, seedProperty, seedTenant } from '../helpers/
 describe('tenant-assignment: assign tenant (POST /api/property/{id}/tenants)', () => {
 	it('Scenario: Assign writes the junction document {tenantId}_{propertyId}', async () => {
 		seedAdmin('admin-1');
+		seedTenant('tenant-1');
+		seedProperty('prop-1');
 
 		const result = await call(assignTenant, {
 			userID: 'admin-1',
@@ -30,6 +32,8 @@ describe('tenant-assignment: assign tenant (POST /api/property/{id}/tenants)', (
 
 	it('Scenario: an explicit moveInMonth is stored', async () => {
 		seedAdmin('admin-1');
+		seedTenant('tenant-1');
+		seedProperty('prop-1');
 
 		const result = await call(assignTenant, {
 			userID: 'admin-1',
@@ -45,6 +49,8 @@ describe('tenant-assignment: assign tenant (POST /api/property/{id}/tenants)', (
 
 	it('Scenario: re-assigning a tenant keeps their stored moveInMonth', async () => {
 		seedAdmin('admin-1');
+		seedTenant('tenant-1');
+		seedProperty('prop-1');
 		db.seed('junction_user_property/tenant-1_prop-1', {
 			tenantId: 'tenant-1',
 			propertyId: 'prop-1',
@@ -74,6 +80,49 @@ describe('tenant-assignment: assign tenant (POST /api/property/{id}/tenants)', (
 			expect(result.status).toBe(400);
 		}
 		expect(db.peek('junction_user_property/tenant-1_prop-1')).toBeUndefined();
+	});
+
+	it('Scenario: Unknown user responds 404 and writes nothing', async () => {
+		seedAdmin('admin-1');
+		seedProperty('prop-1');
+
+		const result = await call(assignTenant, {
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' },
+			body: { tenantId: 'ghost' }
+		});
+
+		expect(result.status).toBe(404);
+		expect(db.peek('junction_user_property/ghost_prop-1')).toBeUndefined();
+	});
+
+	it('Scenario: Unknown property responds 404 and writes nothing', async () => {
+		seedAdmin('admin-1');
+		seedTenant('tenant-1');
+
+		const result = await call(assignTenant, {
+			userID: 'admin-1',
+			params: { propertyId: 'nope' },
+			body: { tenantId: 'tenant-1' }
+		});
+
+		expect(result.status).toBe(404);
+		expect(db.peek('junction_user_property/tenant-1_nope')).toBeUndefined();
+	});
+
+	it('Scenario: Admin as tenant responds 400 and writes nothing', async () => {
+		seedAdmin('admin-1');
+		seedAdmin('admin-2');
+		seedProperty('prop-1');
+
+		const result = await call(assignTenant, {
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' },
+			body: { tenantId: 'admin-2' }
+		});
+
+		expect(result.status).toBe(400);
+		expect(db.peek('junction_user_property/admin-2_prop-1')).toBeUndefined();
 	});
 
 	it('Scenario: Missing tenant responds 400 "Please provide a Tenant Id"', async () => {
@@ -110,6 +159,42 @@ describe('tenant-assignment: assign tenant (POST /api/property/{id}/tenants)', (
 		});
 
 		expect(result.status).toBe(401);
+	});
+});
+
+describe('tenant-assignment: one property per tenant', () => {
+	it('Scenario: Second assignment responds 409 and writes nothing', async () => {
+		seedAdmin('admin-1');
+		seedTenant('tenant-1');
+		seedProperty('prop-1');
+		seedProperty('prop-2');
+		linkTenant('tenant-1', 'prop-1');
+
+		const result = await call(assignTenant, {
+			userID: 'admin-1',
+			params: { propertyId: 'prop-2' },
+			body: { tenantId: 'tenant-1' }
+		});
+
+		expect(result.status).toBe(409);
+		expect(result.error).toMatch(/already has a property/);
+		expect(db.peek('junction_user_property/tenant-1_prop-2')).toBeUndefined();
+		expect(db.peek('junction_user_property/tenant-1_prop-1')).toBeDefined();
+	});
+
+	it('Scenario: Same property again succeeds', async () => {
+		seedAdmin('admin-1');
+		seedTenant('tenant-1');
+		seedProperty('prop-1');
+		linkTenant('tenant-1', 'prop-1');
+
+		const result = await call(assignTenant, {
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' },
+			body: { tenantId: 'tenant-1' }
+		});
+
+		expect(result.status).toBe(200);
 	});
 });
 
@@ -233,13 +318,46 @@ describe('tenant-assignment: assignable users (property edit page load)', () => 
 
 		expect(result.status).toBe(200);
 		expect(result.data.tenants.map((t: { id: string }) => t.id)).toEqual(['tenant-1']);
-		// Only tenants are checked: whether other roles appear in the list is not specified.
 		const options = result.data.usersOptions as { label: string; value: string }[];
 		expect(options.map((o) => o.value)).not.toContain('tenant-1');
 		expect(options.find((o) => o.value === 'tenant-2')).toEqual({
 			label: 'Tess Two',
 			value: 'tenant-2'
 		});
+	});
+
+	it('Scenario: the dropdown excludes admins and tenants assigned to other properties', async () => {
+		seedAdmin('admin-1');
+		seedTenant('tenant-1');
+		seedTenant('tenant-2');
+		seedProperty('prop-1');
+		seedProperty('prop-2');
+		linkTenant('tenant-2', 'prop-2');
+
+		const result = await call(editLoad, { userID: 'admin-1', params: { propertyId: 'prop-1' } });
+
+		expect((result.data.usersOptions as { value: string }[]).map((o) => o.value)).toEqual([
+			'tenant-1'
+		]);
+	});
+
+	it('Scenario: More than 10 tenants still loads and lists the unassigned ones', async () => {
+		seedAdmin('admin-1');
+		seedProperty('prop-1');
+		seedProperty('prop-2');
+		for (let i = 1; i <= 12; i++) {
+			seedTenant(`assigned-${i}`);
+			linkTenant(`assigned-${i}`, i <= 6 ? 'prop-1' : 'prop-2');
+		}
+		seedTenant('free-1');
+
+		const result = await call(editLoad, { userID: 'admin-1', params: { propertyId: 'prop-1' } });
+
+		expect(result.status).toBe(200);
+		expect((result.data.usersOptions as { value: string }[]).map((o) => o.value)).toEqual([
+			'free-1'
+		]);
+		expect(result.data.tenants).toHaveLength(6);
 	});
 
 	it('Scenario: with no tenants on the property, other tenants are offered', async () => {

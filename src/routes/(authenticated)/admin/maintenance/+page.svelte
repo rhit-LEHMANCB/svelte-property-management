@@ -79,6 +79,7 @@
 						{#each paginatedOpenRequests as request}
 							<div class="flex-row">
 								<button
+									data-needs-hydration
 									class="btn-icon preset-filled-primary-500 shrink-0"
 									on:click={() => confirmModal(request)}><IconCheck /></button
 								>
