@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Pulls .env and .env.qa from 1Password into the repo root (both are gitignored).
 #
+# Vault: Lehman Family (referenced by id so a rename does not break it).
 # Each file is stored in 1Password as a Document item holding the whole file. Defaults, overridable
 # through the environment:
-#   OP_ENV_REF     op:// reference for .env     (default: op://Lehman Family/lehman-realty .env/.env)
-#   OP_ENV_QA_REF  op:// reference for .env.qa  (default: op://Lehman Family/lehman-realty .env.qa/.env.qa)
+#   OP_ENV_REF     op:// reference for .env     (default: op://tnv5rypeamngjzwy6txx2ut6nu/lehman-realty .env/.env)
+#   OP_ENV_QA_REF  op:// reference for .env.qa  (default: op://tnv5rypeamngjzwy6txx2ut6nu/lehman-realty .env.qa/.env.qa)
 #
 # Auth: locally, sign in with the 1Password desktop app integration or `op signin`. In a cloud
 # session, set OP_SERVICE_ACCOUNT_TOKEN as an environment secret for a service account that has
@@ -42,5 +43,5 @@ pull() {
 	echo "pull-env: wrote $dest (mode 600)"
 }
 
-pull .env "${OP_ENV_REF:-op://Lehman Family/lehman-realty .env/.env}"
-pull .env.qa "${OP_ENV_QA_REF:-op://Lehman Family/lehman-realty .env.qa/.env.qa}"
+pull .env "${OP_ENV_REF:-op://tnv5rypeamngjzwy6txx2ut6nu/lehman-realty .env/.env}"
+pull .env.qa "${OP_ENV_QA_REF:-op://tnv5rypeamngjzwy6txx2ut6nu/lehman-realty .env.qa/.env.qa}"
