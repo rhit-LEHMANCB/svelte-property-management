@@ -29,6 +29,28 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 		throw error(400, 'Move-in month must be in the form YYYY-MM');
 	}
 
+	const [property, tenant, assignments] = await Promise.all([
+		adminDB.collection('properties').doc(params.propertyId).get(),
+		adminDB.collection('users').doc(tenantId).get(),
+		adminDB.collection('junction_user_property').where('tenantId', '==', tenantId).get()
+	]);
+
+	if (!property.exists) {
+		throw error(404, 'Property not found');
+	}
+
+	if (!tenant.exists) {
+		throw error(404, 'User not found');
+	}
+
+	if (tenant.data()?.permissions === 'admin') {
+		throw error(400, 'Admins cannot be assigned to a property');
+	}
+
+	if (assignments.docs.some((doc) => doc.data().propertyId !== params.propertyId)) {
+		throw error(409, 'This tenant already has a property. Remove them from it first.');
+	}
+
 	const junction = adminDB
 		.collection('junction_user_property')
 		.doc(`${tenantId}_${params.propertyId}`);

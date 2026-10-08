@@ -13,10 +13,10 @@
 
 ## 3. #39 Tenant assignment
 
-- [ ] 3.1 Add property/user existence, admin and one-property checks to `POST /api/property/[propertyId]/tenants` (404, 404, 400, 409; same-property re-add stays OK); verify handler tests for each status and that nothing is written on rejection
-- [ ] 3.2 Replace the `not-in` query in the property edit page load with a `permissions == 'user'` read minus all assigned tenants; verify a handler test with more than 10 assigned tenants and an admin in the data
-- [ ] 3.3 Show the server's 409/404/400 message in the edit page's add-tenant toast; verify the e2e spec assigns an already-assigned tenant and sees the message
-- [ ] 3.4 Update `tenant-assignment` Known Gaps; verify the four fixed items are gone
+- [x] 3.1 Add property/user existence, admin and one-property checks to `POST /api/property/[propertyId]/tenants` (404, 404, 400, 409; same-property re-add stays OK); verify handler tests for each status and that nothing is written on rejection
+- [x] 3.2 Replace the `not-in` query in the property edit page load with a `permissions == 'user'` read minus all assigned tenants; verify a handler test with more than 10 assigned tenants and an admin in the data
+- [x] 3.3 Show the server's 409/404/400 message in the edit page's add-tenant toast; verify the e2e spec assigns an already-assigned tenant and sees the message
+- [x] 3.4 Update `tenant-assignment` Known Gaps; verify the four fixed items are gone
 
 ## 4. #40 Users
 

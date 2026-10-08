@@ -167,7 +167,8 @@
 			selectedMoveInMonth = '';
 			invalidateAll();
 		} else {
-			errorToast('Error adding tenant.', toastStore);
+			const body = await response.json().catch(() => undefined);
+			errorToast(body?.message ?? 'Error adding tenant.', toastStore);
 		}
 	}
 

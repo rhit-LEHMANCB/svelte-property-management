@@ -5,7 +5,7 @@ import { adminDB, adminStorage } from '$lib/server/admin';
 import { propertySchema } from '$lib/schemas';
 import { error, fail } from '@sveltejs/kit';
 import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
-import { FieldPath, FieldValue } from 'firebase-admin/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { DocumentWithId, PhotoItem } from '../../../../../../app';
 import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
 
@@ -27,25 +27,20 @@ export const load = (async (event) => {
 		.where('propertyId', '==', event.params.propertyId)
 		.get();
 
-	const tenantsAsList = tenantJunctions.docs.map((junction) => {
-		return junction.data().tenantId;
-	});
+	// Offer non-admin users who have no property yet. Filtering here avoids Firestore's 10-value
+	// limit on not-in queries.
+	const [allJunctions, tenantUsers] = await Promise.all([
+		adminDB.collection('junction_user_property').get(),
+		adminDB.collection('users').where('permissions', '==', 'user').get()
+	]);
+	const assignedTenantIds = new Set(allJunctions.docs.map((junction) => junction.data().tenantId));
 
-	let usersOptions: { label: string; value: string }[];
-
-	if (tenantsAsList.length > 0) {
-		usersOptions = (
-			await adminDB.collection('users').where(FieldPath.documentId(), 'not-in', tenantsAsList).get()
-		).docs.map((doc) => ({
+	const usersOptions: { label: string; value: string }[] = tenantUsers.docs
+		.filter((doc) => !assignedTenantIds.has(doc.id))
+		.map((doc) => ({
 			label: `${doc.data().firstName} ${doc.data().lastName}`,
 			value: doc.id
 		}));
-	} else {
-		usersOptions = (await adminDB.collection('users').get()).docs.map((doc) => ({
-			label: `${doc.data().firstName} ${doc.data().lastName}`,
-			value: doc.id
-		}));
-	}
 
 	const tenantPromises = tenantJunctions.docs.map(async (junction) => {
 		const user = await adminDB.collection('users').doc(junction.data().tenantId).get();
