@@ -49,11 +49,11 @@ describe('authentication: password reset request (real email module)', () => {
 		expect(message.text).toContain(LINK);
 	});
 
-	it('Scenario: Email sender identity is support@lehmanfamilyllc.com with HTML and text bodies', async () => {
+	it('Scenario: Email sender identity is Lehman Family LLC at support@lehmanfamilyllc.com with HTML and text bodies', async () => {
 		await sendPasswordResetEmail('tenant@example.com', false);
 
 		const message = resend.send.mock.calls[0][0];
-		expect(message.from).toBe('support@lehmanfamilyllc.com');
+		expect(message.from).toBe('Lehman Family LLC <support@lehmanfamilyllc.com>');
 		expect(message.html).toBeTruthy();
 		expect(message.text).toBeTruthy();
 	});
