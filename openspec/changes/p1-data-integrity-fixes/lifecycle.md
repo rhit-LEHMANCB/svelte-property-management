@@ -1,13 +1,13 @@
 # Lifecycle: p1-data-integrity-fixes
 
 - Branch: `p1-data-integrity-fixes`
-- Stage: 1 Interview (summary awaiting confirmation)
+- Stage: 2 Propose + preflight (awaiting Gate A)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-07
 
 ## Interview summary
-Approved: no
+Approved: yes (2026-10-07)
 
 **Goal.** Close the five open P1 issues (#38, #39, #40, #45, #58) in one change and one PR so deleting, assigning, creating and editing records can no longer leave the app in a state that 500s every page, and so early input is not silently lost.
 
@@ -47,7 +47,21 @@ Approved: no
 Accepted preflight gaps: none
 
 ## Preflight
-(table of checks and results, from stage 2)
+Run 2026-10-07.
+
+| Check | Result |
+|---|---|
+| git identity and push to `origin` | OK (Caleb Lehman, noreply email, https remote) |
+| `gh auth status` scopes | OK (`repo`, `workflow`) |
+| `gh pr merge` permitted in this session | NOT TESTABLE; needs user confirmation. If not allowed, the run halts at stage 5 |
+| Playwright config with `qa` project, browsers installed | OK (chromium-1243 installed) |
+| QA credentials (`QA_ADMIN_*`, `QA_TENANT_*`) | MISSING: not in the environment and no `.env.qa` (it is gitignored). Stage 6 would halt |
+| Dev deploy workflow passing on `develop` | OK (last 3 runs success) |
+| `nvm use` / Node | OK (v22.23.2) |
+| `npm run check`, `npm test` | OK (254 tests pass) |
+| `npm run lint` | Prettier warns on 137 files locally only because of Windows CRLF checkout (`core.autocrlf=true`); eslint is clean. CI on Linux is unaffected |
+| Java for emulators (e2e) | OK (OpenJDK 21) |
+| GitHub `develop` environment secrets | OK, no new secrets needed (uses existing `FB_API_KEY`) |
 
 ## Review rounds
 (none yet; one line per round: blockers, majors, fixed, rejected with reason)
