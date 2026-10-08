@@ -1,7 +1,7 @@
 # Lifecycle: p1-data-integrity-fixes
 
 - Branch: `p1-data-integrity-fixes`
-- Stage: 7 Production PR (awaiting Gate B: human verifies and merges)
+- Stage: **complete (archived automatically on 2026-10-08 after the production release `5a39ea4`)**
 - Review round: 1 of 3 (+1 each for QA fix PRs #113 and #115)
 - QA cycle: 3 of 3 (PASS)
 - Started: 2026-10-07
@@ -115,3 +115,6 @@ Do these in order of risk before merging the production PR (dev site first where
 
 ## Halted
 Resolved. The run halted once at stage 6 (2026-10-08) after QA cycle 1 deleted the QA tenant account; the user recreated the tenant and the run resumed with QA cycle 2 and 3. Issue #114 tracked the halt.
+
+## Archive
+Archived automatically on 2026-10-08 after the production release `5a39ea4` ([workflow run](https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/37790567953)). That marks this lifecycle complete.
