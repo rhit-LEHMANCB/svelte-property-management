@@ -4,7 +4,7 @@ import { Resend } from 'resend';
 import { adminAuth } from './admin';
 import { renderPasswordResetEmail, renderWelcomeEmail, type EmailContent } from './email-templates';
 
-export const EMAIL_FROM = 'support@lehmanfamilyllc.com';
+export const EMAIL_FROM = 'Lehman Family LLC <support@lehmanfamilyllc.com>';
 
 export type EmailMessage = EmailContent & { to: string };
 

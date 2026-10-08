@@ -28,9 +28,9 @@ The system SHALL email a newly created user a welcome message containing a Fireb
 - **AND** the failure is logged on the server and does not become an unhandled rejection
 
 ### Requirement: Email sender identity
-The system SHALL send application email from `support@lehmanfamilyllc.com`, in both HTML and plain-text form.
+The system SHALL send application email from `support@lehmanfamilyllc.com` with the display name "Lehman Family LLC", in both HTML and plain-text form.
 
 #### Scenario: Sender and body
 - **WHEN** any application email is sent
-- **THEN** its sender is `support@lehmanfamilyllc.com`
+- **THEN** its sender is `support@lehmanfamilyllc.com`, shown as "Lehman Family LLC"
 - **AND** it carries an HTML body and a plain-text body that both contain the link

@@ -25,7 +25,7 @@ See proposal.md - Why. Today `src/lib/server/email.ts` builds a Firebase reset l
 
 **Provider seam.** `email.ts` defines `sendEmail(message: { to, subject, html, text }): Promise<void>` implemented with the `resend` SDK (`new Resend(RESEND_API_KEY)` created lazily so tests and builds without a key do not throw at import). Resend returns `{ data, error }`; a non-null `error` is thrown so callers keep their existing rejection to 500 path. `sendPasswordResetEmail(email, isWelcomeEmail)` keeps its signature and resolves with `void`; the callers ignore the resolved value (to be verified in tasks).
 
-**Sender.** Constant `support@lehmanfamilyllc.com`. Resend permits any local part on a verified domain, so no mailbox is required to send; replies need one. If the user wants a real mailbox, change the constant (fallback `chris.lehman@lehmanfamilyllc.com`).
+**Sender.** Constant `Lehman Family LLC <support@lehmanfamilyllc.com>` (display name so mail clients do not show just "support"). Resend permits any local part on a verified domain, so no mailbox is required to send; replies need one. If the user wants a real mailbox, change the constant (fallback `chris.lehman@lehmanfamilyllc.com`).
 
 **Secrets.** `RESEND_API_KEY` replaces `SENDGRID_API_KEY` everywhere, imported from `$env/static/private`. This is a build-time import, so the key must be present as a build environment variable in each deploy workflow (it already is for SendGrid). Dev and production use separate keys.
 
