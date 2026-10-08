@@ -9,7 +9,6 @@ node_modules
 !.env.example
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-.firebaserc
 *-debug.log
 lehman-realty-firebase-adminsdk-41bes-ca46611d63.json
 npm-debug.log

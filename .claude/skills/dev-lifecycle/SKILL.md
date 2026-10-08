@@ -88,7 +88,7 @@ At most 3 QA cycles in total. If the third still fails, **halt**.
 ### 7. Production PR and Gate B
 1. Save screenshots and traces to `openspec/changes/<name>/qa/` on a throwaway branch `qa-evidence/<name>` and push it; do **not** merge it. Use it to link images in the report. Compress screenshots (PNG or JPEG, about 200 KB each at most).
 2. Write the final QA report into `lifecycle.md`.
-3. Open a PR from `develop` into `production` containing the change summary, issue links, review history, the QA report with embedded screenshots, and the **human verification checklist** built from the QA agent's recommended human tests, ranked by risk, plus production-only risks (environment variables, Stripe live mode, domains, runtime).
+3. Open a PR from `develop` into `production` (pass `--base production --head develop` explicitly; `develop` is the repo default, so omitting `--base` would target the wrong branch) containing the change summary, issue links, review history, the QA report with embedded screenshots, and the **human verification checklist** built from the QA agent's recommended human tests, ranked by risk, plus production-only risks (environment variables, Stripe live mode, domains, runtime).
 4. Notify the user that the PR is ready if a notification tool is available (`PushNotification`; load it with ToolSearch). End the run.
 
 **Gate B (human):** the human reviews the report, performs the recommended tests, and merges. Do not merge, re-run the deploy, or delete the evidence branch.

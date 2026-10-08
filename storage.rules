@@ -1,0 +1,10 @@
+rules_version = '2';
+
+// Objects are read by URL (get) only: photo URLs are unsigned, and listing a bucket is not needed.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow get;
+    }
+  }
+}

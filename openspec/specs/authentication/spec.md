@@ -6,12 +6,16 @@ Users sign in with email and password through Firebase Auth. The server exchange
 ## Requirements
 
 ### Requirement: Session establishment
-The system SHALL exchange a freshly issued Firebase ID token for an httpOnly, secure `__session` cookie valid for 5 days.
+The system SHALL exchange a freshly issued Firebase ID token for an httpOnly, secure `__session` cookie valid for 5 days, both as a Firebase session and as the cookie's own browser lifetime.
 
 #### Scenario: Successful sign-in
 - **WHEN** a user submits valid credentials on `/signin`
 - **THEN** the client posts the ID token to `/api/signin`
 - **AND** the server sets the `__session` cookie and the user is sent to `/`
+
+#### Scenario: Cookie lifetime
+- **WHEN** `/api/signin` sets the `__session` cookie
+- **THEN** its `Max-Age` is 432000 seconds (5 days)
 
 #### Scenario: Stale ID token
 - **WHEN** the ID token's `auth_time` is 5 minutes or more old

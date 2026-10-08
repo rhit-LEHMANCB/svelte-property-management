@@ -7,6 +7,7 @@ export const FAKE_STRIPE_URL = `http://127.0.0.1:${FAKE_STRIPE_PORT}`;
 
 export const AUTH_EMULATOR = '127.0.0.1:9099';
 export const FIRESTORE_EMULATOR = '127.0.0.1:8080';
+export const STORAGE_EMULATOR = '127.0.0.1:9199';
 
 export const ADMIN = {
 	uid: 'e2e-admin',
