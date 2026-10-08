@@ -17,10 +17,10 @@ The system SHALL provide fast unit tests, run by a single npm script, for the zo
 - **THEN** the helpers are checked for an anonymous caller, a non-admin and an admin, and for a missing user document
 
 ### Requirement: Handler tests with doubled services
-The system SHALL provide tests that call the API handlers, form actions and page loads directly, with Firebase Admin, Stripe and SendGrid replaced by in-process doubles.
+The system SHALL provide tests that call the API handlers, form actions and page loads directly, with Firebase Admin, Stripe and the email provider replaced by in-process doubles.
 
 #### Scenario: Hermetic run
-- **WHEN** the handler tests run on a machine with no Firebase, Stripe or SendGrid credentials and no network
+- **WHEN** the handler tests run on a machine with no Firebase, Stripe or email provider credentials and no network
 - **THEN** they pass without contacting any external service
 
 #### Scenario: Role and junction rules
