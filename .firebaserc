@@ -1,0 +1,6 @@
+{
+	"projects": {
+		"dev": "lehman-realty-dev",
+		"prod": "lehman-realty"
+	}
+}
