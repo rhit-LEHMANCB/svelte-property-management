@@ -41,8 +41,9 @@ projects, and the e2e emulator loads the same rules. `.firebaserc` defines the a
   so check the console if you suspect extras.
 - To deploy by hand: `npx firebase deploy --only firestore,storage --project dev` (add `--dry-run` to check).
 - If someone adds an index in the console, re-export it with
-  `npx firebase firestore:indexes --project dev > firestore.indexes.json` and commit the result (run it
-  from Git Bash: PowerShell 5.1 would write UTF-16).
+  `npx firebase firestore:indexes --project dev > firestore.indexes.json`, format it with
+  `npx prettier --write firestore.indexes.json` and commit the result. Run the export from Git Bash,
+  because PowerShell 5.1 would write UTF-16.
 
 ## Stripe
 
