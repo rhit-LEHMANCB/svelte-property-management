@@ -8,8 +8,8 @@
 
 ## 2. #38 Delete property
 
-- [ ] 2.1 Rewrite `DELETE /api/property/[propertyId]` to remove junctions, maintenance requests and `payment_history` subcollections with batched writes, await storage and Firestore together, and delete the property document last; verify handler tests cover tenants, more than 500 docs, and a failing step returning 500
-- [ ] 2.2 Update `property-management` Known Gaps in `openspec/specs` to drop the four fixed items; verify the file no longer lists them
+- [x] 2.1 Rewrite `DELETE /api/property/[propertyId]` to remove junctions, maintenance requests and `payment_history` subcollections with batched writes, await storage and Firestore together, and delete the property document last; verify handler tests cover tenants, more than 500 docs, and a failing step returning 500
+- [x] 2.2 Update `property-management` Known Gaps in `openspec/specs` to drop the four fixed items; verify the file no longer lists them
 
 ## 3. #39 Tenant assignment
 
