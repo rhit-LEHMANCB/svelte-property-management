@@ -41,7 +41,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		.doc(userRecord.uid)
 		.set(newUserDoc)
 		.then(() => {
-			sendPasswordResetEmail(email, true);
+			sendPasswordResetEmail(email, true).catch((err) => {
+				console.error('Problem sending welcome email', err);
+			});
 			return json({ status: 'New User Created' });
 		})
 		.catch((err) => {

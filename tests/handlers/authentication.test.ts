@@ -63,7 +63,7 @@ describe('authentication: password reset request (PUT /api/signin/reset)', () =>
 	});
 
 	it('Scenario: Email failure responds 500', async () => {
-		services.sendPasswordResetEmail.mockRejectedValue(new Error('SendGrid down'));
+		services.sendPasswordResetEmail.mockRejectedValue(new Error('email provider down'));
 
 		const result = await call(PUT, { method: 'PUT', body: { email: 'tenant@example.com' } });
 

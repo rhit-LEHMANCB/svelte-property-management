@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { TENANT } from '../support/constants';
 import { signIn } from '../support/helpers';
 
-// The reset email goes out through SendGrid, which end-to-end runs never reach, so the browser's
+// The reset email goes out through Resend, which end-to-end runs never reach, so the browser's
 // request to the app is answered here. This checks the page's wiring: what it sends and what it shows.
 test.describe('user-profile: request password reset', () => {
 	test('Scenario: Reset button sends PUT /api/signin/reset for the user and shows a success toast', async ({
