@@ -136,12 +136,12 @@ describe('maintenance-requests: tenant request list (tenant page load)', () => {
 		expect(open[0].dateClosed).toBeUndefined();
 	});
 
-	it('Scenario: without a property in the layout data the page fails with 500', async () => {
+	it('Scenario: without a property in the layout data the page redirects to /', async () => {
 		seedTenant('tenant-1');
 
 		const result = await call(tenantLoad, { userID: 'tenant-1', parent: {} });
 
-		expect(result).toMatchObject({ status: 500, error: 'Failed to find property info.' });
+		expect(result).toMatchObject({ status: 303, redirect: '/' });
 	});
 });
 

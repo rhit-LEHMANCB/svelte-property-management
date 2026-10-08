@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { ADMIN, TENANT } from '../support/constants';
-import { adminDb } from '../support/admin';
+import { adminAuth, adminDb } from '../support/admin';
 import { signIn } from '../support/helpers';
 
 // Data-integrity fixes (#38, #39): one property per tenant and a clean property delete.
@@ -217,5 +217,41 @@ test.describe('app-platform: controls wait for hydration', () => {
 		await expect(page.locator('html')).toHaveAttribute('data-hydrated', '');
 		await button.click();
 		await expect(page.getByRole('dialog')).toBeVisible();
+	});
+});
+
+test.describe('access-control: a tenant without a property', () => {
+	const EMAIL = 'no-property@e2e.test';
+	const PASSWORD = 'E2e-NoProperty-Passw0rd';
+
+	test.beforeAll(async () => {
+		await adminAuth().createUser({ uid: 'e2e-no-property', email: EMAIL, password: PASSWORD });
+		await adminDb().doc('users/e2e-no-property').set({
+			email: EMAIL,
+			firstName: 'Nora',
+			lastName: 'Zzunassigned',
+			phoneNumber: '+15555550144',
+			permissions: 'user'
+		});
+	});
+
+	test('Scenario: No property loads the app, shows a message and keeps profile and insurance', async ({
+		page
+	}) => {
+		await signIn(page, { email: EMAIL, password: PASSWORD });
+		await page.waitForLoadState('networkidle');
+
+		await expect(page.getByText('No property is assigned to your account yet.')).toBeVisible();
+
+		await page.goto('/payment');
+		await expect(page).toHaveURL(/\/$/);
+		await page.goto('/maintenance');
+		await expect(page).toHaveURL(/\/$/);
+
+		for (const path of ['/profile', '/insurance']) {
+			const response = await page.goto(path);
+			expect(response?.status()).toBe(200);
+			await expect(page).toHaveURL(new RegExp(path));
+		}
 	});
 });
