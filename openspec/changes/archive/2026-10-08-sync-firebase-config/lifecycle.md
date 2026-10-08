@@ -1,7 +1,7 @@
 # Lifecycle: sync-firebase-config
 
 - Branch: `firebase-env-sync`
-- Stage: 5 Ship to develop
+- Stage: **complete (archived automatically on 2026-10-08 after the production release `bdf3f44`)**
 - Review round: 3 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-07
@@ -66,3 +66,6 @@ Round 3: 0 blockers, 0 majors, 3 minors, 3 nits. Fixed: concurrency group on the
 
 ## Halted
 (only if the run halted)
+
+## Archive
+Archived automatically on 2026-10-08 after the production release `bdf3f44` ([workflow run](https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/37721826488)). That marks this lifecycle complete.
