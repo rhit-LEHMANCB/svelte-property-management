@@ -1,7 +1,7 @@
 # Lifecycle: replace-sendgrid-email
 
 - Branch: `claude/replace-sendgrid-email`
-- Stage: 5 Ship to develop
+- Stage: **complete (archived automatically on 2026-10-08 after the production release `5a39ea4`)**
 - Review round: 1 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-07
@@ -74,3 +74,6 @@ Round 1: blockers 0, majors 0, minors 3, nits 1. Fixed the two test minors (welc
 
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
+
+## Archive
+Archived automatically on 2026-10-08 after the production release `5a39ea4` ([workflow run](https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/37790567953)). That marks this lifecycle complete.

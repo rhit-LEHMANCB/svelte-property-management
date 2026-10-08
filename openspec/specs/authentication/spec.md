@@ -44,15 +44,15 @@ The system SHALL verify the session cookie on every request and populate `locals
 - **THEN** the hook does not redirect and each endpoint decides its own response
 
 ### Requirement: Password reset request
-The system SHALL email a password reset link through SendGrid when requested via `PUT /api/signin/reset`.
+The system SHALL email a password reset link through the configured email provider when requested via `PUT /api/signin/reset`.
 
 #### Scenario: Reset email sent
 - **WHEN** a request supplies an email
 - **THEN** a Firebase reset link is generated with a continue URL of `PUBLIC_FRONTEND_URL/`
-- **AND** the reset template email is sent and `{ status: "email_sent" }` is returned
+- **AND** a reset email containing that link is sent to that address and `{ status: "email_sent" }` is returned
 
 #### Scenario: Email failure
-- **WHEN** link generation or sending fails
+- **WHEN** link generation fails, the provider rejects the message, or the provider reports an error
 - **THEN** the response is 500
 
 ### Requirement: Password reset completion
@@ -72,6 +72,42 @@ The system SHALL require passwords of 8 to 32 characters with at least one lower
 #### Scenario: Mismatch
 - **WHEN** the two entries differ
 - **THEN** validation fails with "Passwords must match" on the verify field
+
+### Requirement: Sign-in before hydration
+The system SHALL let a user sign in with the sign-in form before or without client-side scripts, and SHALL NOT lose values typed before the page finished loading.
+
+#### Scenario: Submit before hydration
+- **WHEN** a user submits the sign-in form before the page has hydrated, or without JavaScript
+- **THEN** the form posts to the server, which checks the credentials, sets the `__session` cookie and sends the user to `/`
+
+#### Scenario: Typed early
+- **WHEN** a user types an email and password immediately after the page appears
+- **THEN** both values are still present and used when the page finishes hydrating
+
+#### Scenario: Wrong credentials on the POST form
+- **WHEN** the credentials are wrong
+- **THEN** the form is shown again with "Your email or password is incorrect." and the email kept
+
+### Requirement: Welcome email
+The system SHALL email a newly created user a welcome message containing a Firebase link to set their password, distinct in subject and wording from the reset email.
+
+#### Scenario: Welcome email sent
+- **WHEN** an admin adds a user
+- **THEN** a Firebase password link with a continue URL of `PUBLIC_FRONTEND_URL/` is generated
+- **AND** a welcome email containing that link is sent to the new user's address
+
+#### Scenario: Welcome email failure
+- **WHEN** link generation fails or the provider reports an error
+- **THEN** the user is still created and `{ status: "New User Created" }` is returned, as the welcome email is not awaited
+- **AND** the failure is logged on the server and does not become an unhandled rejection
+
+### Requirement: Email sender identity
+The system SHALL send application email from `support@lehmanfamilyllc.com` with the display name "Lehman Family LLC", in both HTML and plain-text form.
+
+#### Scenario: Sender and body
+- **WHEN** any application email is sent
+- **THEN** its sender is `support@lehmanfamilyllc.com`, shown as "Lehman Family LLC"
+- **AND** it carries an HTML body and a plain-text body that both contain the link
 
 ## Known Gaps
 - `/signin` has no link to request a password reset; reset is only reachable from `/profile` or by email.

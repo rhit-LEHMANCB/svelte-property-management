@@ -45,11 +45,20 @@ The system SHALL store photos at `properties/{id}/images/{index}-{timestamp}.{ex
 - **THEN** it is removed from `photos` and from storage
 
 ### Requirement: Delete property
-The system SHALL let an admin delete a property.
+The system SHALL let an admin delete a property and everything that hangs off it, and SHALL finish all of that cleanup before reporting success.
 
 #### Scenario: Cascade
 - **WHEN** a property is deleted
-- **THEN** its document, its maintenance requests and its storage files are removed
+- **THEN** its document, its maintenance requests, its `payment_history` subcollections and its storage files are removed
+- **AND** the response is sent only after every removal has finished
+
+#### Scenario: Large property
+- **WHEN** a property has more than 500 documents to remove
+- **THEN** all of them are removed
+
+#### Scenario: Failure
+- **WHEN** any removal fails
+- **THEN** the response is 500 and repeating the delete finishes the cleanup
 
 ### Requirement: Property directory
 The system SHALL list all properties to admins ordered by title.
@@ -58,12 +67,13 @@ The system SHALL list all properties to admins ordered by title.
 - **WHEN** an admin opens `/admin/properties`
 - **THEN** all properties appear ordered by `title`
 
-### Requirement: Cleanup of tenant links on delete (not yet implemented)
+### Requirement: Cleanup of tenant links on delete
 The system SHALL remove `junction_user_property` rows for a property when it is deleted.
 
 #### Scenario: Deleted property with tenants
 - **WHEN** a property with assigned tenants is deleted
 - **THEN** no junction row references it
+- **AND** those tenants can load the app without an error
 
 ## Known Gaps
 - Photo endpoints do not check that the property exists.
