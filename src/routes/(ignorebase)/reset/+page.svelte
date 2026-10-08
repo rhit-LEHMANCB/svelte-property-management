@@ -136,6 +136,7 @@
 				</div>
 			</div>
 			<button
+				data-needs-hydration
 				on:click={(event) => handleVerifyPasswordReset(event)}
 				class="btn preset-filled-primary-500 mt-5">Change Password</button
 			>

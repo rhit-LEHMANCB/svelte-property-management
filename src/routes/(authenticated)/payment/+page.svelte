@@ -93,12 +93,15 @@
 					{/if}
 					<div class="flex flex-row gap-2 items-center">
 						<button
+							data-needs-hydration
 							class="btn preset-filled-secondary-500"
 							disabled={data.balanceCents <= 0}
 							on:click={viewPaymentClicked}>Make a Payment</button
 						>
-						<button class="btn preset-filled-primary-500" on:click={viewPaymentClicked}
-							>Set up auto pay</button
+						<button
+							data-needs-hydration
+							class="btn preset-filled-primary-500"
+							on:click={viewPaymentClicked}>Set up auto pay</button
 						>
 					</div>
 				</div>
@@ -110,8 +113,10 @@
 			<div class="h-auto m-5">
 				<strong class="h3">Transaction History</strong>
 				<div>
-					<button class="btn preset-filled-secondary-500 mt-5" on:click={startCustomerPortal}
-						>View Portal</button
+					<button
+						data-needs-hydration
+						class="btn preset-filled-secondary-500 mt-5"
+						on:click={startCustomerPortal}>View Portal</button
 					>
 				</div>
 			</div>

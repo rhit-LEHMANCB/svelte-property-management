@@ -55,3 +55,36 @@ body {
 	z-index: 50;
 	width: max-content;
 }
+
+/*
+	Buttons marked data-needs-hydration only work once Svelte has attached its handlers, so until the
+	root layout sets data-hydrated on <html> they ignore clicks and show a spinner instead of dropping
+	them silently. The rule is in the server-rendered CSS, so there is no unguarded moment.
+*/
+html:not([data-hydrated]) [data-needs-hydration] {
+	pointer-events: none;
+	cursor: progress;
+	opacity: 0.6;
+}
+html:not([data-hydrated]) [data-needs-hydration]::after {
+	content: '';
+	display: inline-block;
+	width: 1em;
+	height: 1em;
+	margin-inline-start: 0.5em;
+	vertical-align: -0.15em;
+	border: 2px solid currentColor;
+	border-inline-end-color: transparent;
+	border-radius: 9999px;
+	animation: hydration-spin 0.7s linear infinite;
+}
+@keyframes hydration-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	html:not([data-hydrated]) [data-needs-hydration]::after {
+		animation-duration: 2s;
+	}
+}

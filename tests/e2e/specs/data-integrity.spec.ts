@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { ADMIN } from '../support/constants';
+import { ADMIN, TENANT } from '../support/constants';
 import { adminDb } from '../support/admin';
 import { signIn } from '../support/helpers';
 
@@ -31,7 +31,7 @@ test.describe('tenant-assignment: one property per tenant', () => {
 		await db.doc(`users/${TENANT_ID}`).set({
 			email: 'di-tenant@e2e.test',
 			firstName: 'Dana',
-			lastName: 'Integrity',
+			lastName: 'Zzintegrity',
 			phoneNumber: '+15555550143',
 			permissions: 'user'
 		});
@@ -53,7 +53,7 @@ test.describe('tenant-assignment: one property per tenant', () => {
 		await page.waitForLoadState('networkidle');
 		await page.getByText('Tenants', { exact: true }).click();
 		await page.getByPlaceholder('Search...').fill('Dana');
-		await expect(page.getByRole('button', { name: 'Dana Integrity' })).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Dana Zzintegrity' })).toHaveCount(0);
 		await page.getByPlaceholder('Search...').fill('Ada');
 		await expect(page.getByRole('button', { name: 'Ada Admin' })).toHaveCount(0);
 
@@ -109,5 +109,94 @@ test.describe('property-management: delete removes tenant links and payment hist
 		expect((await db.doc(`properties/${DELETE_PROPERTY}/payment_history/2026`).get()).exists).toBe(
 			false
 		);
+	});
+});
+
+// #58: input and clicks before Svelte hydrates. The app's scripts are held back so the
+// server-rendered page is on screen, but not yet interactive, for long enough to act on it.
+const holdScripts = async (page: import('@playwright/test').Page, ms = 2500) =>
+	page.route('**/_app/immutable/**/*.js', async (route) => {
+		await new Promise((resolve) => setTimeout(resolve, ms));
+		await route.continue();
+	});
+
+test.describe('authentication: sign-in before hydration', () => {
+	test('Scenario: Submit before hydration signs in through the POST form', async ({ page }) => {
+		await page.route('**/_app/immutable/**/*.js', (route) => route.abort());
+		await page.goto('/signin');
+
+		await page.getByLabel('Email').fill(TENANT.email);
+		await page.getByLabel('Password').fill(TENANT.password);
+		await page.getByLabel('Password').press('Enter');
+
+		await expect(page).not.toHaveURL(/\/signin/);
+		expect((await page.context().cookies()).some((c) => c.name === '__session')).toBe(true);
+	});
+
+	test('Scenario: Wrong credentials on the POST form show the error and keep the email', async ({
+		page
+	}) => {
+		await page.route('**/_app/immutable/**/*.js', (route) => route.abort());
+		await page.goto('/signin');
+
+		await page.getByLabel('Email').fill(TENANT.email);
+		await page.getByLabel('Password').fill('not-the-password');
+		await page.getByLabel('Password').press('Enter');
+
+		await expect(page.getByRole('alert')).toHaveText('Your email or password is incorrect.');
+		await expect(page.getByLabel('Email')).toHaveValue(TENANT.email);
+	});
+
+	test('Scenario: Typed early values survive hydration and the spinner button then works', async ({
+		page
+	}) => {
+		await holdScripts(page);
+		await page.goto('/signin', { waitUntil: 'domcontentloaded' });
+		const button = page.getByRole('button', { name: 'Sign in' });
+
+		await expect(button).toHaveCSS('pointer-events', 'none');
+		await page.getByLabel('Email').fill(TENANT.email);
+		await page.getByLabel('Password').fill(TENANT.password);
+		await expect(page.locator('html')).not.toHaveAttribute('data-hydrated', '');
+
+		await expect(page.locator('html')).toHaveAttribute('data-hydrated', '');
+		await expect(page.getByLabel('Email')).toHaveValue(TENANT.email);
+		await expect(page.getByLabel('Password')).toHaveValue(TENANT.password);
+		await expect(button).toHaveCSS('pointer-events', 'auto');
+		await button.click();
+
+		await expect(page).not.toHaveURL(/\/signin/);
+	});
+});
+
+test.describe('app-platform: controls wait for hydration', () => {
+	test('Scenario: Make a Payment is inert with a spinner until hydration, then opens its dialog', async ({
+		page
+	}) => {
+		await signIn(page, TENANT);
+		await holdScripts(page);
+		await page.goto('/payment', { waitUntil: 'domcontentloaded' });
+		const button = page.getByRole('button', { name: 'Make a Payment' }).first();
+
+		await expect(button).toHaveCSS('pointer-events', 'none');
+		await expect(page.locator('html')).not.toHaveAttribute('data-hydrated', '');
+
+		await expect(page.locator('html')).toHaveAttribute('data-hydrated', '');
+		await expect(button).toHaveCSS('pointer-events', 'auto');
+		await button.click();
+		await expect(page.getByRole('dialog')).toBeVisible();
+	});
+
+	test('Scenario: Add User (a dialog trigger) is inert until hydration', async ({ page }) => {
+		await signIn(page, ADMIN);
+		await holdScripts(page);
+		await page.goto('/admin/users', { waitUntil: 'domcontentloaded' });
+		const button = page.getByRole('button', { name: 'Add User' });
+
+		await expect(button).toHaveCSS('pointer-events', 'none');
+
+		await expect(page.locator('html')).toHaveAttribute('data-hydrated', '');
+		await button.click();
+		await expect(page.getByRole('dialog')).toBeVisible();
 	});
 });

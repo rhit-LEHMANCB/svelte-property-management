@@ -14,6 +14,7 @@
 </script>
 
 <button
+	data-needs-hydration
 	class="btn-icon btn-icon-sm preset-filled-primary-500"
 	on:click={(event) => event.stopPropagation()}
 	use:popup={popupMenu}

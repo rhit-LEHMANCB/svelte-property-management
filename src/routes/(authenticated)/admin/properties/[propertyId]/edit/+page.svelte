@@ -183,6 +183,7 @@
 
 <div class="flex flex-row justify-between py-5">
 	<button
+		data-needs-hydration
 		on:click={() => goto('/admin/properties')}
 		class="btn btn-sm preset-filled-primary-500 ml-5"
 		><IconArrowLeft class="mr-2" />Properties</button
@@ -240,6 +241,7 @@
 							<img src={item.photoUrl} alt={item.id} on:error={(ev) => handleError(ev, item)} />
 						</div>
 						<button
+							data-needs-hydration
 							on:click={() => deleteLink(item)}
 							class="chip preset-filled-error-500 invisible group-hover:visible transition-all absolute -right-2 -bottom-4"
 							>Delete</button
@@ -268,7 +270,11 @@
 						bind:value={selectedMoveInMonth}
 					/>
 					<div class="justify-self-start">
-						<button on:click={addTenant} class="btn preset-filled-secondary-500">Add</button>
+						<button
+							data-needs-hydration
+							on:click={addTenant}
+							class="btn preset-filled-secondary-500">Add</button
+						>
 					</div>
 				</div>
 				<div class="card w-full max-w-sm shadow-xl" data-popup="popupAutocomplete">
@@ -295,6 +301,7 @@
 								on:change={(event) => updateMoveInMonth(user.id, event)}
 							/>
 							<button
+								data-needs-hydration
 								on:click={() => confirmModal(user)}
 								class="btn-icon btn-sm preset-filled-error-500"><IconLinkMinus /></button
 							>

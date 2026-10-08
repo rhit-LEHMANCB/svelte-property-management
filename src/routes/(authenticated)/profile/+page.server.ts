@@ -40,7 +40,7 @@ export const actions = {
 		const emailChanged = contact.email !== previous.email;
 
 		if (emailChanged) {
-			let verified: string | null = null;
+			let verified: string | null;
 			try {
 				verified = currentPassword ? await verifyPassword(previous.email, currentPassword) : null;
 			} catch (err) {

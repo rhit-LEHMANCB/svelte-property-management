@@ -25,6 +25,7 @@
 		{#each paginated ? paginatedUsers : users as user}
 			<li class="hover:preset-tonal p-2">
 				<button
+					data-needs-hydration
 					on:click={() => viewUserInfoModal(user, modalStore)}
 					class="flex flex-row w-full gap-2 flex-wrap items-center"
 				>

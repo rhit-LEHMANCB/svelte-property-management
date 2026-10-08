@@ -32,12 +32,12 @@
 
 ## 6. #58 Hydration
 
-- [ ] 6.1 Add the hydration CSS and spinner to `src/app.css`, set `document.documentElement.dataset.hydrated` in the root layout `onMount`, and add the `<noscript>` override to `src/app.html`; verify `npm run build` passes and the e2e hydration spec sees the attribute after load
-- [ ] 6.2 Add `data-needs-hydration` to the Sign in button, the payment page Make a Payment button, the admin maintenance close button and every modal/drawer trigger (found with a grep for `getModalStore` and `getDrawerStore` callers); verify an e2e spec clicks each immediately after `goto` with no `networkidle` wait and ends in the correct state
-- [ ] 6.3 Add `src/routes/(ignorebase)/signin/+page.server.ts` with a default action (verify password, create session cookie, redirect to `/`, `fail(400)` with email kept), make the page a `<form method="POST">` that reads `FormData` after hydration; verify handler tests for success and wrong password and an e2e test that types immediately after `goto` and signs in
-- [ ] 6.4 Update `authentication` Known Gaps if relevant and the `docs/` page on testing hydration if one exists; verify `npm run lint`, `npm run check` and `npm test` pass
+- [x] 6.1 Add the hydration CSS and spinner to `src/app.css`, set `document.documentElement.dataset.hydrated` in the root layout `onMount`, and add the `<noscript>` override to `src/app.html`; verify `npm run build` passes and the e2e hydration spec sees the attribute after load
+- [x] 6.2 Add `data-needs-hydration` to the Sign in button, the payment page Make a Payment button, the admin maintenance close button and every modal/drawer trigger (found with a grep for `getModalStore` and `getDrawerStore` callers); verify an e2e spec clicks each immediately after `goto` with no `networkidle` wait and ends in the correct state
+- [x] 6.3 Add `src/routes/(ignorebase)/signin/+page.server.ts` with a default action (verify password, create session cookie, redirect to `/`, `fail(400)` with email kept), make the page a `<form method="POST">` that reads `FormData` after hydration; verify handler tests for success and wrong password and an e2e test that types immediately after `goto` and signs in
+- [x] 6.4 Update `authentication` Known Gaps if relevant and the `docs/` page on testing hydration if one exists; verify `npm run lint`, `npm run check` and `npm test` pass
 
 ## 7. Integration
 
-- [ ] 7.1 Run `npm run lint`, `npm run check`, `npm run check:server`, `npm test` and `npm run build`; verify all pass
-- [ ] 7.2 Run `npm run test:e2e` (needs Java for the emulators); verify the new and existing specs pass
+- [x] 7.1 Run `npm run lint`, `npm run check`, `npm run check:server`, `npm test` and `npm run build`; verify all pass
+- [x] 7.2 Run `npm run test:e2e` (needs Java for the emulators); verify the new and existing specs pass

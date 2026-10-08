@@ -9,6 +9,7 @@
 </script>
 
 <button
+	data-needs-hydration
 	on:click={(event) => {
 		event.stopPropagation();
 		onClickFunction();

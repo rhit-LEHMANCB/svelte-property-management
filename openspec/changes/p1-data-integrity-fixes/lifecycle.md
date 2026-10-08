@@ -1,7 +1,7 @@
 # Lifecycle: p1-data-integrity-fixes
 
 - Branch: `p1-data-integrity-fixes`
-- Stage: 3 Implement
+- Stage: 4 Review (round 0 of 3 starting)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-07
@@ -65,6 +65,9 @@ Run 2026-10-07.
 
 ## Review rounds
 (none yet; one line per round: blockers, majors, fixed, rejected with reason)
+
+## Implementation notes
+Stage 3 done 2026-10-08: 21/21 tasks. `npm test` 292 pass, `npm run check` clean, eslint clean, Prettier clean with `--end-of-line auto`, `npm run build` ok, full e2e 53 pass. `npm run check:server` fails on Windows only (pre-existing path bug in scripts/check-server-imports.mjs: `C:C:...`); CI on Linux runs it.
 
 ## Deferred findings
 (minors, nits and known gaps to turn into issues at wrap-up)

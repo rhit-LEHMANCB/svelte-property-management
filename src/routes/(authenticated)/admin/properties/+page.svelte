@@ -66,6 +66,7 @@
 
 <div class="grid grid-flow-row p-5 gap-5">
 	<button
+		data-needs-hydration
 		on:click={addPropertyClicked}
 		class="btn btn-sm preset-filled-primary-500 justify-self-start"
 		><IconHomePlus class="mr-2" />Add Property</button
@@ -83,6 +84,7 @@
 					<strong class="h4">{`${property.data.title}`}</strong>
 					<div class="flex grow justify-end">
 						<button
+							data-needs-hydration
 							on:click={(event) => handleDeleteClick(event, property)}
 							class="btn-icon btn-sm preset-filled-error-500"><IconHomeMinus /></button
 						>

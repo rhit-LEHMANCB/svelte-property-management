@@ -4,6 +4,18 @@
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width" />
+		<noscript>
+			<style>
+				html:not([data-hydrated]) [data-needs-hydration] {
+					pointer-events: auto;
+					cursor: auto;
+					opacity: 1;
+				}
+				html:not([data-hydrated]) [data-needs-hydration]::after {
+					display: none;
+				}
+			</style>
+		</noscript>
 		%sveltekit.head%
 	</head>
 	<body data-theme="my-custom-theme" data-sveltekit-preload-data="hover">
