@@ -16,6 +16,6 @@ The system SHALL give each non-admin user in the authenticated area at most one 
 - **AND** `/payment` and `/maintenance` redirect the tenant to `/`
 - **AND** `/profile` and `/insurance` load normally
 
-#### Scenario: More than one property
+#### Scenario: Wrong number of properties
 - **WHEN** a tenant has more than one junction
 - **THEN** the layout fails with 500 "User is associated with wrong number of properties: N"
