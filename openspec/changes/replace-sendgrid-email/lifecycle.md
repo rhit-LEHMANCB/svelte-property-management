@@ -1,13 +1,13 @@
 # Lifecycle: replace-sendgrid-email
 
 - Branch: `claude/replace-sendgrid-email`
-- Stage: 0 Intake
+- Stage: 2 Propose + preflight (awaiting Gate A)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-07
 
 ## Interview summary
-(approved: no, awaiting user confirmation)
+(approved: yes, 2026-10-07)
 
 **Goal.** Replace SendGrid (free tier retired; now a one-time 60-day trial, then about $20/month) with Resend (free: 3,000/month, 100/day, 1 domain) for the password reset and welcome emails, without changing user-visible behavior.
 
@@ -48,7 +48,16 @@ Approved: no
 Accepted preflight gaps: none
 
 ## Preflight
-(table of checks and results, from stage 2)
+| Check | Result |
+| --- | --- |
+| git commit and push to origin | PASS (author set; push dry-run ok) |
+| gh auth, scopes repo + workflow | PASS |
+| `gh pr merge` permitted in this session | UNCONFIRMED: needs user confirmation at Gate A (else run halts at stage 5) |
+| Playwright config with `qa` project, browsers installed | PASS (chromium installed) |
+| QA credentials (QA_ADMIN_*, QA_TENANT_*) | FAIL: none set in env and no `.env.qa` (gitignored) |
+| Dev deploy workflow passing on `develop` | PASS (last 3 runs success) |
+| Local checks | PARTIAL: Node 22, Java 21, `npm run test` 254/254 pass. `npm run lint` and `npm run check` fail locally for environment reasons (no `.env`, CRLF checkout on Windows); CI is authoritative |
+| Secrets for this change in GitHub `develop` env | FAIL (expected): `RESEND_API_KEY` not yet added; SendGrid key still present |
 
 ## Review rounds
 (none yet; one line per round: blockers, majors, fixed, rejected with reason)
