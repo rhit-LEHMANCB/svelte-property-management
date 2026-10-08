@@ -1,4 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+// Handler tests replace this module globally (tests/helpers/setup.ts); here the real one is tested.
+vi.unmock('$lib/server/verifyPassword');
+
 import { verifyPassword } from '$lib/server/verifyPassword';
 
 const respond = (status: number, body: unknown) =>

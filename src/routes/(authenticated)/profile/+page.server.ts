@@ -6,6 +6,7 @@ import { error, fail } from '@sveltejs/kit';
 import { profileSchema } from '$lib/schemas';
 import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
 import { stripe } from '$lib/server/stripe';
+import { verifyPassword } from '$lib/server/verifyPassword';
 import { getUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
 
 export const load = (async (event) => {
@@ -28,27 +29,70 @@ export const actions = {
 			return message(form, 'Invalid form');
 		}
 
+		const { currentPassword, ...contact } = form.data;
 		const userDoc = adminDB.collection('users').doc(userId);
+		const previous = (await userDoc.get()).data();
 
-		await userDoc.update(form.data);
-
-		const userData = (await userDoc.get()).data();
-
-		if (!userData) {
+		if (!previous) {
 			throw error(500, 'Error retrieving user details to update');
 		}
 
-		if (userData.stripeID) {
-			await stripe.customers.update(userData.stripeID, {
-				name: `${form.data.firstName} ${form.data.lastName}`,
-				email: form.data.email,
-				phone: form.data.phoneNumber
-			});
+		const emailChanged = contact.email !== previous.email;
+
+		if (emailChanged) {
+			let verified: string | null = null;
+			try {
+				verified = currentPassword ? await verifyPassword(previous.email, currentPassword) : null;
+			} catch (err) {
+				console.log(err instanceof Error ? err.message : err);
+				return message(form, 'Could not verify your password. Please try again.', { status: 500 });
+			}
+			if (!verified) {
+				return message(form, 'Enter your current password to change your email.', { status: 400 });
+			}
 		}
 
-		await adminAuth.updateUser(userId, {
-			email: form.data.email
-		});
+		// Auth, then Stripe, then Firestore. Each finished step registers how to restore it, so a later
+		// failure leaves all three systems with the previous values.
+		const undo: (() => Promise<unknown>)[] = [];
+
+		try {
+			if (emailChanged) {
+				await adminAuth.updateUser(userId, { email: contact.email });
+				undo.push(() => adminAuth.updateUser(userId, { email: previous.email }));
+			}
+
+			if (previous.stripeID) {
+				await stripe.customers.update(previous.stripeID, {
+					name: `${contact.firstName} ${contact.lastName}`,
+					email: contact.email,
+					phone: contact.phoneNumber
+				});
+				undo.push(() =>
+					stripe.customers.update(previous.stripeID, {
+						name: `${previous.firstName} ${previous.lastName}`,
+						email: previous.email,
+						phone: previous.phoneNumber
+					})
+				);
+			}
+
+			await userDoc.update(contact);
+		} catch (err) {
+			console.log(err instanceof Error ? err.message : err);
+
+			for (const step of undo.reverse()) {
+				await step().catch((undoError) =>
+					console.log(
+						`Profile rollback failed for ${userId}:`,
+						undoError instanceof Error ? undoError.message : undoError
+					)
+				);
+			}
+
+			return message(form, 'Your changes could not be saved. Please try again.', { status: 500 });
+		}
+
 		return message(form, 'Form submitted');
 	},
 	photo: async ({ request, locals }) => {

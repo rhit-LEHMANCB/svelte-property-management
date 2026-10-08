@@ -19,6 +19,11 @@ vi.mock('$lib/server/email', async () => {
 	return { sendPasswordResetEmail: services.sendPasswordResetEmail };
 });
 
+vi.mock('$lib/server/verifyPassword', async () => {
+	const { services } = await import('./services');
+	return { verifyPassword: services.verifyPassword };
+});
+
 beforeEach(() => services.reset());
 
 // Handler tests must never reach the network. A handler that bypassed the doubles above and called

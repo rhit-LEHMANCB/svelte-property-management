@@ -11,7 +11,9 @@ export const profileSchema = z.object({
 		.min(1, 'Please provide a last name')
 		.max(250, 'Last name cannot exceed 250 characters'),
 	email: z.email('Please enter a valid email'),
-	phoneNumber: z.string().refine(validator.isMobilePhone, 'Please enter a valid phone number')
+	phoneNumber: z.string().refine(validator.isMobilePhone, 'Please enter a valid phone number'),
+	// Only needed (and checked on the server) when the email changes.
+	currentPassword: z.string().max(4096).optional()
 });
 
 export const passwordChangeSchema = z

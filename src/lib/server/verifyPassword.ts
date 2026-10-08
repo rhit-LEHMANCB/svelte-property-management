@@ -35,4 +35,3 @@ export const verifyPassword = async (email: string, password: string) => {
 
 	throw new Error(`Password check failed: ${code || response.status}`);
 };
-

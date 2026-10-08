@@ -26,9 +26,9 @@
 
 ## 5. #45 Profile
 
-- [ ] 5.1 Add an optional `currentPassword` field to the profile form and schema, shown when the email field differs from the saved email; verify a component or e2e check that the field appears only then
-- [ ] 5.2 Rewrite the `contact` action: verify password if the email changed, then Auth, Stripe, Firestore with reverse-order undo on failure; verify handler tests for success, wrong password, Stripe failing (Auth restored), Firestore failing (Stripe and Auth restored) and unchanged email
-- [ ] 5.3 Update `user-profile` Known Gaps; verify the two items are gone
+- [x] 5.1 Add an optional `currentPassword` field to the profile form and schema, shown when the email field differs from the saved email; verify a component or e2e check that the field appears only then
+- [x] 5.2 Rewrite the `contact` action: verify password if the email changed, then Auth, Stripe, Firestore with reverse-order undo on failure; verify handler tests for success, wrong password, Stripe failing (Auth restored), Firestore failing (Stripe and Auth restored) and unchanged email
+- [x] 5.3 Update `user-profile` Known Gaps; verify the two items are gone
 
 ## 6. #58 Hydration
 
