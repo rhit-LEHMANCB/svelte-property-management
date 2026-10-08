@@ -1,9 +1,9 @@
 # Lifecycle: sync-firebase-config
 
 - Branch: `firebase-env-sync`
-- Stage: 5 Ship to develop
+- Stage: 7 Production PR open (Gate B pending)
 - Review round: 3 of 3
-- QA cycle: 0 of 3
+- QA cycle: 1 of 3
 - Started: 2026-10-07
 
 ## Interview summary
@@ -59,10 +59,38 @@ Round 3: 0 blockers, 0 majors, 3 minors, 3 nits. Fixed: concurrency group on the
 - Developers with a local .firebaserc that sets a default project will see a conflict on pull (mention in PR).
 
 ## QA report
-(stage 6)
+Result: PASS, QA cycle 1 of 3, 2026-10-07, against https://lehman-realty-dev.web.app (commit `5db1397`, PR #100). The first dev deploy failed on a missing service-account permission (issue #101); after the roles were granted by a human the rerun succeeded and the live dev rules, Storage rules and indexes were confirmed equal to the committed files. Evidence branch: `qa-evidence/sync-firebase-config` (screenshots under `openspec/changes/sync-firebase-config/qa/screenshots/`, specs under `tests/qa/sync-firebase-config/`). One screenshot (Stripe Checkout) and the profile-page and Users-page screenshots were removed because they show email addresses or personal data.
+
+| Scenario | Result | Evidence |
+|---|---|---|
+| Firestore denies client access (anonymous: read doc, list two collections, create) | pass | 4 x 403 PERMISSION_DENIED, `rules.spec.ts` log |
+| Firestore denies client access (signed-in tenant, same four calls) | pass | 4 x 403 PERMISSION_DENIED |
+| Storage allows public read (property photo, profile photo, metadata; anonymous and tenant) | pass | 200 image/png and image/jpeg |
+| Storage denies write, delete and listing (anonymous and tenant) | pass | 403 "Permission denied."; photo still 200 afterwards |
+| Admin signs in; home, admin, properties, users, maintenance, profile load with data | pass | regression-admin-*.png |
+| Property photo and profile photo display from Storage | pass | regression-admin-admin-properties.png |
+| Tenant signs in; dashboard, maintenance, payment, insurance, profile load | pass | regression-tenant-*.png |
+| Tenant creates a maintenance request; admin sees it and closes it (Admin SDK read/write) | pass | regression-tenant-maintenance-create.png, regression-admin-maintenance-closed.png |
+| Tenant payment: Make a Payment opens Stripe Checkout in Sandbox (test mode); not paid | pass | screenshot removed (shows an email) |
+
+No HTTP responses of 400 or above, console errors, page errors or broken images across both roles. A rules denial was told apart from other 403s by message shape (Firestore PERMISSION_DENIED "Missing or insufficient permissions", Storage "Permission denied.") and by controls with a wrong project and a bad API key.
+
+Failures: none in the app. Two test bugs in the QA scripts were fixed (payment modal not filled; admin cleanup test subject).
+
+Observations: closed `qa-rules-*` maintenance requests remain in dev Firestore because the app has no delete; older open `qa-leak` requests predate this run. The "qa-property" has no photo and shows a placeholder, as intended.
+
+Not covered by automation: the CI deploy and its failure path, repo files and the emulator suite (checked separately by CI and local runs), production, composite-index queries beyond the pages visited, photo upload through the app, auto-pay, the webhook, password-reset email, phone layout.
 
 ## Verification checklist for the human
-(stage 7)
+Ranked by risk. Items 1 to 3 are the production-only risks; do them before or immediately after merging.
+
+1. **Production CI service account has the roles** (high). In Google Cloud IAM for `lehman-realty`, confirm `github-action-669953865@lehman-realty.iam.gserviceaccount.com` has Firebase Viewer, Firebase Rules Admin and Cloud Datastore Index Admin, and that it is the account in the `production` environment's `FIREBASE_SERVICE_ACCOUNT_LEHMAN_REALTY` secret. Without them the production run fails at the new step and the Hosting deploy is skipped (exactly what happened on dev the first time; IAM grants can take a few minutes to apply, so rerun if the first attempt returns 403). Expected: the "Deploy Firestore and Storage rules and Firestore indexes" step goes green.
+2. **Nothing outside the app reads production Firestore directly** (high). Production rules change from `request.auth != null` to deny-all. In the Firebase console for `lehman-realty`, check Firestore → Usage or Rules → Monitor for client-SDK traffic, and think about any scripts, dashboards or other apps using this project with a client login. Expected: none. Rollback if wrong: Firestore → Rules → history → restore the previous ruleset.
+3. **After the production deploy, check the live rules and sanity-check the site** (high). Firebase console, `lehman-realty`: Firestore rules show `allow read, write: if false`, Storage rules show `allow get`. Sign in on the production site as an admin and a tenant and load properties, users, maintenance and payment; confirm photos display. Expected: everything loads as before.
+4. **Upload a photo through the app** (medium). On dev (or production after the merge), as a tenant upload a profile picture and as an admin add an image to a property, reload, and open the image URL in a private window. Expected: the upload works and the image loads. The automation did not drive uploads.
+5. **Check indexes on production** (medium). Firebase console → Firestore → Indexes on `lehman-realty`: the four `maintenance` indexes exist and are enabled; the deploy does not delete any extra console-only indexes. Open the Maintenance pages as admin and tenant. Expected: no "index required" errors.
+6. **Stripe test payment on dev** (low). Pay $1 with card 4242 4242 4242 4242 as the QA tenant and confirm the success page and the transaction history update (exercises the webhook write). Expected: payment recorded once.
+7. **Clean up dev QA data** (low). Delete the closed `qa-rules-*` and old `qa-leak` maintenance requests in the dev Firestore console.
 
 ## Halted
 (only if the run halted)
