@@ -20,9 +20,9 @@
 
 ## 4. #40 Users
 
-- [ ] 4.1 Rewrite `POST /api/user/add` with a rollback list (Auth user, Stripe customer, Firestore doc) and an awaited welcome email whose failure rolls everything back; verify handler tests for failure at Stripe, Firestore and email, each leaving no records
-- [ ] 4.2 Rewrite `DELETE /api/user/[userId]`: 400 on self, delete Stripe customer, junction rows, storage and user doc, then Auth, tolerating missing Stripe/Auth; verify handler tests for self-delete, tenant with a junction, and already-missing Stripe customer
-- [ ] 4.3 Update `user-management` Known Gaps; verify the three items are gone
+- [x] 4.1 Rewrite `POST /api/user/add` with a rollback list (Auth user, Stripe customer, Firestore doc) and an awaited welcome email whose failure rolls everything back; verify handler tests for failure at Stripe, Firestore and email, each leaving no records
+- [x] 4.2 Rewrite `DELETE /api/user/[userId]`: 400 on self, delete Stripe customer, junction rows, storage and user doc, then Auth, tolerating missing Stripe/Auth; verify handler tests for self-delete, tenant with a junction, and already-missing Stripe customer
+- [x] 4.3 Update `user-management` Known Gaps; verify the three items are gone
 
 ## 5. #45 Profile
 
