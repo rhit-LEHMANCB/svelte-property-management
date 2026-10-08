@@ -36,10 +36,11 @@ describe('user-management: create user (POST /api/user/add)', () => {
 		const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 		const result = await call(addUser, { userID: 'admin-1', body: { email: 'new@example.com' } });
-		await new Promise((resolve) => setTimeout(resolve, 0));
 
 		expect(result).toMatchObject({ status: 200, json: { status: 'New User Created' } });
-		expect(logged).toHaveBeenCalled();
+		await vi.waitFor(() =>
+			expect(logged).toHaveBeenCalledWith('Problem sending welcome email', expect.any(Error))
+		);
 		logged.mockRestore();
 	});
 

@@ -1,8 +1,8 @@
 # Lifecycle: replace-sendgrid-email
 
 - Branch: `claude/replace-sendgrid-email`
-- Stage: 3 Implement (done, moving to 4 Review)
-- Review round: 0 of 3
+- Stage: 5 Ship to develop
+- Review round: 1 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-07
 
@@ -60,10 +60,11 @@ Accepted preflight gaps: local lint/check fail on this Windows checkout (CI auth
 | Secrets for this change in GitHub `develop` env | FAIL (expected): `RESEND_API_KEY` not yet added; SendGrid key still present |
 
 ## Review rounds
-(none yet; one line per round: blockers, majors, fixed, rejected with reason)
+Round 1: blockers 0, majors 0, minors 3, nits 1. Fixed the two test minors (welcome continue-URL assertion; welcome-failure log assertion with waitFor). Review exits after round 1.
 
 ## Deferred findings
-(minors, nits and known gaps to turn into issues at wrap-up)
+- Welcome email is not awaited, so a serverless host may freeze the process before the send completes; mail could drop silently. Matches the spec and old behavior; await and surface to the admin if drops appear.
+- Sender domain change (lehmanfamilyrealty.com to lehmanfamilyllc.com) is a deployment prerequisite; an unverified domain makes every send a 500.
 
 ## QA report
 (filled in stage 6; link to the QA evidence branch)

@@ -31,6 +31,12 @@ describe('authentication: password reset request (real email module)', () => {
 		expect(services.auth.generatePasswordResetLink).toHaveBeenCalledWith('tenant@example.com', {
 			url: `${PUBLIC_FRONTEND_URL}/`
 		});
+
+		await sendPasswordResetEmail('new@example.com', true);
+
+		expect(services.auth.generatePasswordResetLink).toHaveBeenCalledWith('new@example.com', {
+			url: `${PUBLIC_FRONTEND_URL}/`
+		});
 	});
 
 	it('Scenario: Reset email sent mails the generated link to the user', async () => {
