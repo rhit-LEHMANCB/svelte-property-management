@@ -41,3 +41,8 @@
 
 - [x] 7.1 Run `npm run lint`, `npm run check`, `npm run check:server`, `npm test` and `npm run build`; verify all pass
 - [x] 7.2 Run `npm run test:e2e` (needs Java for the emulators); verify the new and existing specs pass
+
+## 8. QA cycle 2 fix: tenants without a property
+
+- [x] 8.1 Make the authenticated layout load for a tenant with no junction (no `userProperty`, no error), redirect `/payment` and `/maintenance` to `/` for them, and show a "No property is assigned" message on the dashboard; verify handler tests for the layout, both loads and the e2e spec "a tenant without a property" pass
+- [x] 8.2 Add the `access-control` delta spec for the "Tenant property context" requirement (none, one, more than one); verify `openspec validate p1-data-integrity-fixes --strict` passes
