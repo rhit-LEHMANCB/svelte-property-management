@@ -1,8 +1,8 @@
 # Lifecycle: sync-firebase-config
 
 - Branch: `firebase-env-sync`
-- Stage: 4 Review (round 2 done: 0 blockers, 1 major fixed)
-- Review round: 2 of 3
+- Stage: 5 Ship to develop
+- Review round: 3 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-07
 
@@ -51,9 +51,12 @@ Accepted preflight gaps: CI service account deploy roles unverified; gh pr merge
 ## Review rounds
 Round 1: 0 blockers, 1 major (no test of committed rules) fixed with tests/e2e/specs/rules.spec.ts; minors fixed: Storage allow get instead of read, credentials file umask and empty-secret guard, README notes on rollback and extra indexes, Git Bash note; boilerplate comment removed.
 Round 2: 0 blockers, 1 major (rules test ran anonymous only; the old request.auth != null rule would pass) fixed by also running signed-in; verified by temporarily restoring the old rule (signed-in case fails). Minors: set -euo pipefail added, README says "at least" for roles.
+Round 3: 0 blockers, 0 majors, 3 minors, 3 nits. Fixed: concurrency group on the merge job; README role wording. Deferred below.
 
 ## Deferred findings
 - Restrict Storage reads and move photos to signed URLs.
+- Add a PR-time rules compile or deploy --dry-run check (needs credentials in the PR workflow).
+- Developers with a local .firebaserc that sets a default project will see a conflict on pull (mention in PR).
 
 ## QA report
 (stage 6)

@@ -9,6 +9,9 @@ name: Deploy to Firebase Hosting on merge
       - develop
 jobs:
   build_and_deploy:
+    concurrency:
+      group: deploy-${{ github.ref_name }}
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.ref_name }}

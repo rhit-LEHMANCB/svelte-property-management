@@ -34,7 +34,8 @@ projects, and the e2e emulator loads the same rules. `.firebaserc` defines the a
 - CI deploys them to the project in the GitHub environment's `FB_PROJECT_ID` on every push to `develop`
   and `production` (`.github/workflows/firebase-hosting-merge.yml`), before the Hosting deploy. The
   service account in `FIREBASE_SERVICE_ACCOUNT_LEHMAN_REALTY` needs at least the Firebase Rules Admin and Cloud
-  Datastore Index Admin roles in each project.
+  Datastore Index Admin roles in each project, plus whatever else the first deploy to `develop` reports
+  missing (for example Firebase Viewer for the Storage bucket lookup).
 - Rules are not rolled back automatically if a later deploy step fails; restore the previous ruleset
   from the Firebase console history. A deploy never deletes indexes that exist only in the console,
   so check the console if you suspect extras.
