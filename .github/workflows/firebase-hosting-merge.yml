@@ -24,6 +24,7 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_LEHMAN_REALTY }}'
           FB_PROJECT_ID: '${{ vars.FB_PROJECT_ID }}'
         run: |
+          set -euo pipefail
           credentials="$RUNNER_TEMP/firebase-service-account.json"
           trap 'rm -f "$credentials"' EXIT
           umask 077
