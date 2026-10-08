@@ -225,6 +225,10 @@ test.describe('access-control: a tenant without a property', () => {
 	const PASSWORD = 'E2e-NoProperty-Passw0rd';
 
 	test.beforeAll(async () => {
+		// A CI retry re-runs this block, so a user left by the first attempt is replaced.
+		await adminAuth()
+			.deleteUser('e2e-no-property')
+			.catch(() => undefined);
 		await adminAuth().createUser({ uid: 'e2e-no-property', email: EMAIL, password: PASSWORD });
 		await adminDb().doc('users/e2e-no-property').set({
 			email: EMAIL,
