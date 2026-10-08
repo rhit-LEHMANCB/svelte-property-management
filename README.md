@@ -23,6 +23,22 @@ the example shows the format.
 
 Node 22 is required (`.nvmrc`; run `nvm use`). `package.json` `engines.node` pins the Cloud Function runtime to the same version.
 
+## Firebase rules and indexes
+
+`firestore.rules`, `storage.rules` and `firestore.indexes.json` are the single source for both Firebase
+projects, and the e2e emulator loads the same rules. `.firebaserc` defines the aliases `dev`
+(`lehman-realty-dev`) and `prod` (`lehman-realty`) and has no default, so always pass `--project`.
+
+- Firestore denies all client access: the app reads and writes through the Admin SDK, which ignores
+  rules. Storage allows public reads (photo URLs are unsigned) and no writes.
+- CI deploys them to the project in the GitHub environment's `FB_PROJECT_ID` on every push to `develop`
+  and `production` (`.github/workflows/firebase-hosting-merge.yml`), before the Hosting deploy. The
+  service account in `FIREBASE_SERVICE_ACCOUNT_LEHMAN_REALTY` needs the Firebase Rules Admin and Cloud
+  Datastore Index Admin roles in each project.
+- To deploy by hand: `npx firebase deploy --only firestore,storage --project dev` (add `--dry-run` to check).
+- If someone adds an index in the console, re-export it with
+  `npx firebase firestore:indexes --project dev > firestore.indexes.json` and commit the result.
+
 ## Stripe
 
 Dev and local environments use Stripe test-mode keys; only production may use a live key. The server

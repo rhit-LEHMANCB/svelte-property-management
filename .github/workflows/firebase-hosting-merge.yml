@@ -19,6 +19,15 @@ jobs:
           node-version-file: .nvmrc
       - name: Install dependencies
         run: npm install
+      - name: Deploy Firestore and Storage rules and Firestore indexes
+        env:
+          FIREBASE_SERVICE_ACCOUNT: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_LEHMAN_REALTY }}'
+          FB_PROJECT_ID: '${{ vars.FB_PROJECT_ID }}'
+        run: |
+          credentials="$RUNNER_TEMP/firebase-service-account.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$credentials"
+          trap 'rm -f "$credentials"' EXIT
+          GOOGLE_APPLICATION_CREDENTIALS="$credentials" npx firebase deploy --only firestore,storage --project "$FB_PROJECT_ID" --non-interactive
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'

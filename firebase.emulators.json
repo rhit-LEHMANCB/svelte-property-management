@@ -1,9 +1,9 @@
 {
 	"firestore": {
-		"rules": "tests/e2e/emulator/firestore.rules"
+		"rules": "firestore.rules"
 	},
 	"storage": {
-		"rules": "tests/e2e/emulator/storage.rules"
+		"rules": "storage.rules"
 	},
 	"emulators": {
 		"auth": { "port": 9099 },
