@@ -1,9 +1,9 @@
 # Lifecycle: p1-data-integrity-fixes
 
 - Branch: `p1-data-integrity-fixes`
-- Stage: 5 Ship to develop
-- Review round: 1 of 3
-- QA cycle: 0 of 3
+- Stage: 7 Production PR (awaiting Gate B: human verifies and merges)
+- Review round: 1 of 3 (+1 each for QA fix PRs #113 and #115)
+- QA cycle: 3 of 3 (PASS)
 - Started: 2026-10-07
 
 ## Interview summary
@@ -64,12 +64,19 @@ Run 2026-10-07.
 | GitHub `develop` environment secrets | OK, no new secrets needed (uses existing `FB_API_KEY`) |
 
 ## Review rounds
-Round 1 (2026-10-08, fresh Sonnet reviewer): blockers 0, majors 0, minors 5, nits 1. Nothing to fix; exited the loop. Minors deferred below.
+Round 1 (2026-10-08, fresh Sonnet reviewer, PR #110): blockers 0, majors 0, minors 5, nits 1. Nothing to fix; exited the loop. Minors deferred below.
+Fix round (PR #113, QA cycle 1 finding): fresh reviewer, blockers 0, majors 0, nits 2. Not changed.
+Fix round (PR #115, QA cycle 2 finding): fresh reviewer, blockers 0, majors 0, minors 2, nits 2. Fixed the e2e setup retry safety; other items deferred below.
 
 ## Implementation notes
 Stage 3 done 2026-10-08: 21/21 tasks. `npm test` 292 pass, `npm run check` clean, eslint clean, Prettier clean with `--end-of-line auto`, `npm run build` ok, full e2e 53 pass. `npm run check:server` fails on Windows only (pre-existing path bug in scripts/check-server-imports.mjs: `C:C:...`); CI on Linux runs it.
 
 ## Deferred findings
+- Maintenance form action and the checkout-session endpoint answer 500 (not a 4xx) for a tenant with no property; unreachable from the UI because the pages redirect. Add a 4xx and tests later.
+- The dashboard `+page.svelte` check `permissions !== 'admin'` is redundant (admins are redirected away); simplify to `!data.userProperty`.
+- The tenant dashboard for a tenant WITH a property is still the "Manager page" stub (issue #43).
+- A tenant with an empty phone number cannot save any profile edit (browser validation); pre-dates this change.
+- Assignable dropdown shows names only, so every Add User account reads "New User"; Add User failure toast is generic ("Error creating user.").
 - **SPEC CONFLICT for the human at Gate B:** the in-flight `replace-sendgrid-email` change (merged to develop while this ran) specifies "Welcome email failure: the user is still created ... as the welcome email is not awaited". This change, by the user's explicit interview decision, awaits the email and rolls the whole create back on failure (#40). Merge resolution kept this change's behavior and removed the upstream test that asserted the old behavior. Whichever behavior is wanted, `openspec/changes/replace-sendgrid-email/specs/authentication/spec.md` (Welcome email failure) and this change's `user-management` delta must be reconciled before archive.
 (minors, nits and known gaps to turn into issues at wrap-up)
 - Raw provider error text (Firebase, Stripe, storage) is returned in 500 bodies on property delete, user delete and user create; keep detail in logs (not a regression).
@@ -81,10 +88,30 @@ Stage 3 done 2026-10-08: 21/21 tasks. `npm test` 292 pass, `npm run check` clean
 - `scripts/check-server-imports.mjs` fails on Windows (`C:C:...` path); CI on Linux is unaffected.
 
 ## QA report
-(filled in stage 6; link to the QA evidence branch)
+Final: **cycle 3 of 3, PASS**, 36 of 36 tests, run 2026-10-08 against the dev site at develop `42dd3d6` (includes #110, #113, #115). Evidence (50 screenshots, QA specs): branch `qa-evidence/p1-data-integrity-fixes`, folder `openspec/changes/p1-data-integrity-fixes/qa/screenshots/`. Do not merge or delete that branch until Gate B is done.
+
+History:
+- Cycle 1 (27/28): app bug, with JavaScript off the Sign in button stayed inert for mouse clicks (fixed in #113). The QA agent's cleanup helper also deleted the QA tenant (environment); the run halted until the tenant was recreated by the user.
+- Cycle 2 (32/33): app bug, a tenant with no property got a 500 on every page, which broke the #38 fix for tenants of a deleted property (fixed in #115, new `access-control` spec delta).
+- Cycle 3: all pass, QA admin and tenant accounts intact, tenant ended in its starting state (no property).
+
+Covered and passing: assignment (assign, missing tenant, unknown user/property, admin as tenant, options, 409, same property), delete property (property and junction rows removed before the response; tenant of a deleted property loads the app), tenant with no property (dashboard message, /payment and /maintenance redirect to /, profile, insurance, sign-out), create user (new user, duplicate Auth, welcome-email rejection rolls back), delete user (user and junction removed), profile (invalid form, wrong/missing password rejected, unchanged email needs no password; admin and tenant), sign-in before hydration (no JS, scripts blocked, typed early, wrong credentials), no-JS mouse click on Sign in, controls inert with a spinner before hydration then working (sign-in, Add User, Add Property, delete, Make a Payment), regression pass for both roles with no console errors or 5xx.
+
+Not covered by automation: property delete over 500 documents and failure then retry; removal of maintenance requests, payment_history and storage files; Stripe or Firestore failure injection during user create and profile save; delete user's Stripe/Auth/storage removal, "already gone", delete self (400); profile valid save, email change with the correct password, and rollback; tenant with 2+ junctions (500); real email delivery; Stripe payment completion; mobile layout.
 
 ## Verification checklist for the human
-(filled in stage 7)
+Do these in order of risk before merging the production PR (dev site first where it applies):
+
+1. **Welcome email and password setup + successful email change** (high). Admin > Users > Add User with an inbox you control; open the email and set a password; sign in; on /profile change the email using the current password. Expect: email arrives, link works on the production domain, then Firebase Auth, the Stripe customer and the profile all show the new email. Also try a wrong password: nothing changes.
+2. **Delete a property that has real data** (high). Create a throwaway property with a tenant, a maintenance request, a payment and a photo; delete it. Expect: no `junction_user_property`, `maintenance` or `payment_history` documents or Storage files remain; the tenant signs in and sees "No property is assigned to your account yet."
+3. **Delete a user** (high). Delete a throwaway user with a Stripe customer, a junction and an uploaded photo. Expect: Auth account, user doc, junction, Stripe customer and `users/{id}/` files gone; maintenance and payment history kept. Then try deleting your own admin row: expect refusal and no change.
+4. **Production-only: environment and secrets** (high). `RESEND_API_KEY` and the Resend sender domain must exist in the production GitHub environment (this release also ships the SendGrid to Resend change from the `replace-sendgrid-email` change). `PUBLIC_FB_API_KEY` is used server-side for the password check (the project's existing key; no new secret). The sign-in POST fallback and email-change password check call `identitytoolkit.googleapis.com` from the server: confirm outbound access and that the key is not restricted to browser referrers only (a referrer-restricted key rejects server calls).
+5. **Spec conflict to settle** (medium). `replace-sendgrid-email` says a failed welcome email still creates the user; this change (your interview decision) rolls the whole create back when the email fails. Decide which wins and reconcile the specs before archive.
+6. **Stripe live mode** (medium). Stripe customer deletion on user delete is irreversible; with live keys it deletes real customers. Make sure that is wanted. Open issue #98 covers going live.
+7. **Tenant with two junctions** (medium). In the Firestore console add a second junction for a throwaway tenant and sign in: expect the 500 "wrong number of properties: 2".
+8. **Sign-in on a slow phone** (medium). Throttled connection: type credentials as soon as the form appears and tap Sign in immediately. Expect typed values kept, spinner, no lost input.
+9. **Make a Payment with a test card** (medium, dev). Tenant with a property and a balance: click right after load (ignored with a spinner), then pay with 4242 4242 4242 4242.
+10. **Tenant with no property on a phone** (low). Check the message wording and layout, and that Payment and Maintenance bounce back to the dashboard.
 
 ## Halted
-(only if the run halted: stage, reason, evidence, next step for a human)
+Resolved. The run halted once at stage 6 (2026-10-08) after QA cycle 1 deleted the QA tenant account; the user recreated the tenant and the run resumed with QA cycle 2 and 3. Issue #114 tracked the halt.
