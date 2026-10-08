@@ -6,15 +6,27 @@ Admins link a user to a property. The link is stored in `junction_user_property`
 ## Requirements
 
 ### Requirement: Assign tenant
-The system SHALL let an admin link a user to a property via `POST /api/property/{id}/tenants`.
+The system SHALL let an admin link a user to a property via `POST /api/property/{id}/tenants`, and SHALL only link an existing non-admin user to an existing property.
 
 #### Scenario: Assign
-- **WHEN** an admin supplies a `tenantId`
+- **WHEN** an admin supplies a `tenantId` for an existing tenant who has no property, and the property exists
 - **THEN** a junction document `{tenantId}_{propertyId}` is written
 
 #### Scenario: Missing tenant
 - **WHEN** `tenantId` is absent
 - **THEN** the response is 400 "Please provide a Tenant Id"
+
+#### Scenario: Unknown user
+- **WHEN** no user has the supplied `tenantId`
+- **THEN** the response is 404 and nothing is written
+
+#### Scenario: Unknown property
+- **WHEN** the property in the URL does not exist
+- **THEN** the response is 404 and nothing is written
+
+#### Scenario: Admin as tenant
+- **WHEN** the supplied user is an admin
+- **THEN** the response is 400 and nothing is written
 
 ### Requirement: Remove tenant
 The system SHALL let an admin unlink via `DELETE /api/property/{id}/tenants`.
@@ -24,11 +36,15 @@ The system SHALL let an admin unlink via `DELETE /api/property/{id}/tenants`.
 - **THEN** the junction document is deleted
 
 ### Requirement: Assignable users
-The system SHALL offer, on the property edit page, all users not already assigned to that property.
+The system SHALL offer, on the property edit page, every non-admin user who is not assigned to any property, however many tenants exist.
 
 #### Scenario: Options
 - **WHEN** an admin opens a property's edit page
-- **THEN** current tenants are listed and the add dropdown excludes them
+- **THEN** current tenants are listed and the add dropdown excludes them, every other assigned tenant, and all admins
+
+#### Scenario: More than 10 tenants
+- **WHEN** more than 10 tenants are assigned across properties
+- **THEN** the page still loads and the dropdown lists the unassigned tenants
 
 ### Requirement: Look up a user's property
 The system SHALL let an admin fetch a user's property through `GET /api/user/{id}/assoc`.
@@ -41,12 +57,16 @@ The system SHALL let an admin fetch a user's property through `GET /api/user/{id
 - **WHEN** the user has exactly one junction
 - **THEN** the response contains the property id and data
 
-### Requirement: One property per tenant (not enforced)
+### Requirement: One property per tenant
 The system SHALL allow a tenant to be linked to at most one property.
 
 #### Scenario: Second assignment
-- **WHEN** an admin assigns a tenant who already has a property
-- **THEN** the request is rejected
+- **WHEN** an admin assigns a tenant who already has a property other than this one
+- **THEN** the response is 409, nothing is written, and the admin sees the message
+
+#### Scenario: Same property again
+- **WHEN** an admin assigns a tenant who is already assigned to this property
+- **THEN** the request succeeds and the stored move-in month is kept
 
 ### Requirement: Move-in month
 The system SHALL store a move-in month (`YYYY-MM`) on a tenant's junction document, accepted when assigning a tenant and changeable afterwards by an admin.
