@@ -37,5 +37,4 @@ The system SHALL let a user trigger the reset email from the profile page.
 - **THEN** `PUT /api/signin/reset` is called and a success or error toast shows
 
 ## Known Gaps
-- The three updates in "Edit contact information" are sequential with no rollback; a Stripe or Auth failure leaves Firestore already changed.
-- Changing the email through the Auth admin API does not require re-verification.
+- None at present.

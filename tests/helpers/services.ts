@@ -3,7 +3,7 @@ import { FakeFirestore } from './fakeFirestore';
 import { STRIPE_ENDPOINT_SECRET } from '$env/static/private';
 
 /**
- * The doubles that replace Firebase Admin, Stripe and SendGrid in handler tests. They are
+ * The doubles that replace Firebase Admin, Stripe and the email provider in handler tests. They are
  * singletons that the module mocks in `setup.ts` hand out; `reset()` runs before every test.
  */
 export const VALID_STRIPE_SIGNATURE = 'valid-signature';
@@ -34,13 +34,17 @@ const bucket = {
 const storage = { bucket: vi.fn(), log: storageLog };
 
 const stripe = {
-	customers: { create: vi.fn(), update: vi.fn() },
+	customers: { create: vi.fn(), update: vi.fn(), del: vi.fn() },
 	checkout: { sessions: { create: vi.fn() } },
 	billingPortal: { sessions: { create: vi.fn() } },
 	webhooks: { constructEvent: vi.fn() }
 };
 
 const sendPasswordResetEmail = vi.fn();
+
+/** Stands in for the Firebase password check: only VALID_PASSWORD passes. */
+export const VALID_PASSWORD = 'right-password';
+const verifyPassword = vi.fn();
 
 function reset() {
 	db.reset();
@@ -83,6 +87,7 @@ function reset() {
 		.mockReset()
 		.mockImplementation(async (args: object) => ({ id: 'cus_new', ...args }));
 	stripe.customers.update.mockReset().mockResolvedValue({});
+	stripe.customers.del.mockReset().mockResolvedValue({ deleted: true });
 	stripe.checkout.sessions.create
 		.mockReset()
 		.mockResolvedValue({ id: 'cs_test_1', url: 'https://checkout.test/session' });
@@ -99,9 +104,22 @@ function reset() {
 			return JSON.parse(Buffer.from(payload).toString());
 		});
 
-	sendPasswordResetEmail.mockReset().mockResolvedValue({ statusCode: 202 });
+	sendPasswordResetEmail.mockReset().mockResolvedValue(undefined);
+	verifyPassword
+		.mockReset()
+		.mockImplementation(async (_email: string, password: string) =>
+			password === VALID_PASSWORD ? 'fresh-id-token' : null
+		);
 }
 
 reset();
 
-export const services = { db, auth, storage, stripe, sendPasswordResetEmail, reset };
+export const services = {
+	db,
+	auth,
+	storage,
+	stripe,
+	sendPasswordResetEmail,
+	verifyPassword,
+	reset
+};

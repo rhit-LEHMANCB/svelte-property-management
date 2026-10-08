@@ -66,7 +66,4 @@ The system SHALL remove `junction_user_property` rows for a property when it is 
 - **THEN** no junction row references it
 
 ## Known Gaps
-- Deleting a property leaves dangling junctions; those tenants then fail with 500 "Failed to find property info." on every page.
-- Delete steps run in parallel with no transaction; maintenance deletes are not awaited.
 - Photo endpoints do not check that the property exists.
-- `payment_history` subcollections are not deleted with the property.

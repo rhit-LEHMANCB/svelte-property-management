@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { DELETE, POST } from '../../src/routes/api/signin/+server';
 import { PUT } from '../../src/routes/api/signin/reset/+server';
 import { handle } from '../../src/hooks.server';
+import { actions as signInActions } from '../../src/routes/(ignorebase)/signin/+page.server';
 import { call } from '../helpers/callHandler';
-import { services } from '../helpers/services';
+import { services, VALID_PASSWORD } from '../helpers/services';
 
 const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
 const nowSeconds = () => Math.floor(Date.now() / 1000);
@@ -63,7 +64,7 @@ describe('authentication: password reset request (PUT /api/signin/reset)', () =>
 	});
 
 	it('Scenario: Email failure responds 500', async () => {
-		services.sendPasswordResetEmail.mockRejectedValue(new Error('SendGrid down'));
+		services.sendPasswordResetEmail.mockRejectedValue(new Error('email provider down'));
 
 		const result = await call(PUT, { method: 'PUT', body: { email: 'tenant@example.com' } });
 
@@ -141,5 +142,55 @@ describe('authentication: route protection (hooks.server handle)', () => {
 		expect(result.redirect).toBeUndefined();
 		expect(result.resolved).toBe(true);
 		expect(result.locals.userID).toBeNull();
+	});
+});
+
+describe('authentication: sign-in before hydration (signin page action)', () => {
+	it('Scenario: Submit before hydration signs in on the server, sets the cookie and redirects to /', async () => {
+		services.auth.verifyIdToken.mockResolvedValue({ uid: 'u1', auth_time: nowSeconds() - 5 });
+
+		const result = await call(signInActions.default, {
+			form: { email: 'a@example.com', password: VALID_PASSWORD }
+		});
+
+		expect(result).toMatchObject({ status: 303, redirect: '/' });
+		expect(services.verifyPassword).toHaveBeenCalledWith('a@example.com', VALID_PASSWORD);
+		expect(result.cookies.calls.set).toHaveLength(1);
+		expect(result.cookies.calls.set[0]).toMatchObject({
+			name: '__session',
+			value: 'session-cookie-value',
+			options: { httpOnly: true, secure: true, path: '/', maxAge: FIVE_DAYS_MS / 1000 }
+		});
+	});
+
+	it('Scenario: Wrong credentials on the POST form show the error and keep the email', async () => {
+		const result = await call(signInActions.default, {
+			form: { email: 'a@example.com', password: 'wrong' }
+		});
+
+		expect(result.status).toBe(400);
+		expect(result.data).toEqual({
+			email: 'a@example.com',
+			error: 'Your email or password is incorrect.'
+		});
+		expect(result.cookies.calls.set).toHaveLength(0);
+	});
+
+	it('Scenario: an empty form is rejected without calling Firebase', async () => {
+		const result = await call(signInActions.default, { form: { email: '', password: '' } });
+
+		expect(result.status).toBe(400);
+		expect(services.verifyPassword).not.toHaveBeenCalled();
+	});
+
+	it('Scenario: a failing password check responds 500 and sets no cookie', async () => {
+		services.verifyPassword.mockRejectedValue(new Error('network down'));
+
+		const result = await call(signInActions.default, {
+			form: { email: 'a@example.com', password: VALID_PASSWORD }
+		});
+
+		expect(result.status).toBe(500);
+		expect(result.cookies.calls.set).toHaveLength(0);
 	});
 });

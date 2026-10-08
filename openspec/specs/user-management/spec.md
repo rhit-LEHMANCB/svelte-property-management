@@ -34,6 +34,4 @@ The system SHALL list all users to admins, ordered by last name, with a modal sh
 - **THEN** every user document is shown ordered by `lastName`
 
 ## Known Gaps
-- Create runs Auth, Stripe and Firestore steps in sequence; a failure after Auth creation leaves an orphaned Auth user or Stripe customer.
-- Delete does not remove the Stripe customer or the user's `junction_user_property` rows, and an admin can delete themselves.
-- The welcome email is sent without awaiting; failures to send are silent.
+- None at present.

@@ -324,7 +324,10 @@ export class FakeFirestore {
 	doc(path: string) {
 		return new FakeDocRef(this, path);
 	}
-	/** Writes are queued and applied on commit(), all or nothing (rolled back if one fails). */
+	/**
+	 * Writes are queued and applied on commit(), all or nothing (rolled back if one fails).
+	 * Like Firestore, a batch holds at most 500 operations.
+	 */
 	batch() {
 		const ops: (() => Promise<void>)[] = [];
 		const batch = {
@@ -332,7 +335,16 @@ export class FakeFirestore {
 				ops.push(() => ref.set(data, options));
 				return batch;
 			},
+			update: (ref: FakeDocRef, data: Data) => {
+				ops.push(() => ref.update(data));
+				return batch;
+			},
+			delete: (ref: FakeDocRef) => {
+				ops.push(() => ref.delete());
+				return batch;
+			},
 			commit: async () => {
+				if (ops.length > 500) throw new Error('A batch cannot hold more than 500 operations.');
 				const before = new Map(this.store);
 				try {
 					for (const op of ops) await op();

@@ -465,6 +465,14 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 describe('rent-payments: balance and due date (/payment load)', () => {
 	const parent = { userProperty: { id: 'prop-1', data: { rent: 1000 } } };
 
+	it('Scenario: a tenant without a property is sent to the dashboard', async () => {
+		setupTenant();
+
+		const result = await call(paymentLoad, { userID: 't1', parent: {} });
+
+		expect(result).toMatchObject({ status: 303, redirect: '/' });
+	});
+
 	it('Scenario: no payments yet shows the rent due on the 1st of this month', async () => {
 		setupTenant();
 
@@ -509,12 +517,6 @@ describe('rent-payments: balance and due date (/payment load)', () => {
 			balanceCents: 0,
 			dueDate: null
 		});
-	});
-
-	it('Scenario: without a property in the layout data the page fails with 500', async () => {
-		seedTenant('t1');
-
-		expect((await call(paymentLoad, { userID: 't1' })).status).toBe(500);
 	});
 
 	it('Scenario: an anonymous caller is rejected with 401', async () => {

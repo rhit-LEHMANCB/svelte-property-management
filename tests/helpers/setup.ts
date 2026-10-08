@@ -3,7 +3,7 @@ import https from 'node:https';
 import { beforeEach, vi } from 'vitest';
 import { services } from './services';
 
-// Handler tests never reach Firebase, Stripe or SendGrid: the server modules are replaced by
+// Handler tests never reach Firebase, Stripe or the email provider: the server modules are replaced by
 // the doubles in ./services. Vitest applies the mocks below to every test file.
 vi.mock('$lib/server/admin', async () => {
 	const { services } = await import('./services');
@@ -17,6 +17,11 @@ vi.mock('$lib/server/stripe', async () => {
 vi.mock('$lib/server/email', async () => {
 	const { services } = await import('./services');
 	return { sendPasswordResetEmail: services.sendPasswordResetEmail };
+});
+
+vi.mock('$lib/server/verifyPassword', async () => {
+	const { services } = await import('./services');
+	return { verifyPassword: services.verifyPassword };
 });
 
 beforeEach(() => services.reset());

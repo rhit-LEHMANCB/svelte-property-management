@@ -148,10 +148,14 @@
 		</svelte:fragment>
 	</TabGroup>
 	<footer class="flex justify-end gap-2">
-		<button on:click={deleteUserClicked} class="btn preset-filled-error-500"
+		<button data-needs-hydration on:click={deleteUserClicked} class="btn preset-filled-error-500"
 			><IconUserMinus class="mr-2" />Delete</button
 		>
-		<button type="button" class="btn preset-tonal" on:click={() => modalStore.close()}>Close</button
+		<button
+			data-needs-hydration
+			type="button"
+			class="btn preset-tonal"
+			on:click={() => modalStore.close()}>Close</button
 		>
 	</footer>
 </div>

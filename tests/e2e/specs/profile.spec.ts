@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { TENANT } from '../support/constants';
 import { signIn } from '../support/helpers';
 
-// The reset email goes out through SendGrid, which end-to-end runs never reach, so the browser's
+// The reset email goes out through Resend, which end-to-end runs never reach, so the browser's
 // request to the app is answered here. This checks the page's wiring: what it sends and what it shows.
 test.describe('user-profile: request password reset', () => {
 	test('Scenario: Reset button sends PUT /api/signin/reset for the user and shows a success toast', async ({
@@ -32,5 +32,30 @@ test.describe('user-profile: request password reset', () => {
 		await page.getByRole('button', { name: 'Reset', exact: true }).click();
 
 		await expect(page.getByText('Error sending reset email.')).toBeVisible();
+	});
+});
+
+test.describe('user-profile: changing the email asks for the current password', () => {
+	test('Scenario: the password field appears only when the email is edited, and a wrong password changes nothing', async ({
+		page
+	}) => {
+		await signIn(page, TENANT);
+		await page.goto('/profile');
+		await page.waitForLoadState('networkidle');
+		const password = page.getByLabel('Current password');
+
+		await expect(password).toHaveCount(0);
+
+		const email = page.getByLabel('Email', { exact: true });
+		await email.fill('someone-else@e2e.test');
+		await expect(password).toBeVisible();
+
+		await password.fill('not-the-password');
+		await page.getByRole('button', { name: 'Save' }).click();
+		await expect(page.getByText('Enter your current password to change your email.')).toBeVisible();
+
+		await page.reload();
+		await page.waitForLoadState('networkidle');
+		await expect(page.getByLabel('Email', { exact: true })).toHaveValue(TENANT.email);
 	});
 });

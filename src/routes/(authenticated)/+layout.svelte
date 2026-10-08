@@ -36,7 +36,12 @@
 		class="bg-surface-100-900 col-span-full flex items-center justify-between gap-4 p-4 shadow-xl"
 	>
 		<div class="flex items-center">
-			<button class="lg:hidden btn btn-sm mr-4" aria-label="Open menu" on:click={drawerOpen}>
+			<button
+				data-needs-hydration
+				class="lg:hidden btn btn-sm mr-4"
+				aria-label="Open menu"
+				on:click={drawerOpen}
+			>
 				<span>
 					<svg viewBox="0 0 100 80" class="fill-current w-4 h-4">
 						<rect width="100" height="20" />
@@ -50,6 +55,7 @@
 		<div class="flex items-center gap-4">
 			<span>Welcome, {user.firstName ?? 'New User'}</span>
 			<button
+				data-needs-hydration
 				type="button"
 				on:click={signOutSSR}
 				class="btn preset-filled-primary-500 max-sm:hidden"

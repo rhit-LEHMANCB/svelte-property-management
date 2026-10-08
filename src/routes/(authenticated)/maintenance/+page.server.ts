@@ -1,7 +1,7 @@
 import { message, superValidate } from 'sveltekit-superforms/server';
 import { zod4 as zod } from 'sveltekit-superforms/adapters';
 import type { PageServerLoad } from './$types';
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import { maintenanceSchema } from '$lib/schemas';
 import { adminDB } from '$lib/server/admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
@@ -13,8 +13,9 @@ export const load = (async (event) => {
 
 	const { userProperty } = await event.parent();
 
+	// A tenant without a property has no requests to show; the dashboard explains why.
 	if (!userProperty) {
-		throw error(500, 'Failed to find property info.');
+		throw redirect(303, '/');
 	}
 
 	const maintenanceRequestQuery = adminDB

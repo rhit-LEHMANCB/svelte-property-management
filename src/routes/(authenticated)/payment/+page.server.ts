@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { adminDB } from '$lib/server/admin';
 import { getUserIdOrError } from '$lib/server/authHelpers';
@@ -9,8 +9,9 @@ export const load = (async (event) => {
 
 	const { userProperty } = await event.parent();
 
+	// A tenant without a property has nothing to pay; the dashboard explains why.
 	if (!userProperty) {
-		throw error(500, 'Failed to find property info.');
+		throw redirect(303, '/');
 	}
 
 	const junction = await adminDB

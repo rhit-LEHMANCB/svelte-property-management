@@ -28,15 +28,14 @@ describe('access-control: tenant property context (authenticated layout)', () =>
 		expect(result.data.userProperty).toMatchObject({ id: 'p1', data: { title: 'Oak House' } });
 	});
 
-	it('Scenario: Wrong number of properties (none) fails with 500 and the count', async () => {
+	it('Scenario: No property loads the layout with the user only and no error', async () => {
 		seedTenant('t1');
 
 		const result = await call(layoutLoad, { userID: 't1' });
 
-		expect(result).toMatchObject({
-			status: 500,
-			error: 'User is associated with wrong number of properties: 0'
-		});
+		expect(result.status).toBe(200);
+		expect(result.data.user).toMatchObject({ permissions: 'user' });
+		expect(result.data).not.toHaveProperty('userProperty');
 	});
 
 	it('Scenario: Wrong number of properties (more than one) fails with 500 and the count', async () => {

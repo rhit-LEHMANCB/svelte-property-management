@@ -35,6 +35,12 @@ export const load = (async ({ locals, route }) => {
 		.where('tenantId', '==', uid)
 		.get();
 
+	// A tenant without a property (new user, or their property was deleted) still gets the app, so
+	// they can reach their profile; pages that need a property send them to the dashboard.
+	if (userJunctionsQuery.size === 0) {
+		return { user: userData };
+	}
+
 	if (userJunctionsQuery.size !== 1) {
 		throw error(
 			500,
