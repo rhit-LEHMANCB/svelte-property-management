@@ -10,9 +10,9 @@
 ## Decisions
 
 - **Firestore rules `allow read, write: if false`.** Matches dev and is safe because only the Admin SDK touches Firestore. Alternative (keep prod `request.auth != null`) leaves every signed-in tenant able to read all data.
-- **Storage rules unchanged** (public read, no write), with cleaned whitespace. Alternative (signed-in only) breaks every photo; deferred.
+- **Storage rules: public `get` only** (no write, no listing). The live rules use `allow read`, which also lets anyone list every object name; photos are fetched by URL, so `get` is enough. Alternative (signed-in only) breaks every photo; deferred.
 - **Indexes from the live export** via `firebase firestore:indexes`, committed verbatim (`density` fields kept). Both projects returned identical output.
-- **Deploy with the Firebase CLI in the merge workflow** (`npx firebase-tools@<pinned> deploy --only firestore,storage --project "$FB_PROJECT_ID"`), authenticated with the same service account the Hosting step uses. The service account JSON is written to a temp file and exposed through `GOOGLE_APPLICATION_CREDENTIALS`, then removed. Alternative: a separate manual workflow (rejected: drift returns).
+- **Deploy with the Firebase CLI in the merge workflow** (`npx firebase deploy --only firestore,storage --project "$FB_PROJECT_ID"`, using the `firebase-tools` devDependency), authenticated with the same service account the Hosting step uses. The service account JSON is written to a temp file and exposed through `GOOGLE_APPLICATION_CREDENTIALS`, then removed. Alternative: a separate manual workflow (rejected: drift returns).
 - **Ordering:** run the rules/indexes deploy before the Hosting deploy so new code never ships ahead of the indexes it needs.
 - **Emulator:** `firebase.emulators.json` points at root `firestore.rules` and `storage.rules`; the e2e hooks and the seed script use the Admin SDK, so they are unaffected. Delete the old copies.
 - **`.firebaserc`** defines `dev`/`prod` aliases and no default, so a bare CLI command cannot hit production by accident.

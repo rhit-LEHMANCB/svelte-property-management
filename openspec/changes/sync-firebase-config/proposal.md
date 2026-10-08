@@ -4,7 +4,7 @@ The dev (`lehman-realty-dev`) and production (`lehman-realty`) Firebase projects
 
 ## What Changes
 
-- Commit `firestore.rules` (deny all client access), `storage.rules` (existing public read, no write) and `firestore.indexes.json` (the indexes exported from the live projects, identical in both) at the repo root.
+- Commit `firestore.rules` (deny all client access), `storage.rules` (public get, no write, no listing) and `firestore.indexes.json` (the indexes exported from the live projects, identical in both) at the repo root.
 - Add `firestore` and `storage` sections to `firebase.json`, and a `.firebaserc` with aliases `dev` (`lehman-realty-dev`) and `prod` (`lehman-realty`).
 - Point the e2e emulator config at the committed root rules and delete the permissive copies under `tests/e2e/emulator/`.
 - Add a step to the merge workflow that deploys rules and indexes (`firebase deploy --only firestore,storage`) to the project named by `vars.FB_PROJECT_ID` on pushes to `develop` and `production`.

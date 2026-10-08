@@ -1,8 +1,8 @@
 # Lifecycle: sync-firebase-config
 
 - Branch: `firebase-env-sync`
-- Stage: 3 Implement
-- Review round: 0 of 3
+- Stage: 4 Review (round 1 done: 0 blockers, 1 major fixed)
+- Review round: 1 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-07
 
@@ -49,7 +49,7 @@ Accepted preflight gaps: CI service account deploy roles unverified; gh pr merge
 (stage 2)
 
 ## Review rounds
-(none yet)
+Round 1: 0 blockers, 1 major (no test of committed rules) fixed with tests/e2e/specs/rules.spec.ts; minors fixed: Storage allow get instead of read, credentials file umask and empty-secret guard, README notes on rollback and extra indexes, Git Bash note; boilerplate comment removed.
 
 ## Deferred findings
 - Restrict Storage reads and move photos to signed URLs.

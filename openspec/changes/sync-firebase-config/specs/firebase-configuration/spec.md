@@ -5,15 +5,15 @@ The system SHALL keep the Firestore security rules, the Storage security rules a
 
 #### Scenario: Config files exist and match the live projects at adoption
 - **WHEN** the change is merged
-- **THEN** the committed indexes equal the indexes exported from `lehman-realty-dev` and `lehman-realty` on 2026-10-07, and the committed Storage rules equal the live Storage rules apart from whitespace
+- **THEN** the committed indexes equal the indexes exported from `lehman-realty-dev` and `lehman-realty` on 2026-10-07, and the committed Storage rules equal the live Storage rules apart from whitespace, comments and the narrowing of public `read` to `get`
 
 #### Scenario: Firestore denies client access
 - **WHEN** a client SDK reads or writes any Firestore document, authenticated or not
 - **THEN** the committed rules deny the request
 
 #### Scenario: Storage allows public read only
-- **WHEN** anyone reads a Storage object
-- **THEN** the committed rules allow it, and any client write is denied
+- **WHEN** anyone fetches a Storage object by URL
+- **THEN** the committed rules allow it, and any client write or bucket listing is denied
 
 ### Requirement: Project aliases
 The repo SHALL define Firebase CLI aliases `dev` for `lehman-realty-dev` and `prod` for `lehman-realty` in `.firebaserc`.
