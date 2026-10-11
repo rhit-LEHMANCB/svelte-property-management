@@ -33,6 +33,7 @@
 	let reordered = $state<PhotoItem[] | undefined>();
 	const photos = $derived(reordered ?? data.photos);
 	let selectedTenant = $state<PickerOption | undefined>();
+	let tenantPicker = $state<ReturnType<typeof TenantPicker>>();
 	let selectedMoveInMonth = $state('');
 	let tab = $state('info');
 
@@ -149,7 +150,7 @@
 		});
 		if (response.ok) {
 			successToast('Successfully added tenant.', toastStore);
-			selectedTenant = undefined;
+			tenantPicker?.clear();
 			selectedMoveInMonth = '';
 			refresh();
 		} else {
@@ -246,6 +247,7 @@
 					<h2 class="h4">Tenants</h2>
 					<div class="grid items-end gap-3 md:grid-cols-[1fr_auto_auto]">
 						<TenantPicker
+							bind:this={tenantPicker}
 							label="Tenant"
 							options={data.usersOptions}
 							bind:selected={selectedTenant}

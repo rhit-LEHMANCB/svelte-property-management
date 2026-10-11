@@ -143,7 +143,8 @@
 			role="status"
 		>
 			<p>No results for “{query}”.</p>
-			<button type="button" class="btn preset-tonal" onclick={() => search('')}>Clear search</button
+			<button type="button" class="btn preset-tonal" onclick={() => search('')}
+				>Show all {label}</button
 			>
 		</div>
 	{:else}

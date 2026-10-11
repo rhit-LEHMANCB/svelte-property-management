@@ -75,7 +75,7 @@
 		{columns}
 		sortBy="title"
 		searchText={(property) => `${property.data.title ?? ''} ${address(property)}`}
-		toolbar={addButton}
+		toolbar={data.properties.length > 0 ? addButton : undefined}
 	>
 		{#snippet cell(property, column)}
 			{#if column.id === 'title'}
