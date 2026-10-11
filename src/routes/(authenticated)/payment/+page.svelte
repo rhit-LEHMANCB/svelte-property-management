@@ -2,6 +2,7 @@
 	import { errorToast } from '$lib/Hooks/toasts';
 	import { getModalStore, getToastStore, type ModalSettings } from '$lib/ui';
 	import { type ZodError, z } from 'zod';
+	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
 
 	export let data: { balanceCents: number; dueDate: string | null };
 
@@ -73,53 +74,43 @@
 	}
 </script>
 
-<div class="grid grid-cols-1 md:grid-cols-2 m-5 gap-2">
-	<div class="flex flex-col gap-2">
-		<div class="card">
-			<div class="h-auto m-5">
-				<strong class="h3">Your current balance</strong>
-				<div class="flex flex-col gap-5">
-					{#if data.balanceCents <= 0 || !balanceDueDate}
-						<span>You have nothing to pay</span>
-					{:else}
-						<span
-							>You have a balance of {currency.format(balance)} due on {balanceDueDate.toLocaleString(
-								'en-us',
-								{
-									dateStyle: 'short'
-								}
-							)}</span
-						>
-					{/if}
-					<div class="flex flex-row gap-2 items-center">
-						<button
-							data-needs-hydration
-							class="btn preset-filled-secondary-500"
-							disabled={data.balanceCents <= 0}
-							on:click={viewPaymentClicked}>Make a Payment</button
-						>
-						<button
-							data-needs-hydration
-							class="btn preset-filled-primary-500"
-							on:click={viewPaymentClicked}>Set up auto pay</button
-						>
-					</div>
-				</div>
+<div class="space-y-4 p-4 sm:p-6">
+	<PageHeader title="Payment" />
+	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+		<section class="card bg-surface-100-900 flex flex-col gap-4 p-4 sm:p-6">
+			<h2 class="h4">Your current balance</h2>
+			{#if data.balanceCents <= 0 || !balanceDueDate}
+				<p>You have nothing to pay</p>
+			{:else}
+				<p>
+					You have a balance of <strong>{currency.format(balance)}</strong> due on {balanceDueDate.toLocaleString(
+						'en-us',
+						{
+							dateStyle: 'short'
+						}
+					)}
+				</p>
+			{/if}
+			<div class="flex flex-wrap items-center gap-2">
+				<button
+					data-needs-hydration
+					class="btn preset-filled-primary-500"
+					disabled={data.balanceCents <= 0}
+					on:click={viewPaymentClicked}>Make a Payment</button
+				>
+				<button data-needs-hydration class="btn preset-tonal" on:click={viewPaymentClicked}
+					>Set up auto pay</button
+				>
 			</div>
-		</div>
-	</div>
-	<div class="flex flex-col gap-2">
-		<div class="card">
-			<div class="h-auto m-5">
-				<strong class="h3">Transaction History</strong>
-				<div>
-					<button
-						data-needs-hydration
-						class="btn preset-filled-secondary-500 mt-5"
-						on:click={startCustomerPortal}>View Portal</button
-					>
-				</div>
+		</section>
+		<section class="card bg-surface-100-900 flex flex-col gap-4 p-4 sm:p-6">
+			<h2 class="h4">Transaction History</h2>
+			<p class="opacity-80">See past payments and manage payment methods in the Stripe portal.</p>
+			<div>
+				<button data-needs-hydration class="btn preset-tonal" on:click={startCustomerPortal}
+					>View Portal</button
+				>
 			</div>
-		</div>
+		</section>
 	</div>
 </div>

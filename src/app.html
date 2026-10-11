@@ -4,6 +4,24 @@
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width" />
+		<!--
+			Picks light or dark before the first paint: the saved choice (src/lib/theme.ts), else the system
+			setting. Without scripts neither class is set and app.css follows prefers-color-scheme.
+		-->
+		<script>
+			(function () {
+				var saved;
+				try {
+					saved = localStorage.getItem('theme');
+				} catch (e) {
+					saved = null;
+				}
+				var dark =
+					saved === 'dark' ||
+					(saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+				document.documentElement.classList.add(dark ? 'dark' : 'light');
+			})();
+		</script>
 		<!-- !important because the app stylesheet is linked after this block and would otherwise win. -->
 		<noscript>
 			<style>
@@ -19,7 +37,7 @@
 		</noscript>
 		%sveltekit.head%
 	</head>
-	<body data-theme="my-custom-theme" data-sveltekit-preload-data="hover">
+	<body data-theme="cerberus" data-sveltekit-preload-data="hover">
 		<div style="display: contents" class="h-full overflow-hidden">%sveltekit.body%</div>
 	</body>
 </html>

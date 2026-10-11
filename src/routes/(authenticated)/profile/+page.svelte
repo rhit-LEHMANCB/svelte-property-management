@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { profileSchema } from '$lib/schemas';
-	import { Avatar, getToastStore } from '$lib/ui';
+	import { getToastStore } from '$lib/ui';
+	import UserAvatar from '$lib/Components/Users/UserAvatar.svelte';
+	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
 	import type { PageData } from './$types';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
@@ -57,122 +59,128 @@
 	}
 </script>
 
-<div class="grid grid-cols-1 md:grid-cols-2 m-5 gap-2">
-	<div class="flex flex-col gap-2">
-		<div class="card">
-			<form method="POST" action="?/contact" use:enhanceContact class="h-auto m-5">
-				<strong class="h3">Contact Info</strong>
-				<div class="grid grid-rows-4 grid-flow-col gap-2 mt-2">
-					<div>
-						<label class="label"
-							><span>First Name</span><input
-								name="firstName"
-								bind:value={$form.firstName}
-								class="input"
-								class:input-error={$errors.firstName}
-								title="First Name"
-								type="text"
-							/></label
-						>
-					</div>
-					<div>
-						<label class="label"
-							><span>Last Name</span><input
-								name="lastName"
-								bind:value={$form.lastName}
-								class="input"
-								class:input-error={$errors.lastName}
-								title="Last Name"
-								type="text"
-							/></label
-						>
-					</div>
-					<div>
-						<label class="label"
-							><span>Email</span><input
-								name="email"
-								bind:value={$form.email}
-								class="input"
-								class:input-error={$errors.email}
-								title="Email"
-								type="email"
-							/></label
-						>
-					</div>
-					{#if emailChanged}
+<div class="space-y-4 p-4 sm:p-6">
+	<PageHeader title="Profile" />
+	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+		<div class="flex flex-col gap-2">
+			<div class="card bg-surface-100-900">
+				<form method="POST" action="?/contact" use:enhanceContact class="p-4 sm:p-6">
+					<h2 class="h4">Contact Info</h2>
+					<div class="mt-3 grid gap-3">
 						<div>
 							<label class="label"
-								><span>Current password (required to change your email)</span><input
-									name="currentPassword"
-									bind:value={$form.currentPassword}
-									autocomplete="current-password"
+								><span class="label-text">First Name</span><input
+									name="firstName"
+									bind:value={$form.firstName}
 									class="input"
-									title="Current password"
-									type="password"
+									class:input-error={$errors.firstName}
+									title="First Name"
+									type="text"
 								/></label
 							>
 						</div>
-					{/if}
-					<div>
-						<label class="label"
-							><span>Phone Number</span><input
-								bind:this={phoneInput}
-								name="phoneNumber"
-								bind:value={$form.phoneNumber}
+						<div>
+							<label class="label"
+								><span class="label-text">Last Name</span><input
+									name="lastName"
+									bind:value={$form.lastName}
+									class="input"
+									class:input-error={$errors.lastName}
+									title="Last Name"
+									type="text"
+								/></label
+							>
+						</div>
+						<div>
+							<label class="label"
+								><span class="label-text">Email</span><input
+									name="email"
+									bind:value={$form.email}
+									class="input"
+									class:input-error={$errors.email}
+									title="Email"
+									type="email"
+								/></label
+							>
+						</div>
+						{#if emailChanged}
+							<div>
+								<label class="label"
+									><span class="label-text">Current password (required to change your email)</span
+									><input
+										name="currentPassword"
+										bind:value={$form.currentPassword}
+										autocomplete="current-password"
+										class="input"
+										title="Current password"
+										type="password"
+									/></label
+								>
+							</div>
+						{/if}
+						<div>
+							<label class="label"
+								><span class="label-text">Phone Number</span><input
+									bind:this={phoneInput}
+									name="phoneNumber"
+									bind:value={$form.phoneNumber}
+									class="input"
+									class:input-error={$errors.phoneNumber}
+									title="Phone Number"
+									type="tel"
+								/></label
+							>
+						</div>
+					</div>
+					<button type="submit" class="btn preset-filled-primary-500 mt-5">Save</button>
+				</form>
+			</div>
+		</div>
+		<div class="flex flex-col gap-2">
+			<div class="card bg-surface-100-900">
+				<form
+					class="p-4 sm:p-6"
+					use:enhance
+					method="POST"
+					action="?/photo"
+					enctype="multipart/form-data"
+				>
+					<h2 class="h4">Profile Picture</h2>
+					<div class="flex flex-col gap-5">
+						<div class="self-center">
+							<UserAvatar
+								src={photoUrl}
+								name="{data.user.firstName} {data.user.lastName}"
+								class="size-32"
+							/>
+						</div>
+						<div class="flex flex-row flex-wrap gap-2">
+							<input
+								aria-label="Profile picture file"
+								name="photo"
 								class="input"
-								class:input-error={$errors.phoneNumber}
-								title="Phone Number"
-								type="tel"
-							/></label
+								type="file"
+								accept="image/png, image/jpeg, image/gif, image/webp"
+							/>
+							<button
+								type="submit"
+								on:click={() => {
+									invalidateAll();
+								}}
+								class="btn preset-filled-primary-500">Upload</button
+							>
+						</div>
+					</div>
+				</form>
+			</div>
+			<div class="card bg-surface-100-900">
+				<div class="p-4 sm:p-6">
+					<h2 class="h4">Password</h2>
+					<div>
+						<button on:click={handleResetPasswordClicked} class="btn preset-filled-primary-500 mt-5"
+							>Reset</button
 						>
 					</div>
-				</div>
-				<button type="submit" class="btn preset-filled-secondary-500 mt-5">Save</button>
-			</form>
-		</div>
-	</div>
-	<div class="flex flex-col gap-2">
-		<div class="card">
-			<form
-				class="h-auto m-5"
-				use:enhance
-				method="POST"
-				action="?/photo"
-				enctype="multipart/form-data"
-			>
-				<strong class="h3">Profile Picture</strong>
-				<div class="flex flex-col gap-5">
-					<Avatar
-						src={photoUrl}
-						initials={`${data.user.firstName[0]}${data.user.lastName[0]}`}
-						width="w-32"
-						class="self-center"
-					/>
-					<div class="flex flex-row gap-2">
-						<input
-							name="photo"
-							class="input"
-							type="file"
-							accept="image/png, image/jpeg, image/gif, image/webp"
-						/>
-						<button
-							type="submit"
-							on:click={() => {
-								invalidateAll();
-							}}
-							class="btn btn-sm preset-filled-secondary-500">Upload</button
-						>
-					</div>
-				</div>
-			</form>
-		</div>
-		<div class="card">
-			<div class="h-auto m-5">
-				<strong class="h3">Password</strong>
-				<div>
-					<button on:click={handleResetPasswordClicked} class="btn preset-filled-secondary-500 mt-5"
-						>Reset</button
-					>
 				</div>
 			</div>
 		</div>

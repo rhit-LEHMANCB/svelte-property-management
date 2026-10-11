@@ -1,56 +1,86 @@
 <script lang="ts">
-	import { Avatar, Paginator, getModalStore } from '$lib/ui';
+	import { getModalStore } from '$lib/ui';
 	import type { DocumentWithId } from '../../../app';
 	import { viewUserInfoModal } from '$lib/Hooks/modals';
+	import DataList, { type DataColumn } from '$lib/Components/DataList/DataList.svelte';
+	import UserAvatar from './UserAvatar.svelte';
+	import type { Snippet } from 'svelte';
 
-	export let users: DocumentWithId[];
-	export let paginated = false;
+	let {
+		users,
+		label = 'users',
+		actions,
+		empty,
+		toolbar
+	}: {
+		users: DocumentWithId[];
+		label?: string;
+		/** Row actions, rendered next to (never inside) the button that opens the user's details. */
+		actions?: Snippet<[DocumentWithId]>;
+		empty: Snippet;
+		toolbar?: Snippet;
+	} = $props();
+
 	const modalStore = getModalStore();
 
-	$: page = {
-		page: 0,
-		limit: 5,
-		size: users.length,
-		amounts: [1, 2, 5, 10]
-	};
+	const fullName = (user: DocumentWithId) => `${user.data.firstName} ${user.data.lastName}`;
+	const missingInsurance = (user: DocumentWithId) =>
+		!user.data.insurance && user.data.permissions == 'user';
 
-	$: paginatedUsers = users.slice(
-		page.page * page.limit, // start
-		page.page * page.limit + page.limit // end
-	);
+	const columns: DataColumn<DocumentWithId>[] = [
+		{
+			id: 'name',
+			label: 'Name',
+			sort: (user) => `${user.data.lastName ?? ''} ${user.data.firstName ?? ''}`
+		},
+		{ id: 'email', label: 'Email', sort: (user) => user.data.email },
+		{ id: 'phone', label: 'Phone number' },
+		{ id: 'actions', label: 'Actions', srOnly: true, class: 'text-right' }
+	];
 </script>
 
-<div class={`flex flex-col gap-5 ${$$props.class ?? ''}`}>
-	<ul class="list">
-		{#each paginated ? paginatedUsers : users as user}
-			<li class="hover:preset-tonal p-2">
-				<button
-					data-needs-hydration
-					on:click={() => viewUserInfoModal(user, modalStore)}
-					class="flex flex-row w-full gap-2 flex-wrap items-center"
+{#snippet nameButton(user: DocumentWithId)}
+	<button
+		data-needs-hydration
+		type="button"
+		class="flex items-center gap-3 rounded-base text-left hover:underline"
+		onclick={() => viewUserInfoModal(user, modalStore)}
+	>
+		<span class="relative">
+			<UserAvatar src={user.data.photoUrl} name={fullName(user)} />
+			{#if missingInsurance(user)}
+				<span
+					class="badge-icon preset-filled-warning-500 absolute -top-1 -left-1"
+					aria-hidden="true">!</span
 				>
-					<div class="group relative">
-						<Avatar
-							src={user.data.photoUrl}
-							initials={`${user.data.firstName[0]}${user.data.lastName[0]}`}
-						/>
-						{#if !user.data.insurance && user.data.permissions == 'user'}
-							<span class="badge-icon preset-filled-warning-500 absolute -left-1 -top-1">!</span>
-						{/if}
-					</div>
-					<div class="flex flex-col flex-wrap text-left">
-						<span>Name: <strong>{`${user.data.firstName} ${user.data.lastName}`}</strong></span>
-						<p>Email: {user.data.email}</p>
-						<p>Phone Number: {user.data.phoneNumber}</p>
-					</div>
-					<div class="flex grow justify-end">
-						<slot name="actionButton" {user} />
-					</div>
-				</button>
-			</li>
-		{/each}
-	</ul>
-	{#if paginated}
-		<Paginator bind:settings={page} />
-	{/if}
-</div>
+			{/if}
+		</span>
+		<span class="flex flex-col">
+			<strong>{fullName(user)}</strong>
+			{#if missingInsurance(user)}<span class="text-xs opacity-80">No insurance on file</span>{/if}
+		</span>
+	</button>
+{/snippet}
+
+<DataList
+	{label}
+	items={users}
+	key={(user) => user.id}
+	{columns}
+	sortBy="name"
+	searchText={(user) => `${fullName(user)} ${user.data.email ?? ''} ${user.data.phoneNumber ?? ''}`}
+	{empty}
+	{toolbar}
+>
+	{#snippet cell(user, column)}
+		{#if column.id === 'name'}
+			{@render nameButton(user)}
+		{:else if column.id === 'email'}
+			{user.data.email}
+		{:else if column.id === 'phone'}
+			{user.data.phoneNumber}
+		{:else if column.id === 'actions'}
+			<div class="flex items-center justify-end gap-2">{@render actions?.(user)}</div>
+		{/if}
+	{/snippet}
+</DataList>

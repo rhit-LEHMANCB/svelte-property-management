@@ -35,8 +35,8 @@ test.describe('renters-insurance: admin visibility', () => {
 		await page.goto('/admin/users');
 		await page.waitForLoadState('networkidle');
 
-		const insured = page.getByRole('listitem').filter({ hasText: 'Ivy Insured' });
-		const uninsured = page.getByRole('listitem').filter({ hasText: 'Una Uninsured' });
+		const insured = page.getByRole('row').filter({ hasText: 'Ivy Insured' });
+		const uninsured = page.getByRole('row').filter({ hasText: 'Una Uninsured' });
 		await expect(uninsured).toBeVisible();
 		await expect(uninsured.locator('.badge-icon', { hasText: '!' })).toBeVisible();
 		await expect(insured.locator('.badge-icon', { hasText: '!' })).toHaveCount(0);
@@ -50,12 +50,12 @@ test.describe('renters-insurance: admin visibility', () => {
 		await page.waitForLoadState('networkidle');
 
 		await page
-			.getByRole('listitem')
+			.getByRole('row')
 			.filter({ hasText: 'Ivy Insured' })
-			.getByText('Ivy Insured')
+			.getByRole('button', { name: /^Ivy Insured/ })
 			.click();
 		const dialog = page.getByRole('dialog');
-		await dialog.getByText('Insurance', { exact: true }).click();
+		await dialog.getByRole('tab', { name: 'Insurance' }).click();
 
 		await expect(dialog.getByText('Company Name: Acme Insurance')).toBeVisible();
 		await expect(dialog.getByText('Policy Number: P-123')).toBeVisible();
@@ -68,12 +68,12 @@ test.describe('renters-insurance: admin visibility', () => {
 		await page.waitForLoadState('networkidle');
 
 		await page
-			.getByRole('listitem')
+			.getByRole('row')
 			.filter({ hasText: 'Una Uninsured' })
-			.getByText('Una Uninsured')
+			.getByRole('button', { name: /^Una Uninsured/ })
 			.click();
 		const dialog = page.getByRole('dialog');
-		await dialog.getByText('Insurance', { exact: true }).click();
+		await dialog.getByRole('tab', { name: 'Insurance' }).click();
 
 		await expect(dialog.getByText('No insurance info')).toBeVisible();
 	});

@@ -2,20 +2,13 @@
 	import { page } from '$app/stores';
 	import { errorToast } from '$lib/Hooks/toasts';
 	import { auth } from '$lib/firebase';
-	import {
-		getModalStore,
-		getToastStore,
-		popup,
-		type ModalSettings,
-		type PopupSettings
-	} from '$lib/ui';
+	import { getModalStore, getToastStore, type ModalSettings } from '$lib/ui';
 	import { error } from '@sveltejs/kit';
 	import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 	import type { PageData } from './$types';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
 	import { passwordChangeSchema } from '$lib/schemas';
-	import { IconQuestionMark } from '@tabler/icons-svelte';
 	import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 
 	export let data: PageData;
@@ -38,12 +31,6 @@
 	if (mode !== 'resetPassword') {
 		throw error(400, 'Invalid action');
 	}
-
-	const popupHover: PopupSettings = {
-		event: 'hover',
-		target: 'popupHover',
-		placement: 'top'
-	};
 
 	async function handleVerifyPasswordReset(event: Event) {
 		event.preventDefault();
@@ -88,58 +75,45 @@
 	}
 </script>
 
-<div class="h-screen flex items-center justify-center">
-	<div class="card p-3">
-		<form use:enhance class="h-auto m-5">
-			<strong class="h3">Lehman Family LLC</strong>
-			<p>Please fill out the information below<br /> to create your new password.</p>
-			<div class="grid grid-rows-2 gap-2 mt-2">
-				<div>
-					<label class="label"
-						><div class="flex flex-row gap-2">
-							<span>New Password</span><button
-								class="badge-icon preset-outlined-primary-500 [&>*]:pointer-events-none"
-								use:popup={popupHover}><IconQuestionMark /></button
-							>
-							<div class="card p-4 preset-filled-primary-500 w-64" data-popup="popupHover">
-								<ul>
-									<li>- At least 8 characters</li>
-									<li>- Less than 32 characters</li>
-									<li>- One uppercase letter</li>
-									<li>- One lowercase letter</li>
-									<li>- A number or special character</li>
-								</ul>
-								<div class="arrow preset-filled-primary-500"></div>
-							</div>
-						</div>
-						<input
-							name="newPassword"
-							bind:value={$form.newPassword}
-							class="input"
-							class:input-error={$errors.newPassword}
-							title="New Password"
-							type="password"
-						/></label
-					>
-				</div>
-				<div>
-					<label class="label"
-						><span>Verify Password</span><input
-							name="verifyPassword"
-							bind:value={$form.verifyPassword}
-							class="input"
-							class:input-error={$errors.verifyPassword}
-							title="Verify Password"
-							type="password"
-						/></label
-					>
-				</div>
-			</div>
-			<button
-				data-needs-hydration
-				on:click={(event) => handleVerifyPasswordReset(event)}
-				class="btn preset-filled-primary-500 mt-5">Change Password</button
-			>
-		</form>
-	</div>
+<div class="flex h-full items-center justify-center overflow-y-auto p-4">
+	<form use:enhance class="card bg-surface-100-900 w-full max-w-md space-y-4 p-6 shadow-xl">
+		<h1 class="h3">Lehman Family LLC</h1>
+		<p>Please fill out the information below to create your new password.</p>
+		<label class="label"
+			><span class="label-text">New Password</span>
+			<input
+				name="newPassword"
+				bind:value={$form.newPassword}
+				class="input"
+				class:input-error={$errors.newPassword}
+				title="New Password"
+				type="password"
+				autocomplete="new-password"
+				aria-describedby="password-rules"
+			/></label
+		>
+		<ul id="password-rules" class="list-inside list-disc text-sm opacity-80">
+			<li>At least 8 characters</li>
+			<li>Less than 32 characters</li>
+			<li>One uppercase letter</li>
+			<li>One lowercase letter</li>
+			<li>A number or special character</li>
+		</ul>
+		<label class="label"
+			><span class="label-text">Verify Password</span><input
+				name="verifyPassword"
+				bind:value={$form.verifyPassword}
+				class="input"
+				class:input-error={$errors.verifyPassword}
+				title="Verify Password"
+				type="password"
+				autocomplete="new-password"
+			/></label
+		>
+		<button
+			data-needs-hydration
+			on:click={(event) => handleVerifyPasswordReset(event)}
+			class="btn preset-filled-primary-500 w-full">Change Password</button
+		>
+	</form>
 </div>

@@ -1,78 +1,82 @@
 <script lang="ts">
+	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
 	import { getModalStore, type ModalSettings } from './stores';
 
-	export let settings: ModalSettings;
+	let { settings }: { settings: ModalSettings } = $props();
 
 	const modalStore = getModalStore();
 
-	let value: string | number | null = settings.value ?? '';
-	let dialog: HTMLDialogElement;
-	let pressedOnBackdrop = false;
-	const titleId = `modal-title-${Math.random().toString(36).slice(2)}`;
-
-	function open(node: HTMLDialogElement) {
-		node.showModal();
-	}
+	// svelte-ignore state_referenced_locally
+	let value = $state<string | number>(settings.value ?? '');
+	let finished = false;
 
 	// The modal leaves the queue before its callback runs, so the callback can open another modal.
 	function finish(result: unknown) {
+		if (finished) return;
+		finished = true;
 		modalStore.close();
 		settings.response?.(result);
 	}
 
-	// Only a press and release both on the backdrop dismisses, so dragging a text selection out of
-	// the dialog does not close it.
-	function onMouseDown(event: MouseEvent) {
-		pressedOnBackdrop = event.target === dialog;
-	}
-	function onBackdropClick(event: MouseEvent) {
-		if (event.target === dialog && pressedOnBackdrop) finish(false);
-		pressedOnBackdrop = false;
-	}
+	const Body = $derived(settings.component?.ref);
 </script>
 
-<dialog
-	bind:this={dialog}
-	use:open
-	aria-labelledby={settings.title ? titleId : undefined}
-	aria-label={settings.title ? undefined : 'Dialog'}
-	class="m-auto bg-transparent p-0 text-inherit backdrop:bg-black/50"
-	on:cancel|preventDefault={() => finish(false)}
-	on:mousedown={onMouseDown}
-	on:click={onBackdropClick}
+<!-- Dialog traps focus, closes on Escape or a press outside, and returns focus to the opener. -->
+<Dialog
+	open
+	onOpenChange={(details) => {
+		if (!details.open) finish(false);
+	}}
 >
-	{#if settings.type === 'component' && settings.component}
-		<svelte:component this={settings.component.ref} {...settings.component.props} />
-	{:else}
-		<form
-			class="card bg-surface-100-900 w-[min(92vw,32rem)] space-y-4 p-4 shadow-xl"
-			on:submit|preventDefault={() =>
-				finish(settings.type === 'prompt' ? String(value ?? '') : true)}
-		>
-			{#if settings.title}
-				<header id={titleId} class="h3">{settings.title}</header>
-			{/if}
-			{#if settings.body}
-				<article class="whitespace-pre-line">{settings.body}</article>
-			{/if}
-			{#if settings.type === 'prompt'}
-				<!-- svelte-ignore a11y_autofocus -->
-				<input class="input" bind:value autofocus {...settings.valueAttr} />
-			{/if}
-			<footer class="flex justify-end gap-2">
-				<button type="button" class="btn preset-tonal" on:click={() => finish(false)}>
-					{settings.buttonTextCancel ?? (settings.type === 'alert' ? 'Dismiss' : 'Cancel')}
-				</button>
-				{#if settings.type === 'confirm'}
-					<button type="submit" class="btn preset-filled-primary-500">
-						{settings.buttonTextConfirm ?? 'Confirm'}
-					</button>
-				{:else if settings.type === 'prompt'}
-					<button type="submit" class="btn preset-filled-primary-500">
-						{settings.buttonTextSubmit ?? 'Submit'}
-					</button>
+	<Portal>
+		<Dialog.Backdrop class="bg-surface-950/60 fixed inset-0 z-50" />
+		<Dialog.Positioner class="fixed inset-0 z-50 flex items-center justify-center p-4">
+			<Dialog.Content
+				class="card bg-surface-50-950 border-surface-200-800 max-h-[90vh] w-full max-w-lg overflow-y-auto border p-4 shadow-xl"
+			>
+				{#if settings.type === 'component' && Body}
+					<Body {...settings.component?.props} />
+				{:else}
+					<form
+						class="space-y-4"
+						onsubmit={(event) => {
+							event.preventDefault();
+							finish(settings.type === 'prompt' ? String(value ?? '') : true);
+						}}
+					>
+						<Dialog.Title>
+							{#snippet element(attributes)}
+								<h2 {...attributes} class="h4">{settings.title ?? 'Dialog'}</h2>
+							{/snippet}
+						</Dialog.Title>
+						{#if settings.body}
+							<Dialog.Description class="whitespace-pre-line">{settings.body}</Dialog.Description>
+						{/if}
+						{#if settings.type === 'prompt'}
+							<input
+								class="input"
+								aria-label={settings.title ?? 'Value'}
+								bind:value
+								{...settings.valueAttr}
+							/>
+						{/if}
+						<footer class="flex justify-end gap-2">
+							<button type="button" class="btn preset-tonal" onclick={() => finish(false)}>
+								{settings.buttonTextCancel ?? (settings.type === 'alert' ? 'Dismiss' : 'Cancel')}
+							</button>
+							{#if settings.type === 'confirm'}
+								<button type="submit" class="btn preset-filled-primary-500">
+									{settings.buttonTextConfirm ?? 'Confirm'}
+								</button>
+							{:else if settings.type === 'prompt'}
+								<button type="submit" class="btn preset-filled-primary-500">
+									{settings.buttonTextSubmit ?? 'Submit'}
+								</button>
+							{/if}
+						</footer>
+					</form>
 				{/if}
-			</footer>
-		</form>
-	{/if}
-</dialog>
+			</Dialog.Content>
+		</Dialog.Positioner>
+	</Portal>
+</Dialog>

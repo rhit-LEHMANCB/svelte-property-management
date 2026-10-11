@@ -6,6 +6,7 @@
 	import { successToast } from '$lib/Hooks/toasts';
 	import { getToastStore } from '$lib/ui';
 	import DateInput from '$lib/DatePicker/DateInput.svelte';
+	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
 
 	export let data: PageData;
 	const toastStore = getToastStore();
@@ -22,15 +23,16 @@
 	});
 </script>
 
-<div class="grid grid-cols-1 md:grid-cols-2 m-5 gap-2">
-	<div class="flex flex-col gap-2">
-		<div class="card">
-			<form method="POST" use:enhance class="h-auto m-5">
-				<strong class="h3">Insurance</strong>
-				<div class="grid grid-rows-4 grid-flow-col gap-2 mt-2">
+<div class="space-y-4 p-4 sm:p-6">
+	<PageHeader title="Insurance" />
+	<div class="max-w-2xl">
+		<div class="card bg-surface-100-900">
+			<form method="POST" use:enhance class="p-4 sm:p-6">
+				<h2 class="h4">Renters insurance</h2>
+				<div class="mt-3 grid gap-3 sm:grid-cols-2">
 					<div>
 						<label class="label"
-							><span>Insurance Company Name</span><input
+							><span class="label-text">Insurance Company Name</span><input
 								name="companyName"
 								bind:value={$form.companyName}
 								class="input"
@@ -42,7 +44,7 @@
 					</div>
 					<div>
 						<label class="label"
-							><span>Policy Number</span><input
+							><span class="label-text">Policy Number</span><input
 								name="policyNumber"
 								bind:value={$form.policyNumber}
 								class="input"
@@ -54,7 +56,7 @@
 					</div>
 					<div>
 						<label class="label"
-							><span>Start Date</span>
+							><span class="label-text">Start Date</span>
 							<DateInput
 								bind:value={$form.startDate}
 								name="startDate"
@@ -65,7 +67,7 @@
 					</div>
 					<div>
 						<label class="label"
-							><span>End Date</span>
+							><span class="label-text">End Date</span>
 							<DateInput
 								bind:value={$form.endDate}
 								name="endDate"
@@ -75,7 +77,7 @@
 						</label>
 					</div>
 				</div>
-				<button type="submit" class="btn preset-filled-secondary-500 mt-5">Save</button>
+				<button type="submit" class="btn preset-filled-primary-500 mt-5">Save</button>
 			</form>
 		</div>
 	</div>
