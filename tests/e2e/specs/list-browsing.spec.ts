@@ -153,12 +153,38 @@ test.describe('list-browsing: empty and no-result states', () => {
 		await expect(page.getByRole('table', { name: 'tenants' })).toHaveCount(0);
 	});
 
+	test('Scenario: No rows on the properties page shows one Add property action', async ({
+		page
+	}) => {
+		// Tests run one at a time (workers: 1), so the collection can be emptied and restored here.
+		const db = adminDb();
+		const saved = (await db.collection('properties').get()).docs.map((doc) => ({
+			ref: doc.ref,
+			data: doc.data()
+		}));
+		await Promise.all(saved.map(({ ref }) => ref.delete()));
+		try {
+			await signIn(page, ADMIN);
+			await page.goto('/admin/properties');
+			await page.waitForLoadState('networkidle');
+
+			await expect(page.getByText('No properties yet')).toBeVisible();
+			await expect(page.getByRole('table', { name: 'properties' })).toHaveCount(0);
+			const add = page.getByRole('link', { name: 'Add Property' });
+			await expect(add).toHaveCount(1);
+			await add.click();
+			await expect(page).toHaveURL(/\/admin\/properties\/add$/);
+		} finally {
+			await Promise.all(saved.map(({ ref, data }) => ref.set(data)));
+		}
+	});
+
 	test('Scenario: No matches', async ({ page }) => {
 		await openUsers(page);
 		await page.getByRole('searchbox', { name: 'Search users' }).fill('zzzz-nobody');
 
 		await expect(page.getByText('No results for “zzzz-nobody”.')).toBeVisible();
-		await page.getByRole('button', { name: 'Clear search' }).first().click();
+		await page.getByRole('button', { name: 'Show all users' }).click();
 		await expect(page.getByRole('table', { name: 'users' })).toBeVisible();
 	});
 });

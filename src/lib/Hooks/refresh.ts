@@ -1,15 +1,17 @@
 import { invalidateAll } from '$app/navigation';
-import { writable } from 'svelte/store';
+import { derived, writable } from 'svelte/store';
 
-/** True while `refresh` reloads the page data; lists show placeholders meanwhile. */
-export const refreshing = writable(false);
+const pending = writable(0);
+
+/** True while any `refresh` is reloading the page data; lists show placeholders meanwhile. */
+export const refreshing = derived(pending, (count) => count > 0);
 
 /** Reloads the current page's data after a change, marking lists as loading until it arrives. */
 export async function refresh() {
-	refreshing.set(true);
+	pending.update((count) => count + 1);
 	try {
 		await invalidateAll();
 	} finally {
-		refreshing.set(false);
+		pending.update((count) => count - 1);
 	}
 }

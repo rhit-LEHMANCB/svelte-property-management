@@ -2,7 +2,7 @@
 
 - Branch: `claude/practical-ptolemy-axp5zk` (the session's designated branch, created from `origin/develop` at 1f40174)
 - Stage: 4 Review (unattended)
-- Review round: 0 of 3
+- Review round: 1 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-11
 
@@ -79,10 +79,13 @@ Decisions and deviations made while implementing, recorded for the reviewer and 
 - Existing e2e specs changed only in selectors (old `ul.list`, `dl > div`, popup buttons → table rows, roles `menuitem`, `option`, `tab`, link "Add Property"), the page-count regex (the new seeded users make 10+ pages, so `[2-9]` became `([2-9]|\d{2,})`), and two maintenance checks that matched the label strings "Submitted By:" and "Work Done:" now check the same values in their table cells. The two theme tests that asserted the old orange were replaced by the current-page test (aria-current, highlight kept on hover) and the new appearance spec, as the modified `app-platform` requirement says.
 
 ## Review rounds
-(none yet; one line per round: blockers, majors, fixed, rejected with reason)
+- Round 1 (2026-10-11): 0 blockers, 1 major, 4 minors, 1 nit. Fixed the major: the properties page showed two "Add Property" links when empty and the "No rows" scenario had no test (toolbar hidden when empty; new e2e empties the collection and restores it). Also fixed three minors: `refreshing` is now a counter so overlapping refreshes keep placeholders up; the no-results button is "Show all <list>" so it no longer shares the name "Clear search"; `TenantPicker` clears through an explicit `clear()` instead of an effect that wiped the user's first edit after a selection.
 
 ## Deferred findings
-(minors, nits and known gaps to turn into issues at wrap-up)
+- (R1 minor) No e2e test that the current page is kept after a row action refreshes the list; covered only by the `clampPage` unit test.
+- (R1 minor) Placeholder rows during `refresh()` unmount the row, so a keyboard user loses focus on the control they used (for example the move-in month input). The spec asks for placeholders during refresh; consider keeping rows mounted with `aria-busy` and dimming instead.
+- (R1 nit) The profile photo upload still calls `invalidateAll()` on click before the upload finishes (pre-existing); move to `use:enhance` with `refresh()`.
+- The implementation commit's message says "Closes #89, #87 and #86", so GitHub closes those issues when the PR merges into `develop`, before the production release. Reopen them if they should stay open until production.
 
 ## QA report
 (filled in stage 6; link to the QA evidence branch)

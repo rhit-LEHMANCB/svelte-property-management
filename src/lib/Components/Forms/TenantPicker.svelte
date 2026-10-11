@@ -15,7 +15,7 @@
 		options: PickerOption[];
 		label: string;
 		placeholder?: string;
-		/** The chosen option; set it to undefined to clear the field. */
+		/** The chosen option. Typing over it unsets it; call `clear()` to empty the field. */
 		selected?: PickerOption;
 	} = $props();
 
@@ -33,13 +33,12 @@
 		})
 	);
 
-	// The parent clears `selected` after using it; clear what the field shows too.
-	$effect(() => {
-		if (!selected) {
-			inputValue = '';
-			query = '';
-		}
-	});
+	/** Empties the field and the selection, for example after the parent has used the choice. */
+	export function clear() {
+		selected = undefined;
+		inputValue = '';
+		query = '';
+	}
 </script>
 
 <!-- Combobox: type to filter, arrow keys to move, Enter to choose, Escape to close. -->
