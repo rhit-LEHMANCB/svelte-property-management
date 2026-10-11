@@ -81,6 +81,29 @@ The end-to-end tests build the app in `e2e` mode, serve it with `vite preview`, 
 themselves, so a local `.env` is never used. The pull request check runs all of these in the `tests`
 job.
 
+## UI and theming
+
+The UI is built from `@skeletonlabs/skeleton-svelte` components (Dialog, Menu, Tabs, Combobox,
+Pagination, Toast, Avatar, Navigation, App Bar) on the built-in `cerberus` theme. The theme is
+chosen by `data-theme` in `src/app.html` and imported in `src/app.css`. The package is a production
+dependency because the server build leaves its `@zag-js` imports external.
+
+- **Dark mode** follows the system setting. The toggle in the app bar overrides it and saves the
+  choice in `localStorage` under `theme` (`src/lib/theme.ts`). An inline script in `src/app.html`
+  applies it before the first paint. Without scripts, `app.css` follows `prefers-color-scheme`.
+- **Dialogs and notifications** are opened imperatively: `getModalStore().trigger({ type: 'confirm',
+title, body, response })` and the `successToast` / `errorToast` helpers in `src/lib/Hooks/toasts.ts`.
+  `src/lib/ui/` holds these stores and the hosts that render them.
+- **Lists** use `src/lib/Components/DataList/DataList.svelte`. It renders one table that becomes
+  cards below the `md` breakpoint, with search, sort, paging, an empty state and loading
+  placeholders. Pass `columns`, a `cell` snippet and an `empty` snippet. Put row actions in a
+  `RowMenu` or in buttons next to the row's main control, never inside it. Call `refresh()` from
+  `src/lib/Hooks/refresh.ts` instead of `invalidateAll()` after a change, so lists show placeholders
+  while the data reloads.
+
+`tests/e2e/specs/appearance.spec.ts` scans the main pages for WCAG AA contrast in light and dark
+mode with axe. Run it after changing colors.
+
 ## Developing
 
 Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
