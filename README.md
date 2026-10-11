@@ -26,6 +26,28 @@ the vault and item names are at the top of the script). In a cloud session, set
 `OP_SERVICE_ACCOUNT_TOKEN` as an environment secret for a read-only, dev-only service account;
 the dev-lifecycle skill runs the pull before its preflight, since the token is not available to the setup script.
 
+### Cloud session notes
+
+- **Playwright browser.** The cloud container image ships its own Playwright browsers in
+  `PLAYWRIGHT_BROWSERS_PATH` (`/opt/pw-browsers`) and sets `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`.
+  That build can be older than the one the installed `@playwright/test` needs, which makes every
+  Playwright test fail at launch with "Executable doesn't exist". After `npm ci`,
+  `scripts/cloud-setup.sh` checks for the required Chromium build and, only if it is missing,
+  downloads it into `PLAYWRIGHT_BROWSERS_PATH` from `cdn.playwright.dev` (about 300 MB, under a
+  minute). If the environment's setup script is a pasted copy of `scripts/cloud-setup.sh` rather than
+  `bash scripts/cloud-setup.sh`, paste the new version in. To fix a session that started without
+  it, run `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD= npx playwright install chromium`.
+- **If the download is blocked.** The setup script prints a warning and carries on. Allow
+  `cdn.playwright.dev` (and `playwright.download.prss.microsoft.com`, the ffmpeg fallback) under
+  Network access, Allowed domains, in the environment's settings
+  ([docs](https://code.claude.com/docs/en/cloud-environments#network-access)), then start a new
+  session. Do not pin `@playwright/test` to the image's version or hard-code an `executablePath`
+  in `playwright.config.ts`, since both would affect CI and local machines.
+- **`JAVA_TOOL_OPTIONS`.** The cloud environment sets it for the network proxy, so Java prints
+  "Picked up JAVA_TOOL_OPTIONS ..." on stderr and `npm run test:e2e` shows
+  `⚠ Unexpected rules runtime error: Picked up JAVA_TOOL_OPTIONS ...` when the emulators start. It is
+  only a warning: the emulators and rules work and the suite passes. Leave the variable set.
+
 Node 22 is required (`.nvmrc`; run `nvm use`). `package.json` `engines.node` pins the Cloud Function runtime to the same version.
 
 ## Firebase rules and indexes
@@ -68,7 +90,7 @@ spec's "Known Gaps", or marked "not yet implemented", is deliberately not assert
 | `npm run test:unit`     | Zod schemas and server auth helpers (Vitest)                                                                               | nothing                                                                                                                                          |
 | `npm run test:handlers` | API handlers, form actions and page loads, with Firebase Admin, Stripe and Resend replaced by in-memory doubles (Vitest)   | nothing                                                                                                                                          |
 | `npm test`              | Both of the above                                                                                                          | nothing                                                                                                                                          |
-| `npm run test:e2e`      | Playwright smoke tests (sign-in, maintenance, property creation, payment) against the Firebase emulators and a fake Stripe | Java 21 or newer, `npx playwright install chromium` once                                                                                         |
+| `npm run test:e2e`      | Playwright smoke tests (sign-in, maintenance, property creation, payment) against the Firebase emulators and a fake Stripe | Java 21 or newer, `npx playwright install chromium` once (cloud sessions: see Cloud session notes)                                               |
 | `npm run test:qa`       | Playwright specs in `tests/qa/` against the deployed dev site (used by the `dev-lifecycle` skill)                          | `QA_ADMIN_EMAIL`, `QA_ADMIN_PASSWORD`, `QA_TENANT_EMAIL`, `QA_TENANT_PASSWORD` in the environment or a gitignored `.env.qa`; optional `BASE_URL` |
 
 `develop` is protected by the repository ruleset "Protect develop": changes go in through a pull request, and the `tests` and `build_and_preview` checks must both pass before it can be merged. This applies to everyone, repository admins included, and nobody can push to `develop` directly or delete it. In a real emergency the owner can edit or disable the ruleset under Settings, Rules. `production` keeps its own branch protection.
