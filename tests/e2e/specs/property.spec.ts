@@ -36,7 +36,7 @@ test.describe('property-management', () => {
 		await signIn(page, ADMIN);
 		await page.goto('/admin/properties');
 		await page.waitForLoadState('networkidle');
-		await page.getByRole('button', { name: 'Add Property' }).click();
+		await page.getByRole('link', { name: 'Add Property' }).click();
 		await expect(page).toHaveURL(/\/admin\/properties\/add$/);
 		await page.waitForLoadState('networkidle');
 
@@ -116,7 +116,7 @@ test.describe('property-management', () => {
 		await page.waitForLoadState('networkidle');
 
 		// The title sorts first, so the row is on the first page of the directory.
-		const row = page.locator('ul.list > a', { hasText: '000 E2E Emptied Photos Court' });
+		const row = page.getByRole('row').filter({ hasText: '000 E2E Emptied Photos Court' });
 		await expect(row).toBeVisible();
 		await expect(row.locator('img')).toHaveCount(0);
 		await expect(row.locator('svg').first()).toBeVisible();

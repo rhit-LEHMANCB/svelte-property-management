@@ -1,55 +1,49 @@
 <script lang="ts">
-	import { IconCheck, IconTool } from '@tabler/icons-svelte';
+	import { IconCheck, IconClipboardCheck, IconTool } from '@tabler/icons-svelte';
 	import type { PageData } from './$types';
-	import { Paginator, getModalStore, type ModalSettings, getToastStore } from '$lib/ui';
+	import { getModalStore, getToastStore } from '$lib/ui';
 	import type { MaintenanceRequest } from '../../../../app';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
-	import { invalidateAll } from '$app/navigation';
+	import { refresh } from '$lib/Hooks/refresh';
+	import DataList, { type DataColumn } from '$lib/Components/DataList/DataList.svelte';
+	import EmptyState from '$lib/Components/DataList/EmptyState.svelte';
+	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
+	import { formatDateTime } from '$lib/Components/DataList/format';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
+
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
 
-	let openPage = {
-		page: 0,
-		limit: 5,
-		size: data.openMaintenanceRequests.length,
-		amounts: [1, 2, 5, 10]
-	};
+	const openColumns: DataColumn<MaintenanceRequest>[] = [
+		{ id: 'subject', label: 'Subject', sort: (r) => r.subject },
+		{ id: 'opened', label: 'Opened', sort: (r) => r.dateAdded },
+		{ id: 'submitter', label: 'Submitted by', sort: (r) => r.submitter },
+		{ id: 'address', label: 'Address', sort: (r) => r.propertyAddress },
+		{ id: 'description', label: 'Description' },
+		{ id: 'actions', label: 'Actions', srOnly: true, class: 'text-right' }
+	];
 
-	let closedPage = {
-		page: 0,
-		limit: 5,
-		size: data.closedMaintenanceRequests.length,
-		amounts: [1, 2, 5, 10]
-	};
+	const closedColumns: DataColumn<MaintenanceRequest>[] = [
+		{ id: 'subject', label: 'Subject', sort: (r) => r.subject },
+		{ id: 'closed', label: 'Closed', sort: (r) => r.dateClosed },
+		{ id: 'submitter', label: 'Submitted by', sort: (r) => r.submitter },
+		{ id: 'address', label: 'Address', sort: (r) => r.propertyAddress },
+		{ id: 'workDone', label: 'Work done' }
+	];
 
-	$: paginatedOpenRequests = data.openMaintenanceRequests.slice(
-		openPage.page * openPage.limit, // start
-		openPage.page * openPage.limit + openPage.limit // end
-	);
-
-	$: paginatedClosedRequests = data.closedMaintenanceRequests.slice(
-		closedPage.page * closedPage.limit, // start
-		closedPage.page * closedPage.limit + closedPage.limit // end
-	);
+	const searchText = (r: MaintenanceRequest) =>
+		`${r.subject} ${r.submitter} ${r.propertyAddress} ${r.description ?? ''} ${r.workDone ?? ''}`;
 
 	function confirmModal(request: MaintenanceRequest) {
-		const confirmModal: ModalSettings = {
+		modalStore.trigger({
 			type: 'prompt',
-			// Data
 			title: 'Close Maintenance Request',
 			body: `Please provide the work you completed to close this maintenance request.`,
-			// TRUE if confirm pressed, FALSE if cancel pressed
-			response: (response) => handleConfirmResponse(response, request.id)
-		};
-		modalStore.trigger(confirmModal);
-	}
-
-	async function handleConfirmResponse(workDone: string, requestId: string) {
-		if (workDone) {
-			await closeRequest(workDone, requestId);
-		}
+			response: (workDone: string) => {
+				if (workDone) closeRequest(workDone, request.id);
+			}
+		});
 	}
 
 	async function closeRequest(workDone: string, id: string) {
@@ -62,96 +56,90 @@
 		});
 		if (response.ok) {
 			successToast('Successfully closed request.', toastStore);
-			invalidateAll();
+			refresh();
 		} else {
 			errorToast('Error closing request.', toastStore);
 		}
 	}
 </script>
 
-<div class="grid grid-cols-1 md:grid-cols-2 m-5 gap-2">
-	<div class="flex flex-col gap-2">
-		<div class="card">
-			<div class="h-auto m-5">
-				<strong class="h3">Open Maintenance Requests</strong>
-				{#if data.openMaintenanceRequests.length > 0}
-					<dl class="list-dl pb-2">
-						{#each paginatedOpenRequests as request}
-							<div class="flex-row">
-								<button
-									data-needs-hydration
-									class="btn-icon preset-filled-primary-500 shrink-0"
-									on:click={() => confirmModal(request)}><IconCheck /></button
-								>
-								<span class="flex-auto max-w-[90%] break-words">
-									<dt class="flex flex-row gap-x-2 flex-wrap">
-										<span class="font-bold min-w-0">{request.subject}</span><span
-											>Opened: {request.dateAdded
-												? request.dateAdded.toLocaleString('en-us', {
-														dateStyle: 'short',
-														timeStyle: 'short'
-													})
-												: ''}</span
-										><span>Submitted By: {request.submitter}</span><span
-											>Address: <a
-												class="text-secondary-500 underline"
-												href={`/admin/properties/${request.propertyId}/edit`}
-												>{request.propertyAddress}</a
-											></span
-										>
-									</dt>
-									<hr class="bg-primary-500 border-0 w-64" />
-									<dd>{request.description}</dd>
-								</span>
-							</div>
-						{/each}
-					</dl>
-				{:else}
-					<p class="text-center my-12 text-lg">No open maintenance requests</p>
+{#snippet addressLink(request: MaintenanceRequest)}
+	<a class="anchor" href={`/admin/properties/${request.propertyId}/edit`}
+		>{request.propertyAddress}</a
+	>
+{/snippet}
+
+<div class="space-y-8 p-4 sm:p-6">
+	<PageHeader title="Maintenance" />
+	<section class="space-y-3" aria-labelledby="open-requests">
+		<h2 id="open-requests" class="h4">Open Maintenance Requests</h2>
+		<DataList
+			label="open maintenance requests"
+			items={data.openMaintenanceRequests}
+			key={(r) => r.id}
+			columns={openColumns}
+			sortBy="opened"
+			sortDirection="desc"
+			{searchText}
+		>
+			{#snippet cell(request, column)}
+				{#if column.id === 'subject'}
+					<strong>{request.subject}</strong>
+				{:else if column.id === 'opened'}
+					{formatDateTime(request.dateAdded)}
+				{:else if column.id === 'submitter'}
+					{request.submitter}
+				{:else if column.id === 'address'}
+					{@render addressLink(request)}
+				{:else if column.id === 'description'}
+					<span class="whitespace-pre-line">{request.description}</span>
+				{:else if column.id === 'actions'}
+					<div class="flex justify-end">
+						<button
+							data-needs-hydration
+							type="button"
+							class="btn btn-sm preset-filled-primary-500"
+							aria-label="Close request {request.subject}"
+							onclick={() => confirmModal(request)}
+							><IconCheck class="size-4" aria-hidden="true" />Close</button
+						>
+					</div>
 				{/if}
-				<Paginator bind:settings={openPage} />
-			</div>
-		</div>
-	</div>
-	<div class="flex flex-col gap-2">
-		<div class="card">
-			<div class="h-auto m-5">
-				<strong class="h3">Closed Maintenance Requests</strong>
-				{#if data.closedMaintenanceRequests.length > 0}
-					<dl class="list-dl pb-2">
-						{#each paginatedClosedRequests as request}
-							<div class="flex-row">
-								<span class="badge-icon preset-filled-primary-500 shrink-0"
-									><IconTool size={16} /></span
-								>
-								<span class="flex-auto max-w-[90%] break-words">
-									<dt class="flex flex-row gap-x-2 flex-wrap">
-										<span class="font-bold min-w-0">{request.subject}</span><span
-											>Closed: {request.dateClosed
-												? request.dateClosed.toLocaleString('en-us', {
-														dateStyle: 'short',
-														timeStyle: 'short'
-													})
-												: ''}</span
-										><span>Submitted By: {request.submitter}</span><span
-											>Address: <a
-												class="text-secondary-500 underline"
-												href={`/admin/properties/${request.propertyId}/view`}
-												>{request.propertyAddress}</a
-											></span
-										>
-									</dt>
-									<hr class="bg-primary-500 border-0 w-64" />
-									<dd>Work Done: {request.workDone ? request.workDone : ''}</dd>
-								</span>
-							</div>
-						{/each}
-					</dl>
-				{:else}
-					<p class="text-center my-12 text-lg">No closed maintenance requests</p>
+			{/snippet}
+			{#snippet empty()}
+				<EmptyState icon={IconClipboardCheck} title="No open maintenance requests">
+					New requests from tenants appear here.
+				</EmptyState>
+			{/snippet}
+		</DataList>
+	</section>
+	<section class="space-y-3" aria-labelledby="closed-requests">
+		<h2 id="closed-requests" class="h4">Closed Maintenance Requests</h2>
+		<DataList
+			label="closed maintenance requests"
+			items={data.closedMaintenanceRequests}
+			key={(r) => r.id}
+			columns={closedColumns}
+			sortBy="closed"
+			sortDirection="desc"
+			{searchText}
+		>
+			{#snippet cell(request, column)}
+				{#if column.id === 'subject'}
+					<strong>{request.subject}</strong>
+				{:else if column.id === 'closed'}
+					{formatDateTime(request.dateClosed)}
+				{:else if column.id === 'submitter'}
+					{request.submitter}
+				{:else if column.id === 'address'}
+					{@render addressLink(request)}
+				{:else if column.id === 'workDone'}
+					<span class="whitespace-pre-line">{request.workDone ?? ''}</span>
 				{/if}
-				<Paginator bind:settings={openPage} />
-			</div>
-		</div>
-	</div>
+			{/snippet}
+			{#snippet empty()}
+				<EmptyState icon={IconTool} title="No closed maintenance requests" />
+			{/snippet}
+		</DataList>
+	</section>
 </div>

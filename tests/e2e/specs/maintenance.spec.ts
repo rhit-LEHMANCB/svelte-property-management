@@ -23,29 +23,42 @@ test.describe('maintenance-requests', () => {
 		await tenant.getByLabel('Description').fill(description);
 		await tenant.getByRole('button', { name: 'Add' }).click();
 		await expect(tenant.getByText('Successfully added maintenance request.')).toBeVisible();
-		const tenantRequest = tenant.locator('dl > div', { hasText: subject });
+		const tenantOpen = tenant.getByRole('table', { name: 'open maintenance requests' });
+		const tenantRequest = tenantOpen.getByRole('row').filter({ hasText: subject });
 		await expect(tenantRequest).toContainText(description);
-		await expect(tenantRequest).toContainText('Submitted By: Tom Tenant');
+		// The "Submitted by" column of that request.
+		await expect(tenantRequest.getByRole('cell').nth(2)).toHaveText('Tom Tenant');
 
 		// Admin: View lists the request; Close needs a note and moves it to the closed list.
 		await signIn(admin, ADMIN);
 		await admin.goto('/admin/maintenance');
 		await admin.waitForLoadState('networkidle');
-		const adminRequest = admin.locator('dl > div', { hasText: subject });
+		const adminRequest = admin
+			.getByRole('table', { name: 'open maintenance requests' })
+			.getByRole('row')
+			.filter({ hasText: subject });
 		await expect(adminRequest).toContainText(description);
-		await adminRequest.getByRole('button').click();
+		await adminRequest.getByRole('button', { name: `Close request ${subject}` }).click();
 		const dialog = admin.getByRole('dialog');
 		await dialog.getByRole('textbox').fill(workDone);
 		await dialog.getByRole('button', { name: 'Submit' }).click();
 		await expect(admin.getByText('Successfully closed request.')).toBeVisible();
-		await expect(admin.locator('dl > div', { hasText: subject })).toContainText(workDone);
+		await expect(
+			admin
+				.getByRole('table', { name: 'closed maintenance requests' })
+				.getByRole('row')
+				.filter({ hasText: subject })
+		).toContainText(workDone);
 
 		// Tenant: the request now shows as closed, with the work done.
 		await tenant.goto('/maintenance');
 		await tenant.waitForLoadState('networkidle');
-		await expect(tenant.locator('dl > div', { hasText: subject })).toContainText(
-			`Work Done: ${workDone}`
-		);
+		const tenantClosed = tenant
+			.getByRole('table', { name: 'closed maintenance requests' })
+			.getByRole('row')
+			.filter({ hasText: subject });
+		// The "Work done" column of that request.
+		await expect(tenantClosed.getByRole('cell').nth(3)).toHaveText(workDone);
 
 		await tenantContext.close();
 		await adminContext.close();

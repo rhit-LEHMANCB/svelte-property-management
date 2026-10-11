@@ -103,9 +103,9 @@
 	}
 </script>
 
-<form method="POST" action="?/basicInfo" use:enhance class="pt-0 p-5">
+<form method="POST" action="?/basicInfo" use:enhance class="">
 	<div class="flex flex-col gap-4">
-		<strong class="h4">Basic Info</strong>
+		<h2 class="h4">Basic Info</h2>
 		<div class="grid grid-cols-2 gap-4">
 			<label class="label"
 				><span>Title</span><input
@@ -176,7 +176,7 @@
 				/></label
 			>
 		</div>
-		<strong class="h4">Address</strong>
+		<h2 class="h4">Address</h2>
 		<div>
 			<label class="label"
 				><span>Address Lookup</span><input
@@ -239,7 +239,7 @@
 			</div>
 		</div>
 		<div class="justify-self-start">
-			<button type="submit" class="btn preset-filled-secondary-500">Save</button>
+			<button type="submit" class="btn preset-filled-primary-500">Save</button>
 		</div>
 	</div>
 </form>

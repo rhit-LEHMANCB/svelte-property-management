@@ -20,9 +20,18 @@ describe('app-platform: supported server runtime', () => {
 		expect(firstNumber(engines?.node ?? '')).toBe(nvmrcMajor);
 	});
 
-	it('keeps the custom theme the app shell selects with data-theme', () => {
-		expect(read('src/app.html')).toContain('data-theme="my-custom-theme"');
-		expect(read('src/theme.css')).toContain("[data-theme='my-custom-theme']");
+	it('selects the built-in Skeleton theme that app.css imports', () => {
+		// appearance: one built-in theme on every page; app.html picks it, app.css loads its tokens.
+		expect(read('src/app.html')).toContain('data-theme="cerberus"');
+		expect(read('src/app.css')).toContain("@import '@skeletonlabs/skeleton/themes/cerberus';");
+	});
+
+	it('ships the Skeleton component package to the deployed function', () => {
+		// The server build leaves its @zag-js imports external, so the function must install it.
+		const { dependencies } = JSON.parse(read('package.json')) as {
+			dependencies: Record<string, string>;
+		};
+		expect(dependencies['@skeletonlabs/skeleton-svelte']).toBeDefined();
 	});
 
 	it('keeps firebase-admin within the range the Firebase Hosting SSR wrapper accepts', () => {

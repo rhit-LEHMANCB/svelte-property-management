@@ -36,16 +36,20 @@
 	}
 </script>
 
-<div class="h-screen flex items-center justify-center">
-	<form method="POST" on:submit={handleSubmit} class="card p-8">
-		<strong class="h3">Lehman Family LLC</strong>
-		<p>Please sign in to continue.</p>
-		<div class="grid grid-cols-1 gap-2 mt-2">
+<div class="flex h-full items-center justify-center overflow-y-auto p-4">
+	<form
+		method="POST"
+		on:submit={handleSubmit}
+		class="card bg-surface-100-900 w-full max-w-sm p-6 shadow-xl sm:p-8"
+	>
+		<h1 class="h3">Lehman Family LLC</h1>
+		<p class="opacity-80">Please sign in to continue.</p>
+		<div class="mt-4 grid grid-cols-1 gap-3">
 			<!-- A value binding would make hydration reset text typed before it finished, so the input only
 				gets a value when the server sent one back after a failed sign-in without scripts. -->
 			{#if form?.email}
 				<label class="label"
-					><span>Email</span><input
+					><span class="label-text">Email</span><input
 						name="email"
 						value={form.email}
 						autocomplete="username"
@@ -57,7 +61,7 @@
 				>
 			{:else}
 				<label class="label"
-					><span>Email</span><input
+					><span class="label-text">Email</span><input
 						name="email"
 						autocomplete="username"
 						class="input"
@@ -68,7 +72,7 @@
 				>
 			{/if}
 			<label class="label"
-				><span>Password</span><input
+				><span class="label-text">Password</span><input
 					name="password"
 					autocomplete="current-password"
 					class="input"
@@ -79,10 +83,10 @@
 			>
 		</div>
 		{#if form?.error}
-			<p class="text-error-500 mt-2" role="alert">{form.error}</p>
+			<p class="text-error-700-300 mt-3" role="alert">{form.error}</p>
 		{/if}
 		<div>
-			<button type="submit" data-needs-hydration class="btn preset-filled-primary-500 mt-5"
+			<button type="submit" data-needs-hydration class="btn preset-filled-primary-500 mt-6 w-full"
 				>Sign in</button
 			>
 		</div>

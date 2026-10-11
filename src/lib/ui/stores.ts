@@ -1,17 +1,17 @@
 import { getContext, setContext, type Component } from 'svelte';
 import { writable } from 'svelte/store';
+import { createToaster } from '@skeletonlabs/skeleton-svelte';
 
-// Local replacements for the toast, modal and drawer stores Skeleton 2 shipped. Skeleton 5 only
-// provides CSS and low-level components, so the app keeps the small store API its pages already use.
+// The app's imperative modal, toast and drawer API. Pages call `trigger`; ModalHost and ToastHost
+// render the queued items with Skeleton's Dialog and Toast components.
 
 export type ToastSettings = {
 	message: string;
-	/** Tailwind classes for the toast color, for example `preset-filled-success-500`. */
-	background?: string;
+	/** `error` is announced as an alert, the others as a status message. */
+	type?: 'success' | 'error' | 'info';
 	/** Milliseconds until the toast closes itself. */
 	timeout?: number;
 };
-export type Toast = ToastSettings & { id: string };
 
 export type ModalComponent = {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -38,23 +38,20 @@ export type ModalSettings = {
 };
 
 const DEFAULT_TOAST_TIMEOUT = 5000;
-let toastCount = 0;
 
 function createToastStore() {
-	const { subscribe, update, set } = writable<Toast[]>([]);
-	function close(id: string) {
-		update((toasts) => toasts.filter((toast) => toast.id !== id));
-	}
+	const toaster = createToaster({ placement: 'bottom', overlap: false, gap: 8 });
 	return {
-		subscribe,
+		toaster,
 		trigger(settings: ToastSettings) {
-			const id = `toast-${++toastCount}`;
-			update((toasts) => [...toasts, { ...settings, id }]);
-			setTimeout(() => close(id), settings.timeout ?? DEFAULT_TOAST_TIMEOUT);
-			return id;
+			return toaster.create({
+				description: settings.message,
+				type: settings.type ?? 'info',
+				duration: settings.timeout ?? DEFAULT_TOAST_TIMEOUT
+			});
 		},
-		close,
-		clear: () => set([])
+		close: (id: string) => toaster.dismiss(id),
+		clear: () => toaster.dismiss()
 	};
 }
 
@@ -78,6 +75,7 @@ function createDrawerStore() {
 	const { subscribe, set } = writable(false);
 	return {
 		subscribe,
+		set,
 		open: () => set(true),
 		close: () => set(false)
 	};

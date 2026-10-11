@@ -1,21 +1,21 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { getToastStore } from '$lib/ui';
-	import { IconUserMinus, IconUserPlus, IconUserShare } from '@tabler/icons-svelte';
-	import { getModalStore, type ModalSettings } from '$lib/ui';
+	import { getModalStore, getToastStore, type ModalSettings } from '$lib/ui';
+	import { IconUserMinus, IconUserPlus, IconUserShare, IconUsers } from '@tabler/icons-svelte';
 	import { emailSchema } from '$lib/schemas';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
-	import { invalidateAll } from '$app/navigation';
+	import { refresh } from '$lib/Hooks/refresh';
 	import type { DocumentWithId } from '../../../../app';
-	import PopupMenu from '$lib/Components/PopupMenu/PopupMenu.svelte';
-	import PopupMenuItem from '$lib/Components/PopupMenu/PopupMenuItem.svelte';
+	import RowMenu from '$lib/Components/DataList/RowMenu.svelte';
+	import EmptyState from '$lib/Components/DataList/EmptyState.svelte';
+	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
 	import UsersListView from '$lib/Components/Users/UsersListView.svelte';
 	import { viewUserInfoModal } from '$lib/Hooks/modals';
 
+	let { data }: { data: PageData } = $props();
+
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
-
-	export let data: PageData;
 
 	async function handleResponse(response: string) {
 		if (!response) {
@@ -35,45 +35,30 @@
 			body: JSON.stringify({ email: response })
 		});
 		if (fetchResponse.ok) {
-			invalidateAll();
+			refresh();
 			successToast('User Successfully Created.', toastStore);
 		} else {
 			errorToast('Error creating user.', toastStore);
 		}
 	}
 
-	async function handleConfirmResponse(confirmed: boolean, userId: string) {
-		if (confirmed) {
-			await removeUser(userId);
-		}
-	}
-
-	// Provide the modal settings
 	const emailModal: ModalSettings = {
 		type: 'prompt',
-		// Data
 		title: 'Enter User Email',
 		body: 'Provide the email to be used for the new user.',
-		// Populates the input value and attributes
 		valueAttr: { type: 'text', minlength: 1, maxlength: 200, required: true },
-		// Returns the updated response value
 		response: handleResponse
 	};
 
 	function confirmModal(user: DocumentWithId) {
-		const confirmModal: ModalSettings = {
+		modalStore.trigger({
 			type: 'confirm',
-			// Data
 			title: 'Please Confirm',
 			body: `Are you sure you wish to delete ${user.data.firstName} ${user.data.lastName}?`,
-			// TRUE if confirm pressed, FALSE if cancel pressed
-			response: (response) => handleConfirmResponse(response, user.id)
-		};
-		modalStore.trigger(confirmModal);
-	}
-
-	function addUserClicked() {
-		modalStore.trigger(emailModal);
+			response: (confirmed: boolean) => {
+				if (confirmed) removeUser(user.id);
+			}
+		});
 	}
 
 	async function removeUser(id: string) {
@@ -82,30 +67,42 @@
 		});
 		if (response.ok) {
 			successToast('User Successfully Removed.', toastStore);
-			invalidateAll();
+			refresh();
 		} else {
 			errorToast('Error removing user.', toastStore);
 		}
 	}
 </script>
 
-<div class="card m-5 grid grid-flow-row p-5 gap-5">
-	<button
-		data-needs-hydration
-		on:click={addUserClicked}
-		class="btn btn-sm preset-filled-primary-500 justify-self-start"
-		><IconUserPlus class="mr-2" />Add User</button
-	>
-	<UsersListView users={data.users} paginated>
-		<svelte:fragment slot="actionButton" let:user>
-			<PopupMenu id={user.id}>
-				<PopupMenuItem text="View More" onClickFunction={() => viewUserInfoModal(user, modalStore)}>
-					<svelte:fragment slot="icon"><IconUserShare /></svelte:fragment>
-				</PopupMenuItem>
-				<PopupMenuItem text="Delete" onClickFunction={() => confirmModal(user)} isDelete>
-					<svelte:fragment slot="icon"><IconUserMinus /></svelte:fragment>
-				</PopupMenuItem>
-			</PopupMenu>
-		</svelte:fragment>
+<div class="space-y-4 p-4 sm:p-6">
+	<PageHeader title="Users" />
+	<UsersListView users={data.users}>
+		{#snippet toolbar()}
+			<button
+				data-needs-hydration
+				type="button"
+				onclick={() => modalStore.trigger(emailModal)}
+				class="btn preset-filled-primary-500"
+				><IconUserPlus class="size-5" aria-hidden="true" />Add User</button
+			>
+		{/snippet}
+		{#snippet actions(user)}
+			<RowMenu
+				label="Actions for {user.data.firstName} {user.data.lastName}"
+				actions={[
+					{
+						label: 'View More',
+						icon: IconUserShare,
+						run: () => viewUserInfoModal(user, modalStore)
+					},
+					{ label: 'Delete', icon: IconUserMinus, danger: true, run: () => confirmModal(user) }
+				]}
+			/>
+		{/snippet}
+		{#snippet empty()}
+			<EmptyState icon={IconUsers} title="No users yet">
+				Add a user to send them a welcome email with a link to set their password.
+			</EmptyState>
+		{/snippet}
 	</UsersListView>
 </div>
