@@ -30,6 +30,6 @@ The dependency upgrade moved the app to Skeleton 5 and Tailwind 4 but kept the o
 
 - Code: `src/lib/ui/*` (removed or reduced), `src/lib/Components/**` (Navigation, PopupMenu, UsersListView, UserInfoModal, Forms/PropertyForm, SortablePhotos, DatePicker), `src/lib/Hooks/{modals,toasts}.ts`, both layouts, all pages under `src/routes/` that use the UI layer (about 25 files), `src/app.css`, `src/theme.css`, `src/app.html`.
 - Tests: `tests/e2e/specs/app-platform.spec.ts` and other e2e specs that click popup menus and dialogs may need selector updates (no weakened assertions); new e2e checks for keyboard behavior, dark mode, search/sort and #86.
-- Dependencies: none added; `@skeletonlabs/skeleton-svelte` 5.0.1 is already installed.
+- Dependencies: `@skeletonlabs/skeleton-svelte` 5.0.1 is already installed; one dev dependency is added for the contrast scan (`@axe-core/playwright`).
 - Issues: closes #89, #87 (covered) and #86.
 - Rollout: no environment variables or secrets.

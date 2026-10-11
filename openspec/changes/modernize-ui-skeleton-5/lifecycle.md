@@ -1,7 +1,7 @@
 # Lifecycle: modernize-ui-skeleton-5
 
 - Branch: `claude/practical-ptolemy-axp5zk` (the session's designated branch, created from `origin/develop` at 1f40174)
-- Stage: 3 Implement (unattended)
+- Stage: 4 Review (unattended)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-11
@@ -66,6 +66,17 @@ Checked 2026-10-11. GitHub backend: **GitHub MCP** (`gh` token is invalid; `get_
 | e2e on emulators | Pass (55) with the workaround above and with `JAVA_TOOL_OPTIONS` unset for the run (the sandbox's Java proxy flags print a line that firebase-tools reports as a rules error). CI is unaffected. |
 | Secrets for this change | None needed. |
 | `production` branch | Exists on `origin`. |
+
+## Implementation (stage 3)
+Completed 2026-10-11. All 25 tasks ticked. Local results: lint clean, `npm run check` 0 errors, 308 unit and handler tests, build, `check:server` OK, e2e 90 passed (55 existing plus 35 new, on the production build against the emulators).
+
+Decisions and deviations made while implementing, recorded for the reviewer and the PR:
+- Design decision 3 changed: one table restyled as cards below `md`, instead of a table plus a hidden card list. A duplicate DOM gave every per-row control (for example a tenant's move-in month) two labels. `design.md` is updated.
+- `@skeletonlabs/skeleton-svelte` moved to `dependencies`: the server build leaves its `@zag-js/*` imports external, so `check:server` failed (the #85 class of deploy break). A unit test guards it.
+- `@floating-ui/dom` removed (only the deleted popup action used it); `@axe-core/playwright` added as a dev dependency for the contrast scans.
+- Confirm dialogs keep `role="dialog"` (the spec allows dialog or alertdialog; existing specs locate them by `dialog`).
+- Small fixes in rebuilt screens: the tenant's closed requests now label the date "Closed" (#57); the admin closed-requests list had its own pager wired to the open list, and its address link pointed at a `/view` route that does not exist; both fixed. The reset page's hover-only password rules are now visible text linked with `aria-describedby`. The photo Delete buttons were invisible until hover (unreachable by keyboard); they are now always shown. The app bar title reads "Lehman Family LLC" (was "LFR Manager").
+- Existing e2e specs changed only in selectors (old `ul.list`, `dl > div`, popup buttons → table rows, roles `menuitem`, `option`, `tab`, link "Add Property"), the page-count regex (the new seeded users make 10+ pages, so `[2-9]` became `([2-9]|\d{2,})`), and two maintenance checks that matched the label strings "Submitted By:" and "Work Done:" now check the same values in their table cells. The two theme tests that asserted the old orange were replaced by the current-page test (aria-current, highlight kept on hover) and the new appearance spec, as the modified `app-platform` requirement says.
 
 ## Review rounds
 (none yet; one line per round: blockers, majors, fixed, rejected with reason)
