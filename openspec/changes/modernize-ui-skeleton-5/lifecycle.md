@@ -1,13 +1,13 @@
 # Lifecycle: modernize-ui-skeleton-5
 
 - Branch: `claude/practical-ptolemy-axp5zk` (the session's designated branch, created from `origin/develop` at 1f40174)
-- Stage: 1 Interview (awaiting confirmation of the summary)
+- Stage: 2 Propose + preflight (awaiting Gate A)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-11
 
 ## Interview summary
-(approved: no)
+(approved: yes, 2026-10-11)
 
 **Goal.** Make the app look and work like a current Skeleton 5 product, on every device, and close the accessibility gaps in the local UI components. Closes #89 (modernize UI) and #87 (accessibility of the local dialog, drawer, tabs, menu, autocomplete), and #86 (remove-tenant button also opens the user-info dialog), which sits in the list rows being rebuilt.
 
@@ -52,7 +52,20 @@ Approved: no
 Accepted preflight gaps: none
 
 ## Preflight
-(table of checks and results, from stage 2)
+Checked 2026-10-11. GitHub backend: **GitHub MCP** (`gh` token is invalid; `get_me` returns `rhit-LEHMANCB`).
+
+| Check | Result |
+| --- | --- |
+| Git commit and push to `origin` | Pass. Identity set; pushed `claude/practical-ptolemy-axp5zk`. |
+| GitHub backend | Pass via MCP (see above). Approving pending workflow runs on the archive PR is a human step in stage 8. |
+| `openspec validate --strict` | Pass. |
+| Playwright `qa` project | Config present. **Browser build mismatch:** Playwright 1.63 needs Chromium 1243, the container has 1194. Worked around locally by linking the expected path to the installed headless shell (container-only, nothing in the repo); the smoke, sign-in and full e2e suites then ran. The QA agent runs in the same kind of container, so the same link is needed there (create it again in a fresh session). |
+| QA credentials | Pass. All four `QA_*` values are in `.env.qa` (mode 600, gitignored), pulled from 1Password; only `lehman-realty-dev` appears in `.env` and `.env.qa`. |
+| Dev deploy workflow | Pass. Latest `develop` run (#70) succeeded. |
+| Local checks | Pass: Node 22.22.0, lint, `npm run check` (0 errors), 297 unit/handler tests, build. |
+| e2e on emulators | Pass (55) with the workaround above and with `JAVA_TOOL_OPTIONS` unset for the run (the sandbox's Java proxy flags print a line that firebase-tools reports as a rules error). CI is unaffected. |
+| Secrets for this change | None needed. |
+| `production` branch | Exists on `origin`. |
 
 ## Review rounds
 (none yet; one line per round: blockers, majors, fixed, rejected with reason)
