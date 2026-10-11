@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Cloud environment startup: installs the 1Password CLI if missing, pulls .env and .env.qa, and
-# installs npm dependencies. Paste this file's contents into the environment's setup script, or
+# installs openspec and npm dependencies. Paste this file's contents into the environment's setup script, or
 # run it from there as `bash scripts/cloud-setup.sh`.
 #
 # Needs OP_SERVICE_ACCOUNT_TOKEN set as an environment secret, and network access to
@@ -32,5 +32,8 @@ if command -v op >/dev/null 2>&1 && [[ -n "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]]; th
 else
 	echo "cloud-setup: WARNING skipping env pull (op missing or OP_SERVICE_ACCOUNT_TOKEN unset)" >&2
 fi
+
+command -v openspec >/dev/null 2>&1 || npm install -g @fission-ai/openspec@1.14.1 ||
+	echo "cloud-setup: WARNING could not install openspec" >&2
 
 npm ci
