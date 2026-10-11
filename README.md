@@ -21,9 +21,10 @@ at build time, so `npm run build` and `npm run dev` fail if one is missing. Use 
 project for local work, not production. Note that `FB_PRIVATE_KEY` is a JSON string, not a raw PEM;
 the example shows the format.
 
-To pull `.env` and `.env.qa` from 1Password instead, run `scripts/pull-env.sh` (needs the `op` CLI; `scripts/cloud-setup.sh` is the cloud startup wrapper;
+To pull `.env` and `.env.qa` from 1Password instead, run `scripts/pull-env.sh` (needs the `op` CLI; `scripts/cloud-setup.sh` is the cloud startup script, which installs `op` but does not pull;
 the vault and item names are at the top of the script). In a cloud session, set
-`OP_SERVICE_ACCOUNT_TOKEN` as an environment secret for a read-only, dev-only service account.
+`OP_SERVICE_ACCOUNT_TOKEN` as an environment secret for a read-only, dev-only service account;
+the dev-lifecycle skill runs the pull before its preflight, since the token is not available to the setup script.
 
 Node 22 is required (`.nvmrc`; run `nvm use`). `package.json` `engines.node` pins the Cloud Function runtime to the same version.
 

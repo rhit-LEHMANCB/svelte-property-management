@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Cloud environment startup: installs the 1Password CLI if missing, pulls .env and .env.qa, and
-# installs openspec and npm dependencies. Paste this file's contents into the environment's setup script, or
-# run it from there as `bash scripts/cloud-setup.sh`.
+# Cloud environment startup: installs the 1Password CLI if missing, and installs openspec and npm
+# dependencies. Paste this file's contents into the environment's setup script, or run it from
+# there as `bash scripts/cloud-setup.sh`.
 #
-# Needs OP_SERVICE_ACCOUNT_TOKEN set as an environment secret, and network access to
-# my.1password.com and cache.agilebits.com. Missing pieces are warnings, not failures, so the
-# session still starts and npm dependencies still install.
+# Needs network access to cache.agilebits.com. It does not pull .env or .env.qa: secrets such as
+# OP_SERVICE_ACCOUNT_TOKEN are not available while the setup script runs, so the dev-lifecycle
+# skill runs scripts/pull-env.sh before its preflight. Missing pieces are warnings, not failures,
+# so the session still starts and npm dependencies still install.
 set -uo pipefail
 
 cd "$(dirname "$0")/.."
@@ -25,12 +26,6 @@ if ! command -v op >/dev/null 2>&1; then
 		echo "cloud-setup: WARNING could not install the 1Password CLI" >&2
 	fi
 	rm -rf "$tmp"
-fi
-
-if command -v op >/dev/null 2>&1 && [[ -n "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]]; then
-	bash scripts/pull-env.sh --force || echo "cloud-setup: WARNING pull-env failed" >&2
-else
-	echo "cloud-setup: WARNING skipping env pull (op missing or OP_SERVICE_ACCOUNT_TOKEN unset)" >&2
 fi
 
 command -v openspec >/dev/null 2>&1 || npm install -g @fission-ai/openspec@1.14.1 ||
