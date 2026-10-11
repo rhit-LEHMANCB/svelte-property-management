@@ -73,7 +73,8 @@ Read `references/interview.md` and follow it. Ask in rounds of at most 4 questio
 
 ### 2. Propose, preflight, then Gate A
 1. Run the OpenSpec propose workflow (`openspec-propose`) using the interview summary as input. Run `openspec validate "<name>" --strict`.
-2. **Preflight.** Because stages 3 to 6 cannot ask for help, check now that they can finish, and show the results next to the proposal:
+2. **Pull env files.** If `op` is installed and either `OP_SERVICE_ACCOUNT_TOKEN` is set or `op whoami` succeeds, run `bash scripts/pull-env.sh` (it skips files that already exist; never print their contents). The cloud setup script cannot do this because the token is not available there. If `op` or its auth is missing, continue; the preflight below reports what is absent.
+3. **Preflight.** Because stages 3 to 6 cannot ask for help, check now that they can finish, and show the results next to the proposal:
    - git can commit (author identity set or usable) and push to `origin`, and a GitHub backend is chosen (see "GitHub access"): `gh auth status` logged in with `repo` and `workflow` scopes, or in a cloud session the GitHub MCP tools with `get_me` working.
    - Merging a PR (`gh pr merge` or `merge_pull_request`) is expected to be permitted in this session. It cannot be tested without merging and is not a blocker: do not ask the user to confirm it or list it as a preflight gap.
    - Playwright is set up (`playwright.config.ts` with a `qa` project) and the browsers are installed. If the `add-test-suite` change has not landed, QA cannot run; say so.
@@ -81,7 +82,7 @@ Read `references/interview.md` and follow it. Ask in rounds of at most 4 questio
    - The dev deploy workflow (`firebase-hosting-merge.yml`) is passing on `develop` right now.
    - Local checks work: `nvm use`, `npm run lint`, `npm run check`, test scripts that exist, and Java if the tests need the emulators.
    - Any secrets or variables this change needs are already added to the GitHub `develop` environment (from the interview's rollout notes).
-3. Present the artifacts and the preflight table.
+4. Present the artifacts and the preflight table.
 
 **Gate A (human):** stop. The user approves the proposal, or asks for changes (revise with `openspec-update-change`, re-run preflight, re-present). A failing preflight item must be fixed or explicitly accepted by the user. Record the approval, its time, and any accepted preflight gaps in `lifecycle.md`. **Everything below runs unattended.**
 
