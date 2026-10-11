@@ -1,7 +1,7 @@
 # Lifecycle: modernize-ui-skeleton-5
 
 - Branch: `claude/practical-ptolemy-axp5zk` (the session's designated branch, created from `origin/develop` at 1f40174)
-- Stage: 2 Propose + preflight (awaiting Gate A)
+- Stage: 3 Implement (unattended)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-11
@@ -48,8 +48,8 @@
 - `data-needs-hydration` gating stays; the `pointer-events` limitation noted in #119 is not addressed here.
 
 ## Gate A
-Approved: no
-Accepted preflight gaps: none
+Approved: yes, 2026-10-11 22:56 UTC, by the user in session chat (palette `cerberus` not vetoed).
+Accepted preflight gaps: the Playwright Chromium build mismatch is handled by the container-local link for this run; a proper fix is in progress in a separate session (session_013J1YZ2Vnp7N4fPVrghLxrt, PR into `develop`). The e2e suite runs locally with `JAVA_TOOL_OPTIONS` unset.
 
 ## Preflight
 Checked 2026-10-11. GitHub backend: **GitHub MCP** (`gh` token is invalid; `get_me` returns `rhit-LEHMANCB`).
