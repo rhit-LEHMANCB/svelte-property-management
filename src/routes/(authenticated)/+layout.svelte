@@ -20,8 +20,11 @@
 	// button (SvelteKit would otherwise reset it to the page start).
 	let menuButton = $state<HTMLButtonElement>();
 	let returnFocusToMenu = false;
-	function closeDrawerForLink() {
-		returnFocusToMenu = true;
+	function closeDrawerForLink(event: MouseEvent) {
+		// Modified or non-primary clicks open a new tab and do not navigate this page.
+		const plain =
+			event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+		returnFocusToMenu = plain;
 		drawerStore.close();
 	}
 	afterNavigate(async () => {

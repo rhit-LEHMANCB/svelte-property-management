@@ -231,9 +231,12 @@ test.describe('ui-accessibility: drawer returns focus after a link is chosen', (
 		await expect(drawer).toHaveCount(0);
 		await page.waitForLoadState('networkidle');
 		await expect(page.getByRole('button', { name: 'Open menu' })).toBeFocused();
-		// Still there once navigation has fully settled.
-		await page.waitForTimeout(1000);
-		await expect(page.getByRole('button', { name: 'Open menu' })).toBeFocused();
+		// It stays there once navigation has settled (the bug was a late reset to the page body).
+		await expect
+			.poll(() => page.evaluate(() => document.activeElement?.getAttribute('aria-label')), {
+				intervals: [250, 250, 250, 250]
+			})
+			.toBe('Open menu');
 	});
 });
 

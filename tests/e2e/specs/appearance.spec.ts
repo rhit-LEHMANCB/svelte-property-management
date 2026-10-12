@@ -68,6 +68,7 @@ async function scanPages(page: Page) {
 		page.getByRole('table', { name: 'closed maintenance requests' }).getByRole('link').first()
 	).toBeVisible();
 	await check(page, 'closed requests with address links');
+	await adminDb().doc('maintenance/e2e-contrast-closed').delete();
 	await page.context().clearCookies();
 
 	await signIn(page, TENANT);
