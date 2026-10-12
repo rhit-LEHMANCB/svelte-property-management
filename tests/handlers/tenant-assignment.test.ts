@@ -321,9 +321,25 @@ describe('tenant-assignment: assignable users (property edit page load)', () => 
 		const options = result.data.usersOptions as { label: string; value: string }[];
 		expect(options.map((o) => o.value)).not.toContain('tenant-1');
 		expect(options.find((o) => o.value === 'tenant-2')).toEqual({
-			label: 'Tess Two',
+			label: 'Tess Two (tenant-2@example.com)',
 			value: 'tenant-2'
 		});
+	});
+
+	it('Scenario: tenants who share a name are told apart by their email', async () => {
+		seedAdmin('admin-1');
+		seedTenant('tenant-1', { firstName: 'Sam', lastName: 'Same', email: 'sam.one@example.com' });
+		seedTenant('tenant-2', { firstName: 'Sam', lastName: 'Same', email: 'sam.two@example.com' });
+		seedTenant('tenant-3', { firstName: 'Nora', lastName: 'Noemail', email: undefined });
+		seedProperty('prop-1');
+
+		const result = await call(editLoad, { userID: 'admin-1', params: { propertyId: 'prop-1' } });
+
+		const labels = (result.data.usersOptions as { label: string }[]).map((o) => o.label);
+		expect(labels).toContain('Sam Same (sam.one@example.com)');
+		expect(labels).toContain('Sam Same (sam.two@example.com)');
+		// A user without an email keeps the plain name instead of empty parentheses.
+		expect(labels).toContain('Nora Noemail');
 	});
 
 	it('Scenario: the dropdown excludes admins and tenants assigned to other properties', async () => {
