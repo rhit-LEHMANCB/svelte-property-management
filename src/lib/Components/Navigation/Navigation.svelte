@@ -13,7 +13,8 @@
 		IconUsers
 	} from '@tabler/icons-svelte';
 
-	let { isAdmin, onNavigate }: { isAdmin: boolean; onNavigate?: () => void } = $props();
+	let { isAdmin, onNavigate }: { isAdmin: boolean; onNavigate?: (event: MouseEvent) => void } =
+		$props();
 
 	type Entry = {
 		label: string;
@@ -93,7 +94,7 @@
 						href={entry.href}
 						aria-current={isCurrent ? 'page' : undefined}
 						class={isCurrent ? 'preset-filled-primary-500' : 'hover:preset-tonal'}
-						onclick={() => onNavigate?.()}
+						onclick={(event: MouseEvent) => onNavigate?.(event)}
 					>
 						<entry.icon class="size-5" aria-hidden="true" />
 						<Navigation.TriggerText>{entry.label}</Navigation.TriggerText>

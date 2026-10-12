@@ -1,8 +1,8 @@
 # Lifecycle: modernize-ui-skeleton-5
 
 - Branch: `claude/practical-ptolemy-axp5zk` (the session's designated branch, created from `origin/develop` at 1f40174)
-- Stage: 6 QA, cycle 2 failed (2 app bugs); fix going through stages 3 to 5 with one review round
-- Review round: 3 of 3 (round 3 reviewed the QA cycle 1 fix: no blockers or majors)
+- Stage: 5 Ship to develop (QA cycle 2 fix)
+- Review round: 4 (rounds 1 to 3: implementation and the QA cycle 1 fix; round 4: the QA cycle 2 fix); all exited with no blockers or majors
 - QA cycle: 2 of 3
 - Started: 2026-10-11
 
@@ -83,6 +83,8 @@ Decisions and deviations made while implementing, recorded for the reviewer and 
 - Round 2 (2026-10-12): 0 blockers, 0 majors, 6 minors, 5 nits. Review loop exits. Fixed the trivial ones: the drawer closes when the window widens past the sidebar breakpoint; the search field's Clear button is outside its label; the #86 "Open the row" scenario now says "the tenant's name" (what the row offers); `design.md` records that `cerberus` passed the contrast scan in both modes. Local suite after the fixes: lint, check, 308 unit/handler tests, build, check:server, e2e 91 passed.
 
 - Round 3 (2026-10-12, QA cycle 1 fix): 0 blockers, 0 majors, 3 minors, 3 nits. Fixed: added an `oklch()` probe to the contrast self-check; stopped exempting `aria-hidden` content (it is still seen), which exposed avatar initials at 3.07:1 light and 1.14:1 dark, fixed with a filled surface preset; documented what the check does not cover (control borders, placeholders, text over images); corrected a stale comment. Kept as history: the ticked tasks 1.2, 1.3, 2.3 and 6.3 that name `cerberus` and axe (section 9 records the change). Local suite: 308 unit/handler, 93 e2e, build, check:server.
+
+- Round 4 (2026-10-12, QA cycle 2 fix): 0 blockers, 0 majors, 4 minors, 1 nit. Fixed: the focus-return flag is set only for plain clicks (a Ctrl/Cmd or middle click opens a new tab without navigating, which would have left it armed); the focus test polls instead of sleeping; the seeded closed request is deleted after the scan. Not changed: focusing the menu button when the window grew past `lg` mid-navigation is a no-op (the drawer is closed by then anyway). Local suite: 308 unit/handler, 94 e2e, build, check:server.
 
 ## Deferred findings
 - (R3 minor) The contrast check does not measure control borders (3:1), placeholders or text over images; translucent layers are composited over ancestors only.
