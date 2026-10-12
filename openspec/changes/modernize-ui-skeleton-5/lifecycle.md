@@ -126,6 +126,9 @@ Result: PASS, 0 failing scenarios; the final full QA run passed 45 of 45 tests. 
 - Observations (not failures): disabled Previous/Next 3.5:1 in light (WCAG-exempt); about 3 of 170 page loads stayed un-hydrated for 20 s or more until reload (not reproduced in a 25-load loop; cause unknown); focus goes to the page body after changing a tenant's move-in month or saving the property form (the row is swapped for placeholders during refresh; matches deferred finding R1/R2); toasts auto-hide after about 5.4 s; a tenant opening an admin URL sees a bare unthemed 401 page; photos could not be judged (the sandbox blocks Storage images); QA's Add User created real welcome emails to the owner's inbox (`+qa` alias).
 - Evidence: [screenshots and specs on `qa-evidence/modernize-ui-skeleton-5`](https://github.com/rhit-LEHMANCB/svelte-property-management/tree/qa-evidence/modernize-ui-skeleton-5/openspec/changes/modernize-ui-skeleton-5/qa) (cycle 3 only; masked). Cycles 1 and 2 evidence is not published (cycle 1 screenshots are unmasked).
 
+### Owner feedback after cycle 3 (2026-10-12)
+The owner noted that the navigation entries did not fill the sidebar and that many clickable controls kept the arrow cursor in Firefox. Fixed on the same branch flow (PR into `develop`, which the open production PR then carries): the wrapping `<nav>` is full width, and a base-layer rule restores the pointer cursor on enabled buttons, menu items, options, tabs and selects (Tailwind 4 removed it for every browser, not only Firefox). Two new e2e tests each failed without the fix and pass with it; full local suite 308 unit/handler, 96 e2e. Not re-run through independent QA (CSS-only, covered by the new tests); listed in the checklist.
+
 ## Verification checklist for the human
 Ranked by risk. Do these on the dev site before merging the production PR, then the production-only checks after deploying.
 
@@ -136,7 +139,8 @@ Ranked by risk. Do these on the dev site before merging the production PR, then 
 5. **Tenant with a property, dark mode (medium).** Submit a maintenance request; pay with test card `4242 4242 4242 4242`; return from Stripe. Expect legible pages and toasts.
 6. **Focus rings, hover and disabled states (low to medium).** Tab through Users, Properties and a property page in light and dark. Expect a clearly visible focus ring everywhere; the disabled Previous/Next are faint in light mode (accepted by WCAG).
 7. **Photos (low).** Property Photos tab on a normal network: upload two, reorder, delete one. Expect images render and order persists.
-8. **Look and feel (low).** Confirm you are happy with `cerberus` and the filled buttons' contrast (accepted in the spec).
+8. **Navigation and cursors (low).** In Firefox and Chrome: the highlighted sidebar entry spans the sidebar, and buttons, row menus, tabs and options show the hand cursor; disabled Previous/Next do not.
+9. **Look and feel (low).** Confirm you are happy with `cerberus` and the filled buttons' contrast (accepted in the spec).
 
 Production-only risks:
 - **Function dependencies:** `@skeletonlabs/skeleton-svelte` moved to `dependencies` because the server bundle imports its `@zag-js/*` packages; `check:server` passes. After the production deploy, open `/signin` and an admin list page on the production domain and confirm they render (no 500).
