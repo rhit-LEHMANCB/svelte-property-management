@@ -86,7 +86,7 @@
 
 <Navigation layout="sidebar" class="h-full w-full bg-transparent p-4">
 	<Navigation.Content>
-		<nav aria-label="Main">
+		<nav aria-label="Main" class="w-full">
 			<Navigation.Menu>
 				{#each entries as entry (entry.label)}
 					{@const isCurrent = entry.current?.(page.url.pathname) ?? false}

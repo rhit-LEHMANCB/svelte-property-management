@@ -31,6 +31,25 @@ body {
 }
 
 /*
+	Tailwind 4 gives buttons the default arrow cursor. Show the hand on everything clickable, as
+	links already do; disabled controls keep the arrow.
+*/
+@layer base {
+	button:not(:disabled),
+	[role='button']:not([aria-disabled='true']),
+	[role='menuitem']:not([aria-disabled='true']),
+	[role='option']:not([aria-disabled='true']),
+	[role='tab']:not(:disabled),
+	select:not(:disabled),
+	summary,
+	input[type='checkbox']:not(:disabled),
+	input[type='radio']:not(:disabled),
+	input[type='file']:not(:disabled) {
+		cursor: pointer;
+	}
+}
+
+/*
 	Buttons marked data-needs-hydration only work once Svelte has attached its handlers, so until the
 	root layout sets data-hydrated on <html> they ignore clicks and show a spinner instead of dropping
 	them silently. The rule is in the server-rendered CSS, so there is no unguarded moment.
