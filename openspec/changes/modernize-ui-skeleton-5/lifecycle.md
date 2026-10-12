@@ -1,9 +1,9 @@
 # Lifecycle: modernize-ui-skeleton-5
 
 - Branch: `claude/practical-ptolemy-axp5zk` (the session's designated branch, created from `origin/develop` at 1f40174)
-- Stage: 5 Ship to develop (unattended): PR https://github.com/rhit-LEHMANCB/svelte-property-management/pull/125 open; waiting on the `tests` and `build_and_preview` checks (subscribed to PR activity). PR-check fix attempts: 1 of 2 (CodeQL flagged the regex that stripped <script> tags in the no-script contrast test; replaced with a `script-src 'none'` policy header, test-only).
+- Stage: 6 QA, cycle 1 failed (app bug); fix going through stages 3 to 5 with one review round
 - Review round: 2 of 3 (exited: round 2 had no blockers or majors)
-- QA cycle: 0 of 3
+- QA cycle: 1 of 3
 - Started: 2026-10-11
 
 ## Interview summary
@@ -95,7 +95,12 @@ Decisions and deviations made while implementing, recorded for the reviewer and 
 - The implementation commit's message says "Closes #89, #87 and #86", so GitHub closes those issues when the PR merges into `develop`, before the production release. Reopen them if they should stay open until production.
 
 ## QA report
-(filled in stage 6; link to the QA evidence branch)
+### Cycle 1 (2026-10-12, deployed commit b5c058b, run 73)
+Result: FAIL, 3 scenarios, one `app bug`. 41 scenario checks passed, covering every `ui-accessibility`, `list-browsing`, `app-platform` and `tenant-assignment` scenario QA could reach, plus the regression pass.
+- App bug: filled primary buttons and the current navigation entry measured 3.62:1 (needs 4.5:1) in light and dark, so appearance "Contrast in light mode", "Contrast in dark mode" and "No scripts" failed. The implementer's axe scan had passed because axe cannot read `oklch()` colors and skipped those elements; QA proved it with a low-contrast probe that axe did not report.
+- Observations: the search field rendered broken (Skeleton 5 has no `input-group` classes; dark mode showed a white input box); the combobox lists two tenants both named "New User"; search also matches email text (as specified).
+- Not covered: the properties empty state on real data, page kept after a refreshing row action, combobox choice submitted with the form on real users.
+- Triage: `app bug` → fix branch. Checking every built-in theme's filled 500 pairs showed `cerberus` also fails for error (2.7:1) and warning (3.3:1); only `vintage` passes all four. Fix: theme `vintage`, direct contrast measurement with a self-check (shown to fail on `cerberus` at 3.62:1, matching QA), destructive menu items colored by icon only, search and combobox fields rebuilt. Local suite: 308 unit/handler, 92 e2e, build, check:server. QA evidence of cycle 1 (10 specs, 45 screenshots) is kept for the evidence branch.
 
 ## Verification checklist for the human
 (filled in stage 7)

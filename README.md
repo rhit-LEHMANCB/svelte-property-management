@@ -107,7 +107,7 @@ job.
 ## UI and theming
 
 The UI is built from `@skeletonlabs/skeleton-svelte` components (Dialog, Menu, Tabs, Combobox,
-Pagination, Toast, Avatar, Navigation, App Bar) on the built-in `cerberus` theme. The theme is
+Pagination, Toast, Avatar, Navigation, App Bar) on the built-in `vintage` theme. The theme is
 chosen by `data-theme` in `src/app.html` and imported in `src/app.css`. The package is a production
 dependency because the server build leaves its `@zag-js` imports external.
 
@@ -124,8 +124,9 @@ title, body, response })` and the `successToast` / `errorToast` helpers in `src/
   `src/lib/Hooks/refresh.ts` instead of `invalidateAll()` after a change, so lists show placeholders
   while the data reloads.
 
-`tests/e2e/specs/appearance.spec.ts` scans the main pages for WCAG AA contrast in light and dark
-mode with axe. Run it after changing colors.
+`tests/e2e/specs/appearance.spec.ts` measures WCAG AA text contrast on the main pages, menus,
+dialogs and toasts in light and dark mode (`tests/e2e/support/contrast.ts`; axe-core cannot read the
+theme's `oklch()` colors). Run it after changing colors.
 
 ## Developing
 
