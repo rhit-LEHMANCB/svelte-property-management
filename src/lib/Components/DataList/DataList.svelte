@@ -111,11 +111,12 @@
 	<div class="flex flex-wrap items-end gap-3">
 		{@render toolbar?.()}
 		{#if items.length > 0}
-			<label class="label w-full sm:ml-auto sm:w-72">
-				<span class="sr-only">Search {label}</span>
+			<div class="w-full sm:ml-auto sm:w-72">
+				<label class="sr-only" for="{uid}-search">Search {label}</label>
 				<div class="input-group grid-cols-[auto_1fr_auto]">
 					<div class="ig-cell preset-tonal"><IconSearch size={18} aria-hidden="true" /></div>
 					<input
+						id="{uid}-search"
 						class="ig-input"
 						type="search"
 						placeholder="Search {label}"
@@ -131,7 +132,7 @@
 						>
 					{/if}
 				</div>
-			</label>
+			</div>
 		{/if}
 	</div>
 

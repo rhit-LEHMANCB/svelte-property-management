@@ -3,7 +3,7 @@
 ## ADDED Requirements
 
 ### Requirement: Remove-tenant control opens only its confirmation
-The system SHALL, when an admin uses the remove control on a tenant row of a property's Tenants tab, show only the confirmation dialog, and SHALL open the tenant's user-info dialog only when the admin activates the row itself.
+The system SHALL, when an admin uses the remove control on a tenant row of a property's Tenants tab, show only the confirmation dialog, and SHALL open the tenant's user-info dialog only when the admin activates the tenant's name in that row.
 
 #### Scenario: Cancel removal
 - **WHEN** an admin clicks the remove icon on a tenant and cancels
@@ -14,7 +14,7 @@ The system SHALL, when an admin uses the remove control on a tenant row of a pro
 - **THEN** the tenant is unlinked and no user-info dialog opens afterwards
 
 #### Scenario: Open the row
-- **WHEN** an admin activates the tenant row away from its action controls
+- **WHEN** an admin activates the tenant's name in the row
 - **THEN** the user-info dialog opens
 
 #### Scenario: No nested interactive controls

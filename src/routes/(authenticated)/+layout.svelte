@@ -32,6 +32,15 @@
 		return () => clearTimeout(timer);
 	});
 
+	// The drawer is for narrow screens; close it when the window widens past the sidebar breakpoint,
+	// so an invisible modal never keeps the page hidden and scroll-locked.
+	$effect(() => {
+		const wide = matchMedia('(min-width: 64rem)');
+		const close = () => wide.matches && drawerStore.close();
+		wide.addEventListener('change', close);
+		return () => wide.removeEventListener('change', close);
+	});
+
 	async function signOutSSR() {
 		const response = await fetch('/api/signin', { method: 'DELETE' });
 		if (response.ok) {
