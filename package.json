@@ -24,7 +24,6 @@
 		"test:qa": "PLAYWRIGHT_QA=1 playwright test --project=qa"
 	},
 	"devDependencies": {
-		"@axe-core/playwright": "^4.13.0",
 		"@eslint/js": "^10.0.0",
 		"@playwright/test": "^1.63.0",
 		"@skeletonlabs/skeleton": "^5.0.0",

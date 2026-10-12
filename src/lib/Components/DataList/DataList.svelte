@@ -111,27 +111,29 @@
 	<div class="flex flex-wrap items-end gap-3">
 		{@render toolbar?.()}
 		{#if items.length > 0}
-			<div class="w-full sm:ml-auto sm:w-72">
+			<div class="relative w-full sm:ml-auto sm:w-72">
 				<label class="sr-only" for="{uid}-search">Search {label}</label>
-				<div class="input-group grid-cols-[auto_1fr_auto]">
-					<div class="ig-cell preset-tonal"><IconSearch size={18} aria-hidden="true" /></div>
-					<input
-						id="{uid}-search"
-						class="ig-input"
-						type="search"
-						placeholder="Search {label}"
-						value={query}
-						oninput={(event) => search(event.currentTarget.value)}
-					/>
-					{#if query}
-						<button
-							type="button"
-							class="ig-btn preset-tonal"
-							aria-label="Clear search"
-							onclick={() => search('')}><IconX size={18} /></button
-						>
-					{/if}
-				</div>
+				<IconSearch
+					size={18}
+					class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 opacity-70"
+					aria-hidden="true"
+				/>
+				<input
+					id="{uid}-search"
+					class="input ps-10 pe-11"
+					type="search"
+					placeholder="Search {label}"
+					value={query}
+					oninput={(event) => search(event.currentTarget.value)}
+				/>
+				{#if query}
+					<button
+						type="button"
+						class="btn-icon btn-icon-sm hover:preset-tonal absolute top-1/2 right-1 -translate-y-1/2"
+						aria-label="Clear search"
+						onclick={() => search('')}><IconX size={18} /></button
+					>
+				{/if}
 			</div>
 		{/if}
 	</div>

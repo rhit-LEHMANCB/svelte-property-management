@@ -4,7 +4,7 @@
 	export type RowAction = {
 		label: string;
 		icon?: typeof Icon;
-		/** Shown in the error color, for destructive actions. */
+		/** Destructive: its icon is shown in the error color. */
 		danger?: boolean;
 		run: () => void;
 	};
@@ -31,11 +31,13 @@
 				{#each actions as action (action.label)}
 					<Menu.Item
 						value={action.label}
-						class="flex cursor-pointer items-center gap-2 rounded-base px-3 py-2 data-highlighted:preset-tonal {action.danger
-							? 'text-error-700-300'
-							: ''}"
+						class="data-highlighted:preset-tonal flex cursor-pointer items-center gap-2 rounded-base px-3 py-2"
 					>
-						{#if action.icon}<action.icon size={18} aria-hidden="true" />{/if}
+						{#if action.icon}<action.icon
+								size={18}
+								class={action.danger ? 'text-error-600-400' : ''}
+								aria-hidden="true"
+							/>{/if}
 						<Menu.ItemText>{action.label}</Menu.ItemText>
 					</Menu.Item>
 				{/each}
