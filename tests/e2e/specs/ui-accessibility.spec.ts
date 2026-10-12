@@ -215,6 +215,28 @@ test.describe('ui-accessibility: navigation drawer manages focus', () => {
 	});
 });
 
+test.describe('ui-accessibility: drawer returns focus after a link is chosen', () => {
+	test('Scenario: Choosing a drawer link closes it and focus returns to the menu button', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 390, height: 800 });
+		await signIn(page, TENANT);
+		await page.waitForLoadState('networkidle');
+		await page.getByRole('button', { name: 'Open menu' }).click();
+		const drawer = page.getByRole('dialog', { name: 'Menu' });
+		await drawer.getByRole('link', { name: 'Payment' }).focus();
+		await page.keyboard.press('Enter');
+
+		await expect(page).toHaveURL(/\/payment$/);
+		await expect(drawer).toHaveCount(0);
+		await page.waitForLoadState('networkidle');
+		await expect(page.getByRole('button', { name: 'Open menu' })).toBeFocused();
+		// Still there once navigation has fully settled.
+		await page.waitForTimeout(1000);
+		await expect(page.getByRole('button', { name: 'Open menu' })).toBeFocused();
+	});
+});
+
 test.describe('ui-accessibility: notifications use the right live-region roles', () => {
 	test('Scenario: Success notification', async ({ page }) => {
 		await page.route('**/api/signin/reset', (route) => route.fulfill({ status: 200, body: '{}' }));
