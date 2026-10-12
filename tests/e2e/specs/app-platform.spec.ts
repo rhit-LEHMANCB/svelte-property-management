@@ -188,6 +188,10 @@ test.describe('app-platform: menus, autocompletes, tabs and pagination keep work
 			.first()
 			.click();
 		await expect(page.getByRole('menuitem', { name: 'View More', exact: true })).toBeVisible();
+		// The menu moves focus into itself once it has opened; wait for that before moving it out.
+		await expect
+			.poll(() => page.evaluate(() => !!document.activeElement?.closest('[role="menu"]')))
+			.toBe(true);
 		await page.getByRole('button', { name: 'Add User' }).focus();
 
 		await expect(page.getByRole('menuitem', { name: 'View More', exact: true })).toHaveCount(0);
@@ -231,5 +235,53 @@ test.describe('app-platform: navigation shell and theme preserved', () => {
 		await expect(navigation.getByRole('link', { name: 'Users' })).not.toHaveAttribute(
 			'aria-current'
 		);
+	});
+});
+
+test.describe('app-platform: navigation and clickable controls look interactive', () => {
+	test('Scenario: navigation entries span the width of the sidebar', async ({ page }) => {
+		await signIn(page, ADMIN);
+		await page.goto('/admin/properties');
+		await page.waitForLoadState('networkidle');
+		const navigation = page.getByRole('navigation', { name: 'Main' });
+		// The sidebar is 16rem wide with 1rem of padding on each side.
+		const sidebar = (await page.locator('aside').boundingBox())!;
+
+		for (const name of ['Home', 'Properties', 'Users']) {
+			const box = (await navigation.getByRole('link', { name }).boundingBox())!;
+			expect(box.width, name).toBeGreaterThanOrEqual(sidebar.width - 2 * 16 - 2);
+		}
+	});
+
+	test('Scenario: clickable controls show the pointer cursor, disabled ones do not', async ({
+		page
+	}) => {
+		await signIn(page, ADMIN);
+		await page.goto('/admin/users');
+		await page.waitForLoadState('networkidle');
+		await page.getByLabel('Items per page').selectOption('1');
+
+		for (const control of [
+			page.getByRole('button', { name: 'Add User' }),
+			page.getByRole('button', { name: 'Dark mode' }),
+			page.getByRole('button', { name: 'Sign out' }),
+			page.getByRole('button', { name: /^Actions for / }).first(),
+			page.getByRole('columnheader', { name: 'Name' }).getByRole('button'),
+			page.getByRole('button', { name: 'Next page' }),
+			page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'Home' })
+		]) {
+			await expect(control).toHaveCSS('cursor', 'pointer');
+		}
+		await expect(page.getByRole('button', { name: 'Previous page' })).toBeDisabled();
+		await expect(page.getByRole('button', { name: 'Previous page' })).not.toHaveCSS(
+			'cursor',
+			'pointer'
+		);
+
+		await page
+			.getByRole('button', { name: /^Actions for / })
+			.first()
+			.click();
+		await expect(page.getByRole('menuitem', { name: 'View More' })).toHaveCSS('cursor', 'pointer');
 	});
 });

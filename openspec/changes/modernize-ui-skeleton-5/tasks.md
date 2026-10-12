@@ -64,3 +64,8 @@
 
 - [x] 11.1 Switch the theme back to `cerberus` at the owner's request, exempt filled color controls (`preset-filled-*`) from the contrast check, and update the `appearance` spec to match; verify the contrast scans pass in light, dark and no-script mode
 - [x] 11.2 Darken light-mode links to primary-700 (cerberus's primary-500 is 4.4:1 on its card surface); verify the closed-requests address link and the user-info property link pass the scan
+
+## 12. Owner feedback after QA: navigation width and cursors
+
+- [x] 12.1 Make sidebar navigation entries span the full width of the sidebar (the wrapping `<nav>` shrank to its text under Skeleton's `align-items: start`); verify a new e2e that fails without the fix
+- [x] 12.2 Show the pointer cursor on enabled buttons, menu items, options, tabs and selects (Tailwind 4 gives buttons the default cursor), and keep the arrow on disabled controls; verify a new e2e that fails without the fix
