@@ -20,6 +20,11 @@
 	}
 }
 
+/* Links: vintage's light-mode link color (primary-600) is below 4.5:1 on its surfaces. */
+[data-theme='vintage'] {
+	--typo-anchor--color-light: var(--color-primary-900);
+}
+
 html,
 body {
 	@apply h-full overflow-hidden;

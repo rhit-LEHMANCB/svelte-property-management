@@ -4,7 +4,8 @@
 	import Navigation from '$lib/Components/Navigation/Navigation.svelte';
 	import ThemeToggle from '$lib/Components/Shell/ThemeToggle.svelte';
 	import PagePlaceholder from '$lib/Components/Shell/PagePlaceholder.svelte';
-	import { goto } from '$app/navigation';
+	import { afterNavigate, goto } from '$app/navigation';
+	import { tick } from 'svelte';
 	import { navigating } from '$app/state';
 	import type { LayoutData } from './$types';
 	import { IconLogout, IconMenu2, IconX } from '@tabler/icons-svelte';
@@ -14,6 +15,21 @@
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
 	const drawerStore = getDrawerStore();
+
+	// Choosing a link in the drawer closes it; once the new page is shown, focus goes back to the menu
+	// button (SvelteKit would otherwise reset it to the page start).
+	let menuButton = $state<HTMLButtonElement>();
+	let returnFocusToMenu = false;
+	function closeDrawerForLink() {
+		returnFocusToMenu = true;
+		drawerStore.close();
+	}
+	afterNavigate(async () => {
+		if (!returnFocusToMenu) return;
+		returnFocusToMenu = false;
+		await tick();
+		menuButton?.focus();
+	});
 	const toastStore = getToastStore();
 
 	const user = $derived(data.user);
@@ -61,6 +77,7 @@
 					data-needs-hydration
 					type="button"
 					class="btn-icon hover:preset-tonal lg:hidden"
+					bind:this={menuButton}
 					aria-label="Open menu"
 					aria-expanded={$drawerStore}
 					onclick={() => drawerStore.open()}
@@ -113,7 +130,7 @@
 					</Dialog.CloseTrigger>
 				</div>
 				<div class="flex-auto overflow-y-auto">
-					<Navigation {isAdmin} onNavigate={() => drawerStore.close()} />
+					<Navigation {isAdmin} onNavigate={closeDrawerForLink} />
 				</div>
 				<div class="p-4 sm:hidden">
 					<button type="button" onclick={signOutSSR} class="btn preset-filled-primary-500 w-full"
