@@ -133,6 +133,8 @@ A second note: on a property's Tenants tab the tenant picker's dropdown icon stu
 
 A third note: tenants who share a name looked identical in the add-tenant picker. Each option is now "First Last (email)" (the name alone when there is no email), built in the edit page's load, so the email is also searchable. A new tenant-assignment requirement covers it; a handler test and an e2e with two same-named tenants fail without the change and pass with it. Not re-run through independent QA (a label change covered by the tests); listed in the checklist.
 
+A fourth note: the move-in month was a plain text box in Firefox, which does not support `<input type="month">` (desktop Safari neither). Both move-in month fields are now a `MonthPicker` of Month and Year selects; the add row defaults to the current month (what the server already used when none was sent), the year list runs ten years back through next year and widens to a stored year, and a row goes back to its stored month if saving fails. Unit tests cover the helpers; e2e covers the default, saving and the revert. Not re-run through independent QA; listed in the checklist.
+
 ## Verification checklist for the human
 Ranked by risk. Do these on the dev site before merging the production PR, then the production-only checks after deploying.
 
@@ -143,7 +145,7 @@ Ranked by risk. Do these on the dev site before merging the production PR, then 
 5. **Tenant with a property, dark mode (medium).** Submit a maintenance request; pay with test card `4242 4242 4242 4242`; return from Stripe. Expect legible pages and toasts.
 6. **Focus rings, hover and disabled states (low to medium).** Tab through Users, Properties and a property page in light and dark. Expect a clearly visible focus ring everywhere; the disabled Previous/Next are faint in light mode (accepted by WCAG).
 7. **Photos (low).** Property Photos tab on a normal network: upload two, reorder, delete one. Expect images render and order persists.
-8. **Navigation, cursors and the add-tenant row (low).** In Firefox and Chrome: the highlighted sidebar entry spans the sidebar, and buttons, row menus, tabs and options show the hand cursor; disabled Previous/Next do not. On a property's Tenants tab, the tenant picker's icon sits inside its field, Add lines up with the fields, and each option shows the tenant's email in parentheses after the name.
+8. **Navigation, cursors and the add-tenant row (low).** In Firefox and Chrome: the highlighted sidebar entry spans the sidebar, and buttons, row menus, tabs and options show the hand cursor; disabled Previous/Next do not. On a property's Tenants tab, the tenant picker's icon sits inside its field, Add lines up with the fields, and each option shows the tenant's email in parentheses after the name; the move-in month is Month and Year dropdowns, in Firefox too.
 9. **Look and feel (low).** Confirm you are happy with `cerberus` and the filled buttons' contrast (accepted in the spec).
 
 Production-only risks:

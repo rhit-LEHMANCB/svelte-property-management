@@ -2,6 +2,8 @@
 	import type { PageData } from './$types';
 	import PropertyForm from '$lib/Components/Forms/PropertyForm.svelte';
 	import TenantPicker, { type PickerOption } from '$lib/Components/Forms/TenantPicker.svelte';
+	import MonthPicker from '$lib/Components/Forms/MonthPicker.svelte';
+	import { monthKeyOf } from '$lib/Components/Forms/monthPicker';
 	import { enhance } from '$app/forms';
 	import SortablePhotos from '$lib/Components/SortablePhotos.svelte';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
@@ -34,7 +36,7 @@
 	const photos = $derived(reordered ?? data.photos);
 	let selectedTenant = $state<PickerOption | undefined>();
 	let tenantPicker = $state<ReturnType<typeof TenantPicker>>();
-	let selectedMoveInMonth = $state('');
+	let selectedMoveInMonth = $state(monthKeyOf(new Date()));
 	let tab = $state('info');
 
 	async function sortList(e: CustomEvent) {
@@ -110,15 +112,7 @@
 			?.moveInMonth;
 	}
 
-	async function updateMoveInMonth(tenantId: string, event: Event) {
-		const input = event.currentTarget as HTMLInputElement;
-		const moveInMonth = input.value;
-		if (!moveInMonth) {
-			// A move-in month cannot be cleared; show the stored one again.
-			input.value = moveInMonthOf(tenantId) ?? '';
-			errorToast('A move-in month is required.', toastStore);
-			return;
-		}
+	async function updateMoveInMonth(tenantId: string, moveInMonth: string) {
 		const response = await fetch(`/api/property/${propertyId}/tenants`, {
 			method: 'PATCH',
 			headers: {
@@ -131,6 +125,7 @@
 			await refresh();
 		} else {
 			errorToast('Error updating move-in month.', toastStore);
+			return false;
 		}
 	}
 
@@ -151,7 +146,7 @@
 		if (response.ok) {
 			successToast('Successfully added tenant.', toastStore);
 			tenantPicker?.clear();
-			selectedMoveInMonth = '';
+			selectedMoveInMonth = monthKeyOf(new Date());
 			refresh();
 		} else {
 			const body = await response.json().catch(() => undefined);
@@ -258,14 +253,8 @@
 							class="md:row-span-2 md:grid md:grid-rows-subgrid"
 						/>
 						<div class="flex flex-col gap-2 md:row-span-2 md:grid md:grid-rows-subgrid">
-							<label class="label-text" for="move-in-month">Move-in month</label>
-							<input
-								id="move-in-month"
-								class="input"
-								type="month"
-								name="moveInMonth"
-								bind:value={selectedMoveInMonth}
-							/>
+							<span class="label-text" id="move-in-month-label">Move-in month</span>
+							<MonthPicker labelledby="move-in-month-label" bind:value={selectedMoveInMonth} />
 						</div>
 						<button
 							data-needs-hydration
@@ -278,12 +267,10 @@
 					<h2 class="h4">Current</h2>
 					<UsersListView users={data.tenants} label="tenants">
 						{#snippet actions(user)}
-							<input
-								class="input w-44"
-								type="month"
-								aria-label="Move-in month for {user.data.firstName} {user.data.lastName}"
+							<MonthPicker
+								label="Move-in month for {user.data.firstName} {user.data.lastName}"
 								value={moveInMonthOf(user.id) ?? ''}
-								onchange={(event) => updateMoveInMonth(user.id, event)}
+								onchange={(month) => updateMoveInMonth(user.id, month)}
 							/>
 							<button
 								data-needs-hydration
