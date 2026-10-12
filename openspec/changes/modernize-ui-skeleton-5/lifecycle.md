@@ -1,9 +1,9 @@
 # Lifecycle: modernize-ui-skeleton-5
 
 - Branch: `claude/practical-ptolemy-axp5zk` (the session's designated branch, created from `origin/develop` at 1f40174)
-- Stage: 5 Ship to develop (unattended): PR https://github.com/rhit-LEHMANCB/svelte-property-management/pull/125 open; waiting on the `tests` and `build_and_preview` checks (subscribed to PR activity). PR-check fix attempts: 1 of 2 (CodeQL flagged the regex that stripped <script> tags in the no-script contrast test; replaced with a `script-src 'none'` policy header, test-only).
-- Review round: 2 of 3 (exited: round 2 had no blockers or majors)
-- QA cycle: 0 of 3
+- Stage: 5 Ship to develop (QA cycle 1 fix)
+- Review round: 3 of 3 (round 3 reviewed the QA cycle 1 fix: no blockers or majors)
+- QA cycle: 1 of 3
 - Started: 2026-10-11
 
 ## Interview summary
@@ -82,7 +82,10 @@ Decisions and deviations made while implementing, recorded for the reviewer and 
 - Round 1 (2026-10-11): 0 blockers, 1 major, 4 minors, 1 nit. Fixed the major: the properties page showed two "Add Property" links when empty and the "No rows" scenario had no test (toolbar hidden when empty; new e2e empties the collection and restores it). Also fixed three minors: `refreshing` is now a counter so overlapping refreshes keep placeholders up; the no-results button is "Show all <list>" so it no longer shares the name "Clear search"; `TenantPicker` clears through an explicit `clear()` instead of an effect that wiped the user's first edit after a selection.
 - Round 2 (2026-10-12): 0 blockers, 0 majors, 6 minors, 5 nits. Review loop exits. Fixed the trivial ones: the drawer closes when the window widens past the sidebar breakpoint; the search field's Clear button is outside its label; the #86 "Open the row" scenario now says "the tenant's name" (what the row offers); `design.md` records that `cerberus` passed the contrast scan in both modes. Local suite after the fixes: lint, check, 308 unit/handler tests, build, check:server, e2e 91 passed.
 
+- Round 3 (2026-10-12, QA cycle 1 fix): 0 blockers, 0 majors, 3 minors, 3 nits. Fixed: added an `oklch()` probe to the contrast self-check; stopped exempting `aria-hidden` content (it is still seen), which exposed avatar initials at 3.07:1 light and 1.14:1 dark, fixed with a filled surface preset; documented what the check does not cover (control borders, placeholders, text over images); corrected a stale comment. Kept as history: the ticked tasks 1.2, 1.3, 2.3 and 6.3 that name `cerberus` and axe (section 9 records the change). Local suite: 308 unit/handler, 93 e2e, build, check:server.
+
 ## Deferred findings
+- (R3 minor) The contrast check does not measure control borders (3:1), placeholders or text over images; translucent layers are composited over ancestors only.
 - (R1 minor) No e2e test that the current page is kept after a row action refreshes the list; covered only by the `clampPage` unit test.
 - (R1 minor) Placeholder rows during `refresh()` unmount the row, so a keyboard user loses focus on the control they used (for example the move-in month input). The spec asks for placeholders during refresh; consider keeping rows mounted with `aria-busy` and dimming instead.
 - (R2 minor, repeat of R1) Placeholders during `refresh()` unmount row controls; same item as above. Also the move-in month input keeps an invalid value shown if the PATCH fails.
@@ -95,7 +98,12 @@ Decisions and deviations made while implementing, recorded for the reviewer and 
 - The implementation commit's message says "Closes #89, #87 and #86", so GitHub closes those issues when the PR merges into `develop`, before the production release. Reopen them if they should stay open until production.
 
 ## QA report
-(filled in stage 6; link to the QA evidence branch)
+### Cycle 1 (2026-10-12, deployed commit b5c058b, run 73)
+Result: FAIL, 3 scenarios, one `app bug`. 41 scenario checks passed, covering every `ui-accessibility`, `list-browsing`, `app-platform` and `tenant-assignment` scenario QA could reach, plus the regression pass.
+- App bug: filled primary buttons and the current navigation entry measured 3.62:1 (needs 4.5:1) in light and dark, so appearance "Contrast in light mode", "Contrast in dark mode" and "No scripts" failed. The implementer's axe scan had passed because axe cannot read `oklch()` colors and skipped those elements; QA proved it with a low-contrast probe that axe did not report.
+- Observations: the search field rendered broken (Skeleton 5 has no `input-group` classes; dark mode showed a white input box); the combobox lists two tenants both named "New User"; search also matches email text (as specified).
+- Not covered: the properties empty state on real data, page kept after a refreshing row action, combobox choice submitted with the form on real users.
+- Triage: `app bug` → fix branch. Checking every built-in theme's filled 500 pairs showed `cerberus` also fails for error (2.7:1) and warning (3.3:1); only `vintage` passes all four. Fix: theme `vintage`, direct contrast measurement with a self-check (shown to fail on `cerberus` at 3.62:1, matching QA), destructive menu items colored by icon only, search and combobox fields rebuilt. Local suite: 308 unit/handler, 92 e2e, build, check:server. QA evidence of cycle 1 (10 specs, 45 screenshots) is kept for the evidence branch.
 
 ## Verification checklist for the human
 (filled in stage 7)

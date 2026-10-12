@@ -1,34 +1,92 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ADMIN, TENANT } from '../support/constants';
-import { contrastViolations } from '../support/axe';
+import { contrastViolations } from '../support/contrast';
 import { signIn } from '../support/helpers';
 
 // appearance: one accessible theme, dark mode that follows the system, and a remembered toggle.
 
 const html = (page: Page) => page.locator('html');
 
+async function check(page: Page, where: string) {
+	expect(await contrastViolations(page), where).toEqual([]);
+}
+
 async function scanPages(page: Page) {
 	await page.goto('/signin');
 	await page.waitForLoadState('networkidle');
-	expect(await contrastViolations(page), 'sign-in page').toEqual([]);
+	await check(page, 'sign-in page');
 
 	await signIn(page, ADMIN);
 	for (const path of ['/admin', '/admin/users', '/admin/properties', '/admin/maintenance']) {
 		await page.goto(path);
 		await page.waitForLoadState('networkidle');
-		expect(await contrastViolations(page), path).toEqual([]);
+		await check(page, path);
 	}
+	// States with filled colors: a menu, a confirmation, the user-info dialog with its red Delete
+	// button, and an error toast.
+	await page.goto('/admin/users');
+	await page.waitForLoadState('networkidle');
+	await page
+		.getByRole('button', { name: /^Actions for / })
+		.first()
+		.click();
+	await check(page, 'row menu');
+	await page.getByRole('menuitem', { name: 'Delete' }).click();
+	await check(page, 'confirmation dialog');
+	await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+	await page
+		.getByRole('button', { name: `${ADMIN.firstName} ${ADMIN.lastName}`, exact: true })
+		.click();
+	await check(page, 'user-info dialog');
+	await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
 	await page.context().clearCookies();
 
 	await signIn(page, TENANT);
 	for (const path of ['/', '/maintenance', '/payment', '/profile', '/insurance']) {
 		await page.goto(path);
 		await page.waitForLoadState('networkidle');
-		expect(await contrastViolations(page), path).toEqual([]);
+		await check(page, path);
 	}
+	await page.route('**/api/signin/reset', (route) => route.fulfill({ status: 500, body: '{}' }));
+	await page.goto('/profile');
+	await page.waitForLoadState('networkidle');
+	await page.getByRole('button', { name: 'Reset', exact: true }).click();
+	await expect(page.getByRole('alert')).toBeVisible();
+	// The toast fades in; measure it once it has settled.
+	await expect.poll(() => contrastViolations(page), { message: 'error toast' }).toEqual([]);
 }
 
+test.describe('appearance: the contrast check catches low contrast', () => {
+	test('a light gray probe on white is reported', async ({ page }) => {
+		await page.goto('/signin');
+		await page.evaluate(() => {
+			const probe = document.createElement('p');
+			probe.textContent = 'low contrast probe';
+			probe.style.cssText = 'color:#ccc;background:#fff;font-size:16px';
+			document.body.prepend(probe);
+		});
+
+		expect((await contrastViolations(page)).join('\n')).toContain('low contrast probe');
+	});
+
+	test('an oklch() probe is measured, not skipped', async ({ page }) => {
+		// The theme defines its colors in oklch(); the check must read them.
+		await page.goto('/signin');
+		await page.evaluate(() => {
+			const probe = document.createElement('p');
+			probe.textContent = 'oklch probe';
+			probe.style.cssText = 'color:oklch(0.85 0 0);background:oklch(1 0 0);font-size:16px';
+			document.body.prepend(probe);
+		});
+
+		expect((await contrastViolations(page)).join('\n')).toContain('oklch probe');
+	});
+});
+
 test.describe('appearance: accessible color theme', () => {
+	// Each scan visits about a dozen pages and states.
+	test.describe.configure({ timeout: 120_000 });
+
 	test('Scenario: Contrast in light mode', async ({ browser }) => {
 		const context = await browser.newContext({ colorScheme: 'light' });
 		const page = await context.newPage();
@@ -156,9 +214,8 @@ test.describe('appearance: pages without scripts stay readable', () => {
 	});
 
 	test('Scenario: No scripts keeps AA contrast in the system mode', async ({ browser }) => {
-		// axe needs scripts, so instead of turning them off, serve the page with a policy that blocks
-		// every page script (the inline mode script included). The page then gets the same CSS-only
-		// rendering as a browser without scripts, and axe still runs from Playwright.
+		// A policy that blocks every page script (the inline mode script included) gives the same
+		// CSS-only rendering as a browser without scripts, while Playwright can still measure the page.
 		for (const colorScheme of ['dark', 'light'] as const) {
 			const context = await browser.newContext({ colorScheme });
 			const page = await context.newPage();

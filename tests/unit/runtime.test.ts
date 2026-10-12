@@ -22,8 +22,8 @@ describe('app-platform: supported server runtime', () => {
 
 	it('selects the built-in Skeleton theme that app.css imports', () => {
 		// appearance: one built-in theme on every page; app.html picks it, app.css loads its tokens.
-		expect(read('src/app.html')).toContain('data-theme="cerberus"');
-		expect(read('src/app.css')).toContain("@import '@skeletonlabs/skeleton/themes/cerberus';");
+		expect(read('src/app.html')).toContain('data-theme="vintage"');
+		expect(read('src/app.css')).toContain("@import '@skeletonlabs/skeleton/themes/vintage';");
 	});
 
 	it('ships the Skeleton component package to the deployed function', () => {
