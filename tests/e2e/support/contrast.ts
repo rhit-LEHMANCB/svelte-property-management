@@ -8,6 +8,9 @@ import type { Page } from '@playwright/test';
  * For every visible text node and form control, the text color (with opacity) is compared with the
  * backgrounds of its ancestors composited from the page root. Colors are resolved through a canvas,
  * which accepts any CSS color syntax. Returns one line per element below 4.5:1 (3:1 for large text).
+ *
+ * Not covered: control borders (3:1), placeholders, and text over images or gradients; a
+ * translucent layer is composited over its ancestors only, not over whatever is painted behind it.
  */
 export async function contrastViolations(page: Page): Promise<string[]> {
 	return page.evaluate(() => {
@@ -56,7 +59,7 @@ export async function contrastViolations(page: Page): Promise<string[]> {
 				box.height < 2 ||
 				// Inactive controls are exempt: disabled ones, and ones still waiting for hydration
 				// (app.html's noscript style makes those active when scripts are off).
-				!!el.closest('[hidden], [aria-hidden="true"], :disabled, [aria-disabled="true"]') ||
+				!!el.closest('[hidden], :disabled, [aria-disabled="true"]') ||
 				(!document.documentElement.hasAttribute('data-hydrated') &&
 					Number(getComputedStyle(el.closest('[data-needs-hydration]') ?? el).opacity) < 1)
 			);

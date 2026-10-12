@@ -21,5 +21,5 @@
 <!-- Decorative next to the visible name; falls back to initials when the photo is missing or broken. -->
 <Avatar class="{className} shrink-0" aria-hidden="true">
 	{#if src}<Avatar.Image {src} alt="" />{/if}
-	<Avatar.Fallback class="bg-surface-300-700 font-bold">{initials}</Avatar.Fallback>
+	<Avatar.Fallback class="preset-filled-surface-200-800 font-bold">{initials}</Avatar.Fallback>
 </Avatar>
