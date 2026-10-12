@@ -3,7 +3,7 @@
 
 @import '@skeletonlabs/skeleton';
 @import '@skeletonlabs/skeleton-svelte';
-@import '@skeletonlabs/skeleton/themes/vintage';
+@import '@skeletonlabs/skeleton/themes/cerberus';
 
 /*
 	Dark mode for Skeleton and the app. The inline script in app.html puts `dark` or `light` on <html>
@@ -20,9 +20,9 @@
 	}
 }
 
-/* Links: vintage's light-mode link color (primary-600) is below 4.5:1 on its surfaces. */
-[data-theme='vintage'] {
-	--typo-anchor--color-light: var(--color-primary-900);
+/* Links: cerberus's light-mode link color is 4.4:1 on its card surface; one shade darker passes. */
+[data-theme='cerberus'] {
+	--typo-anchor--color-light: var(--color-primary-700);
 }
 
 html,

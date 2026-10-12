@@ -107,7 +107,7 @@ job.
 ## UI and theming
 
 The UI is built from `@skeletonlabs/skeleton-svelte` components (Dialog, Menu, Tabs, Combobox,
-Pagination, Toast, Avatar, Navigation, App Bar) on the built-in `vintage` theme. The theme is
+Pagination, Toast, Avatar, Navigation, App Bar) on the built-in `cerberus` theme. The theme is
 chosen by `data-theme` in `src/app.html` and imported in `src/app.css`. The package is a production
 dependency because the server build leaves its `@zag-js` imports external.
 
