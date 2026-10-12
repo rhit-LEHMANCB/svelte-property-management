@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { getDrawerStore } from '$lib/ui';
-	import { page } from '$app/stores';
+	import { Navigation } from '@skeletonlabs/skeleton-svelte';
+	import { page } from '$app/state';
 	import {
 		IconBuildingEstate,
 		IconCash,
@@ -13,116 +13,93 @@
 		IconUsers
 	} from '@tabler/icons-svelte';
 
-	const drawerStore = getDrawerStore();
+	let { isAdmin, onNavigate }: { isAdmin: boolean; onNavigate?: () => void } = $props();
 
-	function drawerClose(): void {
-		drawerStore.close();
-	}
+	type Entry = {
+		label: string;
+		href: string;
+		icon: typeof IconHome;
+		/** Whether this entry is the current page; entries without it are never marked current. */
+		current?: (path: string) => boolean;
+	};
 
-	export let isAdmin: boolean;
+	const adminEntries: Entry[] = [
+		{ label: 'Home', href: '/admin', icon: IconHome, current: (p) => p === '/admin' },
+		{
+			label: 'Profile',
+			href: '/profile',
+			icon: IconUser,
+			current: (p) => p.startsWith('/profile')
+		},
+		{
+			label: 'Maintenance',
+			href: '/admin/maintenance',
+			icon: IconTool,
+			current: (p) => p.startsWith('/admin/maintenance')
+		},
+		{
+			label: 'Properties',
+			href: '/admin/properties',
+			icon: IconBuildingEstate,
+			current: (p) => p.startsWith('/admin/properties')
+		},
+		{
+			label: 'Users',
+			href: '/admin/users',
+			icon: IconUsers,
+			current: (p) => p.startsWith('/admin/users')
+		}
+	];
+
+	const tenantEntries: Entry[] = [
+		{ label: 'Dashboard', href: '/', icon: IconDashboard, current: (p) => p === '/' },
+		{
+			label: 'Maintenance',
+			href: '/maintenance',
+			icon: IconTool,
+			current: (p) => p.startsWith('/maintenance')
+		},
+		{
+			label: 'Payment',
+			href: '/payment',
+			icon: IconCash,
+			current: (p) => p.startsWith('/payment')
+		},
+		{
+			label: 'Profile',
+			href: '/profile',
+			icon: IconUser,
+			current: (p) => p.startsWith('/profile')
+		},
+		{
+			label: 'Insurance',
+			href: '/insurance',
+			icon: IconClipboardList,
+			current: (p) => p.startsWith('/insurance')
+		},
+		{ label: 'About Us', href: '/', icon: IconInfoCircle }
+	];
+
+	const entries = $derived(isAdmin ? adminEntries : tenantEntries);
 </script>
 
-<nav class="p-4">
-	<ul class="flex flex-col gap-1">
-		{#if isAdmin}
-			<li>
-				<a
-					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
-					href="/admin"
-					on:click={drawerClose}
-					class:preset-filled-primary-500={$page.url.pathname === '/admin'}
-					><IconHome class="mr-2" />Home</a
-				>
-			</li>
-			<li>
-				<a
-					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
-					href="/profile"
-					on:click={drawerClose}
-					class:preset-filled-primary-500={$page.url.pathname.startsWith('/profile')}
-					><IconUser class="mr-2" />Profile</a
-				>
-			</li>
-			<li>
-				<a
-					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
-					href="/admin/maintenance"
-					on:click={drawerClose}
-					class:preset-filled-primary-500={$page.url.pathname.startsWith('/admin/maintenance')}
-					><IconTool class="mr-2" />Maintenance</a
-				>
-			</li>
-			<li>
-				<a
-					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
-					href="/admin/properties"
-					on:click={drawerClose}
-					class:preset-filled-primary-500={$page.url.pathname.startsWith('/admin/properties')}
-					><IconBuildingEstate class="mr-2" />Properties</a
-				>
-			</li>
-			<li>
-				<a
-					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
-					href="/admin/users"
-					on:click={drawerClose}
-					class:preset-filled-primary-500={$page.url.pathname.startsWith('/admin/users')}
-					><IconUsers class="mr-2" />Users</a
-				>
-			</li>
-		{:else}
-			<li>
-				<a
-					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
-					href="/"
-					on:click={drawerClose}
-					class:preset-filled-primary-500={$page.url.pathname === '/'}
-					><IconDashboard class="mr-2" />Dashboard</a
-				>
-			</li>
-			<li>
-				<a
-					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
-					href="/maintenance"
-					on:click={drawerClose}
-					class:preset-filled-primary-500={$page.url.pathname.startsWith('/maintenance')}
-					><IconTool class="mr-2" />Maintenance</a
-				>
-			</li>
-			<li>
-				<a
-					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
-					href="/payment"
-					on:click={drawerClose}
-					class:preset-filled-primary-500={$page.url.pathname.startsWith('/payment')}
-					><IconCash class="mr-2" />Payment</a
-				>
-			</li>
-			<li>
-				<a
-					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
-					href="/profile"
-					on:click={drawerClose}
-					class:preset-filled-primary-500={$page.url.pathname.startsWith('/profile')}
-					><IconUser class="mr-2" />Profile</a
-				>
-			</li>
-			<li>
-				<a
-					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
-					href="/insurance"
-					on:click={drawerClose}
-					class:preset-filled-primary-500={$page.url.pathname.startsWith('/insurance')}
-					><IconClipboardList class="mr-2" />Insurance</a
-				>
-			</li>
-			<li>
-				<a
-					class="flex items-center rounded-base px-4 py-2 not-[.preset-filled-primary-500]:hover:preset-tonal"
-					href="/"
-					on:click={drawerClose}><IconInfoCircle class="mr-2" />About Us</a
-				>
-			</li>
-		{/if}
-	</ul>
-</nav>
+<Navigation layout="sidebar" class="h-full w-full bg-transparent p-4">
+	<Navigation.Content>
+		<nav aria-label="Main">
+			<Navigation.Menu>
+				{#each entries as entry (entry.label)}
+					{@const isCurrent = entry.current?.(page.url.pathname) ?? false}
+					<Navigation.TriggerAnchor
+						href={entry.href}
+						aria-current={isCurrent ? 'page' : undefined}
+						class={isCurrent ? 'preset-filled-primary-500' : 'hover:preset-tonal'}
+						onclick={() => onNavigate?.()}
+					>
+						<entry.icon class="size-5" aria-hidden="true" />
+						<Navigation.TriggerText>{entry.label}</Navigation.TriggerText>
+					</Navigation.TriggerAnchor>
+				{/each}
+			</Navigation.Menu>
+		</nav>
+	</Navigation.Content>
+</Navigation>

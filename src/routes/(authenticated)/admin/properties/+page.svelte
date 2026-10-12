@@ -1,49 +1,50 @@
 <script lang="ts">
-	import { Avatar, Paginator, getToastStore } from '$lib/ui';
-	import { IconHomeMinus, IconHomePlus, IconPhotoCancel } from '@tabler/icons-svelte';
-	import { getModalStore, type ModalSettings } from '$lib/ui';
+	import { getModalStore, getToastStore } from '$lib/ui';
+	import {
+		IconBuildingEstate,
+		IconEdit,
+		IconHomeMinus,
+		IconHomePlus,
+		IconPhotoCancel
+	} from '@tabler/icons-svelte';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
-	import { goto, invalidateAll } from '$app/navigation';
+	import { refresh } from '$lib/Hooks/refresh';
+	import { goto } from '$app/navigation';
 	import type { PageData } from './$types';
 	import type { DocumentWithId } from '../../../../app';
+	import DataList, { type DataColumn } from '$lib/Components/DataList/DataList.svelte';
+	import RowMenu from '$lib/Components/DataList/RowMenu.svelte';
+	import EmptyState from '$lib/Components/DataList/EmptyState.svelte';
+	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
+
+	let { data }: { data: PageData } = $props();
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
 
-	export let data: PageData;
+	const address = (property: DocumentWithId) =>
+		[property.data.streetAddress, property.data.city, property.data.state]
+			.filter(Boolean)
+			.join(', ');
 
-	let page = {
-		page: 0,
-		limit: 5,
-		size: data.properties.length,
-		amounts: [1, 2, 5, 10]
-	};
+	const columns: DataColumn<DocumentWithId>[] = [
+		{ id: 'title', label: 'Property', sort: (property) => property.data.title },
+		{ id: 'address', label: 'Address', sort: address },
+		{ id: 'rent', label: 'Rent', sort: (property) => Number(property.data.rent) || undefined },
+		{ id: 'actions', label: 'Actions', srOnly: true, class: 'text-right' }
+	];
 
-	$: paginatedProperties = data.properties.slice(
-		page.page * page.limit, // start
-		page.page * page.limit + page.limit // end
-	);
-
-	async function handleConfirmResponse(confirmed: boolean, userId: string) {
-		if (confirmed) {
-			await removeProperty(userId);
-		}
-	}
+	const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
 	function confirmModal(property: DocumentWithId) {
-		const confirmModal: ModalSettings = {
+		modalStore.trigger({
 			type: 'confirm',
-			// Data
 			title: 'Please Confirm',
 			body: `Are you sure you wish to delete ${property.data.title}?`,
-			// TRUE if confirm pressed, FALSE if cancel pressed
-			response: (response) => handleConfirmResponse(response, property.id)
-		};
-		modalStore.trigger(confirmModal);
-	}
-
-	function addPropertyClicked() {
-		goto('/admin/properties/add');
+			response: (confirmed: boolean) => {
+				if (confirmed) removeProperty(property.id);
+			}
+		});
 	}
 
 	async function removeProperty(id: string) {
@@ -52,46 +53,83 @@
 		});
 		if (response.ok) {
 			successToast('Property Successfully Removed.', toastStore);
-			invalidateAll();
+			refresh();
 		} else {
 			errorToast('Error removing property.', toastStore);
 		}
 	}
-
-	function handleDeleteClick(event: Event, property: DocumentWithId) {
-		event.preventDefault();
-		confirmModal(property);
-	}
 </script>
 
-<div class="grid grid-flow-row p-5 gap-5">
-	<button
-		data-needs-hydration
-		on:click={addPropertyClicked}
-		class="btn btn-sm preset-filled-primary-500 justify-self-start"
-		><IconHomePlus class="mr-2" />Add Property</button
+{#snippet addButton()}
+	<a href="/admin/properties/add" class="btn preset-filled-primary-500"
+		><IconHomePlus class="size-5" aria-hidden="true" />Add Property</a
 	>
-	<ul class="list">
-		{#each paginatedProperties as property}
-			<a href={`/admin/properties/${property.id}/edit`} class="card bg-surface-200 flex p-2">
-				<li class="w-full">
-					{#if property.data.photos?.length}
-						<Avatar src={property.data.photos[0].photoUrl} rounded="rounded-none" width="w-32" />
-					{:else}
-						<IconPhotoCancel size={128} />
-					{/if}
+{/snippet}
 
-					<strong class="h4">{`${property.data.title}`}</strong>
-					<div class="flex grow justify-end">
-						<button
-							data-needs-hydration
-							on:click={(event) => handleDeleteClick(event, property)}
-							class="btn-icon btn-sm preset-filled-error-500"><IconHomeMinus /></button
+<div class="space-y-4 p-4 sm:p-6">
+	<PageHeader title="Properties" />
+	<DataList
+		label="properties"
+		items={data.properties}
+		key={(property) => property.id}
+		{columns}
+		sortBy="title"
+		searchText={(property) => `${property.data.title ?? ''} ${address(property)}`}
+		toolbar={data.properties.length > 0 ? addButton : undefined}
+	>
+		{#snippet cell(property, column)}
+			{#if column.id === 'title'}
+				<a
+					href={`/admin/properties/${property.id}/edit`}
+					class="flex items-center gap-3 font-bold hover:underline"
+				>
+					{#if property.data.photos?.length}
+						<img
+							src={property.data.photos[0].photoUrl}
+							alt=""
+							class="rounded-base size-16 shrink-0 object-cover"
+						/>
+					{:else}
+						<span
+							class="rounded-base bg-surface-200-800 flex size-16 shrink-0 items-center justify-center"
 						>
-					</div>
-				</li>
-			</a>
-		{/each}
-	</ul>
-	<Paginator bind:settings={page} />
+							<IconPhotoCancel size={28} aria-hidden="true" />
+						</span>
+					{/if}
+					<span>{property.data.title}</span>
+				</a>
+			{:else if column.id === 'address'}
+				{address(property)}
+			{:else if column.id === 'rent'}
+				{Number.isFinite(Number(property.data.rent))
+					? currency.format(Number(property.data.rent))
+					: ''}
+			{:else if column.id === 'actions'}
+				<div class="flex justify-end">
+					<RowMenu
+						label="Actions for {property.data.title}"
+						actions={[
+							{
+								label: 'Edit',
+								icon: IconEdit,
+								run: () => goto(`/admin/properties/${property.id}/edit`)
+							},
+							{
+								label: 'Delete',
+								icon: IconHomeMinus,
+								danger: true,
+								run: () => confirmModal(property)
+							}
+						]}
+					/>
+				</div>
+			{/if}
+		{/snippet}
+		{#snippet empty()}
+			<EmptyState icon={IconBuildingEstate} title="No properties yet">
+				Add your first property to assign tenants and take rent payments.
+				{#snippet action()}{@render addButton()}{/snippet}
+			</EmptyState>
+		{/snippet}
+	</DataList>
 </div>

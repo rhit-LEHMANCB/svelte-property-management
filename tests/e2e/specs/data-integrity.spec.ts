@@ -220,6 +220,29 @@ test.describe('app-platform: controls wait for hydration', () => {
 	});
 });
 
+test.describe('app-platform: new shell and list controls wait for hydration', () => {
+	test('Scenario: the theme toggle, a row menu and the drawer button are inert until hydration', async ({
+		page
+	}) => {
+		await signIn(page, ADMIN);
+		await page.setViewportSize({ width: 390, height: 800 });
+		await holdScripts(page);
+		await page.goto('/admin/users', { waitUntil: 'domcontentloaded' });
+		const controls = [
+			page.getByRole('button', { name: 'Dark mode' }),
+			page.getByRole('button', { name: /^Actions for / }).first(),
+			page.getByRole('button', { name: 'Open menu' })
+		];
+
+		for (const control of controls) await expect(control).toHaveCSS('pointer-events', 'none');
+
+		await expect(page.locator('html')).toHaveAttribute('data-hydrated', '');
+		for (const control of controls) await expect(control).toHaveCSS('pointer-events', 'auto');
+		await controls[1].click();
+		await expect(page.getByRole('menu')).toBeVisible();
+	});
+});
+
 test.describe('access-control: a tenant without a property', () => {
 	const EMAIL = 'no-property@e2e.test';
 	const PASSWORD = 'E2e-NoProperty-Passw0rd';

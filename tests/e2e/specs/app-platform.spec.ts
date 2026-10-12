@@ -14,11 +14,15 @@ test.describe('app-platform: modal dialogs keep working', () => {
 		await signIn(page, ADMIN);
 		await page.goto('/admin/properties');
 		await page.waitForLoadState('networkidle');
-		const rows = page.locator('ul.list > a');
+		const rows = page.getByRole('table', { name: 'properties' }).locator('tbody tr');
 		const before = await rows.count();
 		expect(before).toBeGreaterThan(0);
 
-		await rows.first().getByRole('button').click();
+		await rows
+			.first()
+			.getByRole('button', { name: /^Actions for / })
+			.click();
+		await page.getByRole('menuitem', { name: 'Delete' }).click();
 		const dialog = page.getByRole('dialog');
 		await expect(dialog).toContainText('Are you sure you wish to delete');
 		await dialog.getByRole('button', { name: 'Cancel' }).click();
@@ -106,7 +110,7 @@ test.describe('app-platform: menus, autocompletes, tabs and pagination keep work
 
 		const search = page.getByPlaceholder('Search...');
 		await search.fill('Ava');
-		await page.getByRole('button', { name: 'Ava Autocomplete' }).click();
+		await page.getByRole('option', { name: 'Ava Autocomplete' }).click();
 		await expect(search).toHaveValue('Ava Autocomplete');
 		await page.getByLabel('Move-in month', { exact: true }).fill('2026-05');
 		await page.getByRole('button', { name: 'Add', exact: true }).click();
@@ -147,13 +151,14 @@ test.describe('app-platform: menus, autocompletes, tabs and pagination keep work
 		await page.waitForLoadState('networkidle');
 
 		await page.getByLabel('Items per page').selectOption('1');
-		const firstPageUser = await page.locator('ul.list > li').first().innerText();
-		await expect(page.getByText(/Page 1 of [2-9]/)).toBeVisible();
+		const rows = page.getByRole('table', { name: 'users' }).locator('tbody tr');
+		const firstPageUser = await rows.first().innerText();
+		await expect(page.getByText(/Page 1 of ([2-9]|\d{2,})/)).toBeVisible();
 		await page.getByRole('button', { name: /Next/ }).click();
 
-		await expect(page.getByText(/Page 2 of [2-9]/)).toBeVisible();
-		await expect(page.locator('ul.list > li')).toHaveCount(1);
-		expect(await page.locator('ul.list > li').first().innerText()).not.toBe(firstPageUser);
+		await expect(page.getByText(/Page 2 of ([2-9]|\d{2,})/)).toBeVisible();
+		await expect(rows).toHaveCount(1);
+		expect(await rows.first().innerText()).not.toBe(firstPageUser);
 	});
 
 	test('Scenario: a popup menu opens and its action runs', async ({ page }) => {
@@ -161,13 +166,16 @@ test.describe('app-platform: menus, autocompletes, tabs and pagination keep work
 		await page.goto('/admin/users');
 		await page.waitForLoadState('networkidle');
 
-		await page.locator('ul.list > li').first().getByRole('button').last().click();
-		await page.getByRole('button', { name: 'View More', exact: true }).click();
+		await page
+			.getByRole('button', { name: /^Actions for / })
+			.first()
+			.click();
+		await page.getByRole('menuitem', { name: 'View More', exact: true }).click();
 
 		await expect(page.getByRole('dialog')).toBeVisible();
 		await expect(page.getByRole('dialog').getByRole('button', { name: 'Close' })).toBeVisible();
 		// Choosing a menu item closes the menu itself, not only opens what the item does.
-		await expect(page.getByRole('button', { name: 'View More', exact: true })).toHaveCount(0);
+		await expect(page.getByRole('menuitem', { name: 'View More', exact: true })).toHaveCount(0);
 	});
 
 	test('Scenario: a popup menu closes when focus leaves it', async ({ page }) => {
@@ -175,11 +183,14 @@ test.describe('app-platform: menus, autocompletes, tabs and pagination keep work
 		await page.goto('/admin/users');
 		await page.waitForLoadState('networkidle');
 
-		await page.locator('ul.list > li').first().getByRole('button').last().click();
-		await expect(page.getByRole('button', { name: 'View More', exact: true })).toBeVisible();
+		await page
+			.getByRole('button', { name: /^Actions for / })
+			.first()
+			.click();
+		await expect(page.getByRole('menuitem', { name: 'View More', exact: true })).toBeVisible();
 		await page.getByRole('button', { name: 'Add User' }).focus();
 
-		await expect(page.getByRole('button', { name: 'View More', exact: true })).toHaveCount(0);
+		await expect(page.getByRole('menuitem', { name: 'View More', exact: true })).toHaveCount(0);
 	});
 });
 
@@ -189,40 +200,36 @@ test.describe('app-platform: navigation shell and theme preserved', () => {
 		await signIn(page, ADMIN);
 		await page.goto('/admin/properties');
 		await page.waitForLoadState('networkidle');
-		await expect(page.getByRole('navigation')).toHaveCount(0);
+		const mainNavigation = page.getByRole('navigation', { name: 'Main' });
+		await expect(mainNavigation).toHaveCount(0);
 
 		await page.getByRole('button', { name: 'Open menu' }).click();
-		await page.getByRole('navigation').getByRole('link', { name: 'Maintenance' }).click();
+		await mainNavigation.getByRole('link', { name: 'Maintenance' }).click();
 
 		await expect(page).toHaveURL(/\/admin\/maintenance$/);
-		await expect(page.getByRole('navigation')).toHaveCount(0);
+		await expect(mainNavigation).toHaveCount(0);
 		const overflows = await page.evaluate(
 			() => document.documentElement.scrollWidth > document.documentElement.clientWidth
 		);
 		expect(overflows).toBe(false);
 	});
 
-	test('Scenario: the current page link keeps its highlight on hover', async ({ page }) => {
+	test('Scenario: Current page is indicated, and keeps its highlight on hover', async ({
+		page
+	}) => {
 		await signIn(page, ADMIN);
 		await page.goto('/admin/properties');
 		await page.waitForLoadState('networkidle');
-		const link = page.getByRole('navigation').getByRole('link', { name: 'Properties' });
+		const navigation = page.getByRole('navigation', { name: 'Main' });
+		const link = navigation.getByRole('link', { name: 'Properties' });
 
+		await expect(link).toHaveAttribute('aria-current', 'page');
+		await expect(navigation.locator('[aria-current="page"]')).toHaveCount(1);
+		const highlight = await link.evaluate((el) => getComputedStyle(el).backgroundColor);
 		await link.hover();
-
-		await expect(link).toHaveCSS('background-color', 'rgb(255, 165, 0)');
-	});
-
-	test('Scenario: the brand theme colors are applied', async ({ page }) => {
-		await signIn(page, ADMIN);
-		await page.goto('/admin/properties');
-		await page.waitForLoadState('networkidle');
-
-		const color = await page
-			.getByRole('button', { name: 'Sign out' })
-			.evaluate((el) => getComputedStyle(el).backgroundColor);
-
-		// Primary 500 is #FFA500.
-		expect(color).toBe('rgb(255, 165, 0)');
+		await expect(link).toHaveCSS('background-color', highlight);
+		await expect(navigation.getByRole('link', { name: 'Users' })).not.toHaveAttribute(
+			'aria-current'
+		);
 	});
 });

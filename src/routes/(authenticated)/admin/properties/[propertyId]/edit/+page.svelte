@@ -1,45 +1,46 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import PropertyForm from '$lib/Components/Forms/PropertyForm.svelte';
+	import TenantPicker, { type PickerOption } from '$lib/Components/Forms/TenantPicker.svelte';
 	import { enhance } from '$app/forms';
 	import SortablePhotos from '$lib/Components/SortablePhotos.svelte';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
-	import { page } from '$app/stores';
-	import { goto, invalidateAll } from '$app/navigation';
-	import {
-		Autocomplete,
-		popup,
-		type AutocompleteOption,
-		type PopupSettings,
-		Tab,
-		TabGroup,
-		getToastStore,
-		type ModalSettings,
-		getModalStore
-	} from '$lib/ui';
+	import { refresh } from '$lib/Hooks/refresh';
+	import { page } from '$app/state';
+	import { Tabs } from '@skeletonlabs/skeleton-svelte';
+	import { getToastStore, getModalStore } from '$lib/ui';
 	import {
 		IconArrowLeft,
 		IconInfoCircle,
 		IconPhoto,
 		IconUserDollar,
-		IconLinkMinus
+		IconLinkMinus,
+		IconUsers
 	} from '@tabler/icons-svelte';
 	import type { DocumentWithId, PhotoItem } from '../../../../../../app';
 	import UsersListView from '$lib/Components/Users/UsersListView.svelte';
+	import EmptyState from '$lib/Components/DataList/EmptyState.svelte';
+	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
+
+	let { data }: { data: PageData } = $props();
 
 	const toastStore = getToastStore();
 	const modalStore = getModalStore();
 
-	export let data: PageData;
+	const propertyId = $derived(page.params.propertyId);
 
-	$: photos = data.photos;
-	let selectedTenantName = '';
-	let selectedTenantId = '';
+	// Reordering shows the new order at once, before the server confirms it.
+	let reordered = $state<PhotoItem[] | undefined>();
+	const photos = $derived(reordered ?? data.photos);
+	let selectedTenant = $state<PickerOption | undefined>();
+	let tenantPicker = $state<ReturnType<typeof TenantPicker>>();
+	let selectedMoveInMonth = $state('');
+	let tab = $state('info');
 
 	async function sortList(e: CustomEvent) {
 		const newList = e.detail;
-		photos = newList;
-		const response = await fetch(`/api/property/${$page.params.propertyId}/photos`, {
+		reordered = newList;
+		const response = await fetch(`/api/property/${propertyId}/photos`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
@@ -47,14 +48,15 @@
 			body: JSON.stringify({ photos: newList })
 		});
 		if (response.ok) {
-			invalidateAll();
+			await refresh();
 		} else {
 			errorToast('Error reordering photos.', toastStore);
 		}
+		reordered = undefined;
 	}
 
 	async function deleteLink(item: PhotoItem) {
-		const response = await fetch(`/api/property/${$page.params.propertyId}/photos`, {
+		const response = await fetch(`/api/property/${propertyId}/photos`, {
 			method: 'DELETE',
 			headers: {
 				'Content-Type': 'application/json'
@@ -64,7 +66,7 @@
 
 		if (response.ok) {
 			successToast('Photo successfully deleted.', toastStore);
-			invalidateAll();
+			refresh();
 		} else {
 			errorToast('Error deleting photo.', toastStore);
 		}
@@ -76,31 +78,19 @@
 		}
 	}
 
-	function onTenantSelect(event: CustomEvent<AutocompleteOption>): void {
-		selectedTenantName = event.detail.label;
-		selectedTenantId = event.detail.value as string;
-	}
-
 	function confirmModal(user: DocumentWithId) {
-		const confirmModal: ModalSettings = {
+		modalStore.trigger({
 			type: 'confirm',
-			// Data
 			title: 'Please Confirm',
 			body: `Are you sure you wish to remove ${user.data.firstName} ${user.data.lastName} from this property?`,
-			// TRUE if confirm pressed, FALSE if cancel pressed
-			response: (response) => handleConfirmResponse(response, user.id)
-		};
-		modalStore.trigger(confirmModal);
-	}
-
-	async function handleConfirmResponse(confirmed: boolean, userId: string) {
-		if (confirmed) {
-			await removeJunction(userId);
-		}
+			response: (confirmed: boolean) => {
+				if (confirmed) removeJunction(user.id);
+			}
+		});
 	}
 
 	async function removeJunction(id: string) {
-		const response = await fetch(`/api/property/${$page.params.propertyId}/tenants`, {
+		const response = await fetch(`/api/property/${propertyId}/tenants`, {
 			method: 'DELETE',
 			headers: {
 				'Content-Type': 'application/json'
@@ -109,13 +99,11 @@
 		});
 		if (response.ok) {
 			successToast('User successfully removed from property.', toastStore);
-			invalidateAll();
+			refresh();
 		} else {
 			errorToast('Error removing user.', toastStore);
 		}
 	}
-
-	let selectedMoveInMonth = '';
 
 	function moveInMonthOf(tenantId: string) {
 		return (data.tenants as { id: string; moveInMonth?: string }[]).find((t) => t.id === tenantId)
@@ -131,7 +119,7 @@
 			errorToast('A move-in month is required.', toastStore);
 			return;
 		}
-		const response = await fetch(`/api/property/${$page.params.propertyId}/tenants`, {
+		const response = await fetch(`/api/property/${propertyId}/tenants`, {
 			method: 'PATCH',
 			headers: {
 				'Content-Type': 'application/json'
@@ -140,177 +128,173 @@
 		});
 		if (response.ok) {
 			successToast('Move-in month updated.', toastStore);
-			await invalidateAll();
+			await refresh();
 		} else {
 			errorToast('Error updating move-in month.', toastStore);
 		}
 	}
 
 	async function addTenant() {
-		if (!selectedTenantName || !selectedTenantId) {
+		if (!selectedTenant) {
 			return;
 		}
-		const response = await fetch(`/api/property/${$page.params.propertyId}/tenants`, {
+		const response = await fetch(`/api/property/${propertyId}/tenants`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
-				tenantId: selectedTenantId,
+				tenantId: selectedTenant.value,
 				...(selectedMoveInMonth && { moveInMonth: selectedMoveInMonth })
 			})
 		});
 		if (response.ok) {
 			successToast('Successfully added tenant.', toastStore);
-			selectedTenantId = '';
-			selectedTenantName = '';
+			tenantPicker?.clear();
 			selectedMoveInMonth = '';
-			invalidateAll();
+			refresh();
 		} else {
 			const body = await response.json().catch(() => undefined);
 			errorToast(body?.message ?? 'Error adding tenant.', toastStore);
 		}
 	}
-
-	let popupSettings: PopupSettings = {
-		event: 'focus-click',
-		target: 'popupAutocomplete',
-		placement: 'bottom'
-	};
-
-	let tabSet = 0;
 </script>
 
-<div class="flex flex-row justify-between py-5">
-	<button
-		data-needs-hydration
-		on:click={() => goto('/admin/properties')}
-		class="btn btn-sm preset-filled-primary-500 ml-5"
-		><IconArrowLeft class="mr-2" />Properties</button
-	>
-	<strong class="h3 mx-5 truncate">{data.form.data.title}</strong>
-</div>
-<hr />
-<TabGroup>
-	<Tab bind:group={tabSet} name="info" value={0}>
-		<div class="flex gap-2">
-			<IconInfoCircle />
-			<span>Info</span>
-		</div>
-	</Tab>
-	<Tab bind:group={tabSet} name="photos" value={1}
-		><div class="flex gap-2">
-			<IconPhoto />
-			<span>Photos</span>
-		</div></Tab
-	>
-	<Tab bind:group={tabSet} name="tenants" value={2}
-		><div class="flex gap-2">
-			<IconUserDollar />
-			<span>Tenants</span>
-		</div></Tab
-	>
-	<!-- Tab Panels --->
-	<svelte:fragment slot="panel">
-		{#if tabSet === 0}
-			<PropertyForm data={data.form} />
-		{:else if tabSet === 1}
-			<form
-				class="flex flex-col gap-4 m-5 pb-5"
-				use:enhance
-				method="POST"
-				action="?/photos"
-				enctype="multipart/form-data"
+<div class="space-y-4 p-4 sm:p-6">
+	<PageHeader title={data.form.data.title}>
+		<a href="/admin/properties" class="btn btn-sm preset-tonal order-first"
+			><IconArrowLeft class="size-4" aria-hidden="true" />Properties</a
+		>
+	</PageHeader>
+
+	<!-- Tabs: arrow keys move between tabs; only the selected panel is rendered. -->
+	<Tabs value={tab} onValueChange={(details) => (tab = details.value)}>
+		<Tabs.List class="border-surface-200-800 border-b">
+			<Tabs.Trigger value="info" class="btn hover:preset-tonal"
+				><IconInfoCircle class="size-5" aria-hidden="true" />Info</Tabs.Trigger
 			>
-				<strong class="h4">Photos</strong>
-				<div class="grid grid-cols-4 lg:grid-cols-8 gap-4">
-					<input
-						name="photos"
-						class="input col-span-3"
-						type="file"
-						multiple
-						accept="image/png, image/jpeg, image/gif, image/webp"
-					/>
-					<div>
-						<button type="submit" class="btn preset-filled-secondary-500">Add</button>
-					</div>
+			<Tabs.Trigger value="photos" class="btn hover:preset-tonal"
+				><IconPhoto class="size-5" aria-hidden="true" />Photos</Tabs.Trigger
+			>
+			<Tabs.Trigger value="tenants" class="btn hover:preset-tonal"
+				><IconUserDollar class="size-5" aria-hidden="true" />Tenants</Tabs.Trigger
+			>
+			<Tabs.Indicator class="bg-primary-500 h-0.5" />
+		</Tabs.List>
+		<Tabs.Content value="info" class="pt-4">
+			{#if tab === 'info'}
+				<div class="card bg-surface-100-900 p-4 sm:p-6">
+					<PropertyForm data={data.form} />
 				</div>
-				<SortablePhotos list={photos} on:sort={sortList} let:item let:index>
-					<div class="group relative">
-						<div class="w-40 h-40 overflow-hidden flex items-center justify-center">
-							<img src={item.photoUrl} alt={item.id} on:error={(ev) => handleError(ev, item)} />
-						</div>
-						<button
-							data-needs-hydration
-							on:click={() => deleteLink(item)}
-							class="chip preset-filled-error-500 invisible group-hover:visible transition-all absolute -right-2 -bottom-4"
-							>Delete</button
-						>
-						<span class="badge-icon preset-filled absolute -left-3 -top-3">{index + 1}</span>
-					</div>
-				</SortablePhotos>
-			</form>
-		{:else if tabSet === 2}
-			<form class="flex flex-col gap-4 mx-5 mt-5">
-				<strong class="h4">Tenants</strong>
-				<div class="grid grid-cols-4 lg:grid-cols-8 gap-4">
-					<input
-						class="input autocomplete col-span-3"
-						type="search"
-						name="tenants"
-						bind:value={selectedTenantName}
-						placeholder="Search..."
-						use:popup={popupSettings}
-					/>
-					<input
-						class="input col-span-3"
-						type="month"
-						name="moveInMonth"
-						aria-label="Move-in month"
-						bind:value={selectedMoveInMonth}
-					/>
-					<div class="justify-self-start">
-						<button
-							data-needs-hydration
-							on:click={addTenant}
-							class="btn preset-filled-secondary-500">Add</button
-						>
-					</div>
-				</div>
-				<div class="card w-full max-w-sm shadow-xl" data-popup="popupAutocomplete">
-					<div class="max-h-96 overflow-auto">
-						<Autocomplete
-							bind:input={selectedTenantName}
-							options={data.usersOptions}
-							on:selection={onTenantSelect}
-						/>
-					</div>
-					<div class="arrow bg-surface-100-900"></div>
-				</div>
-			</form>
-			<div class="p-5">
-				<strong class="h4">Current</strong>
-				{#if data.tenants.length > 0}
-					<UsersListView users={data.tenants} class="pt-2">
-						<svelte:fragment slot="actionButton" let:user>
+			{/if}
+		</Tabs.Content>
+		<Tabs.Content value="photos" class="pt-4">
+			{#if tab === 'photos'}
+				<form
+					class="card bg-surface-100-900 flex flex-col gap-4 p-4 sm:p-6"
+					use:enhance
+					method="POST"
+					action="?/photos"
+					enctype="multipart/form-data"
+				>
+					<h2 class="h4">Photos</h2>
+					<div class="flex flex-wrap items-center gap-3">
+						<label class="label min-w-0 flex-auto">
+							<span class="sr-only">Photos to upload</span>
 							<input
-								class="input w-40 mr-2"
+								name="photos"
+								class="input"
+								type="file"
+								multiple
+								accept="image/png, image/jpeg, image/gif, image/webp"
+							/>
+						</label>
+						<button type="submit" class="btn preset-filled-primary-500">Add</button>
+					</div>
+					<SortablePhotos list={photos} on:sort={sortList} let:item let:index>
+						<div class="relative">
+							<div class="flex size-40 items-center justify-center overflow-hidden">
+								<img
+									src={item.photoUrl}
+									alt="Photo {index + 1}"
+									onerror={(ev) => handleError(ev, item)}
+								/>
+							</div>
+							<button
+								data-needs-hydration
+								type="button"
+								onclick={() => deleteLink(item)}
+								aria-label="Delete photo {index + 1}"
+								class="chip preset-filled-error-500 absolute -right-2 -bottom-3">Delete</button
+							>
+							<span class="badge-icon preset-filled absolute -top-3 -left-3" aria-hidden="true"
+								>{index + 1}</span
+							>
+						</div>
+					</SortablePhotos>
+				</form>
+			{/if}
+		</Tabs.Content>
+		<Tabs.Content value="tenants" class="space-y-4 pt-4">
+			{#if tab === 'tenants'}
+				<form
+					class="card bg-surface-100-900 flex flex-col gap-4 p-4 sm:p-6"
+					onsubmit={(event) => {
+						event.preventDefault();
+						addTenant();
+					}}
+				>
+					<h2 class="h4">Tenants</h2>
+					<div class="grid items-end gap-3 md:grid-cols-[1fr_auto_auto]">
+						<TenantPicker
+							bind:this={tenantPicker}
+							label="Tenant"
+							options={data.usersOptions}
+							bind:selected={selectedTenant}
+						/>
+						<label class="label">
+							<span class="label-text">Move-in month</span>
+							<input
+								class="input"
+								type="month"
+								name="moveInMonth"
+								aria-label="Move-in month"
+								bind:value={selectedMoveInMonth}
+							/>
+						</label>
+						<button data-needs-hydration type="submit" class="btn preset-filled-primary-500"
+							>Add</button
+						>
+					</div>
+				</form>
+				<section class="space-y-3">
+					<h2 class="h4">Current</h2>
+					<UsersListView users={data.tenants} label="tenants">
+						{#snippet actions(user)}
+							<input
+								class="input w-44"
 								type="month"
 								aria-label="Move-in month for {user.data.firstName} {user.data.lastName}"
 								value={moveInMonthOf(user.id) ?? ''}
-								on:change={(event) => updateMoveInMonth(user.id, event)}
+								onchange={(event) => updateMoveInMonth(user.id, event)}
 							/>
 							<button
 								data-needs-hydration
-								on:click={() => confirmModal(user)}
-								class="btn-icon btn-sm preset-filled-error-500"><IconLinkMinus /></button
+								type="button"
+								onclick={() => confirmModal(user)}
+								aria-label="Remove {user.data.firstName} {user.data.lastName} from this property"
+								class="btn-icon btn-icon-sm preset-filled-error-500"
+								><IconLinkMinus size={18} /></button
 							>
-						</svelte:fragment>
+						{/snippet}
+						{#snippet empty()}
+							<EmptyState icon={IconUsers} title="No tenants">
+								Choose a tenant above to assign them to this property.
+							</EmptyState>
+						{/snippet}
 					</UsersListView>
-				{:else}
-					<div>No tenants</div>
-				{/if}
-			</div>
-		{/if}
-	</svelte:fragment>
-</TabGroup>
+				</section>
+			{/if}
+		</Tabs.Content>
+	</Tabs>
+</div>

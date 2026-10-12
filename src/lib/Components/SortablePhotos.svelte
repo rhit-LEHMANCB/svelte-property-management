@@ -50,10 +50,10 @@
 </script>
 
 {#if list?.length}
-	<ul class="list-none p-0 flex flex-row flex-wrap">
+	<ul class="flex list-none flex-row flex-wrap gap-4 p-0">
 		{#each list as item, index (item.id)}
 			<li
-				class="card hover:preset-tonal bg-surface-200 border-2 border-dashed p-2 transition-all cursor-grab"
+				class="card bg-surface-100-900 hover:preset-tonal cursor-grab border-2 border-dashed p-2 transition-all"
 				class:border-transparent={item.id !== isOver}
 				class:border-surface-500={item.id === isOver}
 				data-index={index}
@@ -70,5 +70,5 @@
 		{/each}
 	</ul>
 {:else}
-	<p class="text-center my-12 text-lg font-bold">No items</p>
+	<p class="my-12 text-center text-lg font-bold">No photos yet</p>
 {/if}

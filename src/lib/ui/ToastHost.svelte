@@ -1,28 +1,33 @@
 <script lang="ts">
-	import { fly } from 'svelte/transition';
+	import { Toast } from '@skeletonlabs/skeleton-svelte';
+	import { IconX } from '@tabler/icons-svelte';
 	import { getToastStore } from './stores';
 
 	const toastStore = getToastStore();
+
+	const styles: Record<string, string> = {
+		success: 'preset-filled-success-500',
+		error: 'preset-filled-error-500',
+		info: 'preset-filled-surface-950-50'
+	};
 </script>
 
-<div
-	class="pointer-events-none fixed inset-x-0 bottom-4 z-[1000] flex flex-col items-center gap-2 px-4"
-	aria-live="polite"
->
-	{#each $toastStore as toast (toast.id)}
-		<div
-			role="alert"
-			class="card pointer-events-auto flex w-full max-w-lg items-center gap-4 p-4 shadow-xl {toast.background ??
-				'preset-filled'}"
-			transition:fly={{ y: 24, duration: 150 }}
+<!-- The group is a polite live region; error toasts are alerts so they are announced at once. -->
+<Toast.Group toaster={toastStore.toaster} aria-label="Notifications">
+	{#snippet children(toast)}
+		<Toast
+			{toast}
+			role={toast.type === 'error' ? 'alert' : 'status'}
+			class="card flex w-[min(92vw,32rem)] items-center gap-4 p-4 shadow-xl {styles[
+				String(toast.type)
+			] ?? styles.info}"
 		>
-			<span class="flex-auto">{toast.message}</span>
-			<button
-				type="button"
-				class="btn-icon btn-icon-sm"
-				aria-label="Dismiss"
-				on:click={() => toastStore.close(toast.id)}>✕</button
-			>
-		</div>
-	{/each}
-</div>
+			<Toast.Message class="flex-auto">
+				<Toast.Description>{toast.description}</Toast.Description>
+			</Toast.Message>
+			<Toast.CloseTrigger class="btn-icon btn-icon-sm" aria-label="Dismiss">
+				<IconX size={18} />
+			</Toast.CloseTrigger>
+		</Toast>
+	{/snippet}
+</Toast.Group>
