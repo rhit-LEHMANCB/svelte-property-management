@@ -54,3 +54,8 @@
 - [x] 9.1 Replace the axe contrast scan with a direct WCAG ratio check (`tests/e2e/support/contrast.ts`), add a self-check that it reports a low-contrast probe, and scan the row menu, confirmation, user-info dialog and error toast states too; verify the self-check passes and the scan fails on the old theme
 - [x] 9.2 Switch the theme to `vintage`, the only built-in preset whose filled primary, success, warning and error pairs reach 4.5:1, and color only the icon of destructive menu items; verify the contrast scans pass in light, dark and no-script mode
 - [x] 9.3 Rebuild the search field and the tenant combobox control without the `input-group` classes, which Skeleton 5 does not provide; verify the list-browsing and combobox e2e specs pass
+
+## 10. QA cycle 2 fixes
+
+- [x] 10.1 Return focus to the menu button after a drawer link is chosen (SvelteKit resets focus on navigation); verify a new keyboard e2e that fails without the fix and passes with it
+- [x] 10.2 Darken light-mode links (`--typo-anchor--color-light` to primary-900) and extend the contrast scan to the user-info dialog's property link and the closed-requests address links; verify the scan reports the old color at 3.39:1 and passes with the fix
