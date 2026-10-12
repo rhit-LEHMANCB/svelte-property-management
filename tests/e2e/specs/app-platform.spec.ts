@@ -188,6 +188,10 @@ test.describe('app-platform: menus, autocompletes, tabs and pagination keep work
 			.first()
 			.click();
 		await expect(page.getByRole('menuitem', { name: 'View More', exact: true })).toBeVisible();
+		// The menu moves focus into itself once it has opened; wait for that before moving it out.
+		await expect
+			.poll(() => page.evaluate(() => !!document.activeElement?.closest('[role="menu"]')))
+			.toBe(true);
 		await page.getByRole('button', { name: 'Add User' }).focus();
 
 		await expect(page.getByRole('menuitem', { name: 'View More', exact: true })).toHaveCount(0);

@@ -224,6 +224,8 @@ test.describe('ui-accessibility: drawer returns focus after a link is chosen', (
 		await page.waitForLoadState('networkidle');
 		await page.getByRole('button', { name: 'Open menu' }).click();
 		const drawer = page.getByRole('dialog', { name: 'Menu' });
+		// The drawer moves focus to its first link once it has opened; wait for that before moving it.
+		await expect.poll(() => focusIsInside(drawer)).toBe(true);
 		await drawer.getByRole('link', { name: 'Payment' }).focus();
 		await page.keyboard.press('Enter');
 
