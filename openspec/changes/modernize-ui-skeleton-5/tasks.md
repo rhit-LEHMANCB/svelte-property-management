@@ -48,3 +48,9 @@
 
 - [x] 8.1 Update the README section on UI and theming (preset, dark mode, how to add a list with `DataList`); verify the documented commands run as written
 - [x] 8.2 Run the full local suite once more (`npm run lint`, `npm run check`, `npm run check:server`, `npm test`, `npm run test:e2e`, `npm run build`) and verify all pass, with the full e2e suite run against the production build
+
+## 9. QA cycle 1 fixes
+
+- [x] 9.1 Replace the axe contrast scan with a direct WCAG ratio check (`tests/e2e/support/contrast.ts`), add a self-check that it reports a low-contrast probe, and scan the row menu, confirmation, user-info dialog and error toast states too; verify the self-check passes and the scan fails on the old theme
+- [x] 9.2 Switch the theme to `vintage`, the only built-in preset whose filled primary, success, warning and error pairs reach 4.5:1, and color only the icon of destructive menu items; verify the contrast scans pass in light, dark and no-script mode
+- [x] 9.3 Rebuild the search field and the tenant combobox control without the `input-group` classes, which Skeleton 5 does not provide; verify the list-browsing and combobox e2e specs pass
