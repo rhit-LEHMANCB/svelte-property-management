@@ -68,6 +68,19 @@ test.describe('appearance: the contrast check catches low contrast', () => {
 
 		expect((await contrastViolations(page)).join('\n')).toContain('low contrast probe');
 	});
+
+	test('an oklch() probe is measured, not skipped', async ({ page }) => {
+		// The theme defines its colors in oklch(); the check must read them.
+		await page.goto('/signin');
+		await page.evaluate(() => {
+			const probe = document.createElement('p');
+			probe.textContent = 'oklch probe';
+			probe.style.cssText = 'color:oklch(0.85 0 0);background:oklch(1 0 0);font-size:16px';
+			document.body.prepend(probe);
+		});
+
+		expect((await contrastViolations(page)).join('\n')).toContain('oklch probe');
+	});
 });
 
 test.describe('appearance: accessible color theme', () => {
@@ -201,9 +214,8 @@ test.describe('appearance: pages without scripts stay readable', () => {
 	});
 
 	test('Scenario: No scripts keeps AA contrast in the system mode', async ({ browser }) => {
-		// axe needs scripts, so instead of turning them off, serve the page with a policy that blocks
-		// every page script (the inline mode script included). The page then gets the same CSS-only
-		// rendering as a browser without scripts, and axe still runs from Playwright.
+		// A policy that blocks every page script (the inline mode script included) gives the same
+		// CSS-only rendering as a browser without scripts, while Playwright can still measure the page.
 		for (const colorScheme of ['dark', 'light'] as const) {
 			const context = await browser.newContext({ colorScheme });
 			const page = await context.newPage();
