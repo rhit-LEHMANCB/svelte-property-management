@@ -10,13 +10,16 @@
 		options,
 		label,
 		placeholder = 'Search...',
-		selected = $bindable()
+		selected = $bindable(),
+		class: className = ''
 	}: {
 		options: PickerOption[];
 		label: string;
 		placeholder?: string;
 		/** The chosen option. Typing over it unsets it; call `clear()` to empty the field. */
 		selected?: PickerOption;
+		/** Classes for the root, for example to place it in a parent grid. */
+		class?: string;
 	} = $props();
 
 	let inputValue = $state('');
@@ -58,13 +61,13 @@
 		selected = details.items[0];
 		query = '';
 	}}
-	class="w-full"
+	class="w-full {className}"
 >
 	<Combobox.Label class="label-text">{label}</Combobox.Label>
 	<Combobox.Control class="relative">
 		<Combobox.Input class="input pe-11" {placeholder} />
 		<Combobox.Trigger
-			class="btn-icon btn-icon-sm hover:preset-tonal absolute top-1/2 right-1 -translate-y-1/2"
+			class="btn-icon btn-icon-sm hover:preset-tonal absolute inset-y-0 right-1 my-auto transform-none"
 			aria-label="Show {label.toLowerCase()} options"
 		>
 			<IconSelector size={18} />
