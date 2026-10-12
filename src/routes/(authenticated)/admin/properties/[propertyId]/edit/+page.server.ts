@@ -37,10 +37,14 @@ export const load = (async (event) => {
 
 	const usersOptions: { label: string; value: string }[] = tenantUsers.docs
 		.filter((doc) => !assignedTenantIds.has(doc.id))
-		.map((doc) => ({
-			label: `${doc.data().firstName} ${doc.data().lastName}`,
-			value: doc.id
-		}));
+		.map((doc) => {
+			const { firstName, lastName, email } = doc.data();
+			// The email tells apart tenants who share a name, and can be searched for too.
+			return {
+				label: email ? `${firstName} ${lastName} (${email})` : `${firstName} ${lastName}`,
+				value: doc.id
+			};
+		});
 
 	const tenantPromises = tenantJunctions.docs.map(async (junction) => {
 		const user = await adminDB.collection('users').doc(junction.data().tenantId).get();

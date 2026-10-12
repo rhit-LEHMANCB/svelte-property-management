@@ -131,6 +131,8 @@ The owner noted that the navigation entries did not fill the sidebar and that ma
 
 A second note: on a property's Tenants tab the tenant picker's dropdown icon stuck out of the top of its field, and the Add button did not line up with the fields. Causes: Skeleton's base style already centers the combobox trigger with `transform: translateY(-50%)`, and the component added Tailwind's `-translate-y-1/2` on top, a second half-height shift; and the Add button was 4px shorter than the fields, with the two labels at different heights. Fixed by centering the trigger with `inset-y-0 my-auto` and no transform, and laying the row out as two subgrid rows (labels, then controls) so Add stretches to the fields' height in every browser. A new e2e test fails without each part of the fix and passes with it. Not re-run through independent QA (CSS-only, covered by the test); listed in the checklist.
 
+A third note: tenants who share a name looked identical in the add-tenant picker. Each option is now "First Last (email)" (the name alone when there is no email), built in the edit page's load, so the email is also searchable. A new tenant-assignment requirement covers it; a handler test and an e2e with two same-named tenants fail without the change and pass with it. Not re-run through independent QA (a label change covered by the tests); listed in the checklist.
+
 ## Verification checklist for the human
 Ranked by risk. Do these on the dev site before merging the production PR, then the production-only checks after deploying.
 
@@ -141,7 +143,7 @@ Ranked by risk. Do these on the dev site before merging the production PR, then 
 5. **Tenant with a property, dark mode (medium).** Submit a maintenance request; pay with test card `4242 4242 4242 4242`; return from Stripe. Expect legible pages and toasts.
 6. **Focus rings, hover and disabled states (low to medium).** Tab through Users, Properties and a property page in light and dark. Expect a clearly visible focus ring everywhere; the disabled Previous/Next are faint in light mode (accepted by WCAG).
 7. **Photos (low).** Property Photos tab on a normal network: upload two, reorder, delete one. Expect images render and order persists.
-8. **Navigation, cursors and the add-tenant row (low).** In Firefox and Chrome: the highlighted sidebar entry spans the sidebar, and buttons, row menus, tabs and options show the hand cursor; disabled Previous/Next do not. On a property's Tenants tab, the tenant picker's icon sits inside its field and Add lines up with the fields.
+8. **Navigation, cursors and the add-tenant row (low).** In Firefox and Chrome: the highlighted sidebar entry spans the sidebar, and buttons, row menus, tabs and options show the hand cursor; disabled Previous/Next do not. On a property's Tenants tab, the tenant picker's icon sits inside its field, Add lines up with the fields, and each option shows the tenant's email in parentheses after the name.
 9. **Look and feel (low).** Confirm you are happy with `cerberus` and the filled buttons' contrast (accepted in the spec).
 
 Production-only risks:

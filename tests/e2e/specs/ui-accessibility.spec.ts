@@ -180,7 +180,7 @@ test.describe('ui-accessibility: tabs, comboboxes on the property page', () => {
 		await expect(input).toHaveAttribute('aria-expanded', 'true');
 		await page.keyboard.press('ArrowDown');
 		await page.keyboard.press('Enter');
-		await expect(input).toHaveValue('Kim Keyboard');
+		await expect(input).toHaveValue('Kim Keyboard (kim@e2e.test)');
 		await expect(input).toHaveAttribute('aria-expanded', 'false');
 
 		await page.getByRole('button', { name: 'Add', exact: true }).click();

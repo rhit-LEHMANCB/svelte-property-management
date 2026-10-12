@@ -73,3 +73,7 @@
 ## 13. Owner feedback: add-tenant row
 
 - [x] 13.1 Center the tenant picker's dropdown icon inside its field (Skeleton's base style already applies `translateY(-50%)`, so the extra Tailwind translate moved it up by half its height) and line the Add button and labels up with the fields through a subgrid; verify a new e2e that fails without each part of the fix
+
+## 14. Owner feedback: tenants who share a name
+
+- [x] 14.1 Label each option in the add-tenant picker "First Last (email)", falling back to the name when there is no email, so tenants who share a name can be told apart and found by email; verify a handler test and an e2e with two same-named tenants, both failing without the change

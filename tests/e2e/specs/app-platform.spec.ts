@@ -111,7 +111,7 @@ test.describe('app-platform: menus, autocompletes, tabs and pagination keep work
 		const search = page.getByPlaceholder('Search...');
 		await search.fill('Ava');
 		await page.getByRole('option', { name: 'Ava Autocomplete' }).click();
-		await expect(search).toHaveValue('Ava Autocomplete');
+		await expect(search).toHaveValue('Ava Autocomplete (ava@e2e.test)');
 		await page.getByLabel('Move-in month', { exact: true }).fill('2026-05');
 		await page.getByRole('button', { name: 'Add', exact: true }).click();
 

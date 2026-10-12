@@ -131,3 +131,49 @@ test.describe('tenant-assignment: the add-tenant row lines up', () => {
 		expect(Math.abs(monthLabel.top - tenantLabel.top)).toBeLessThanOrEqual(1);
 	});
 });
+
+test.describe('tenant-assignment: tenants who share a name can be told apart', () => {
+	const TWINS = [
+		{ id: 'e2e-dana-1', email: 'dana.one@e2e.test' },
+		{ id: 'e2e-dana-2', email: 'dana.two@e2e.test' }
+	];
+
+	test.beforeEach(async () => {
+		const db = adminDb();
+		for (const twin of TWINS) {
+			await db.doc(`users/${twin.id}`).set({
+				email: twin.email,
+				firstName: 'Dana',
+				lastName: 'Double',
+				phoneNumber: '+15555550161',
+				permissions: 'user'
+			});
+			await db.doc(`junction_user_property/${twin.id}_${PROPERTY_ID}`).delete();
+		}
+	});
+
+	test('Scenario: the picker shows each email beside the name, and adds the one chosen', async ({
+		page
+	}) => {
+		await openTenants(page);
+		const input = page.getByRole('combobox', { name: 'Tenant' });
+		await input.fill('Dana Double');
+
+		await expect(
+			page.getByRole('option', { name: 'Dana Double (dana.one@e2e.test)' })
+		).toBeVisible();
+		const second = page.getByRole('option', { name: 'Dana Double (dana.two@e2e.test)' });
+		await expect(second).toBeVisible();
+		// The email can be searched for as well.
+		await input.fill('dana.two');
+		await expect(page.getByRole('listbox').getByRole('option')).toHaveCount(1);
+		await second.click();
+		await expect(input).toHaveValue('Dana Double (dana.two@e2e.test)');
+		await page.getByRole('button', { name: 'Add', exact: true }).click();
+
+		await expect(page.getByText('Successfully added tenant.')).toBeVisible();
+		const tenants = page.getByRole('table', { name: 'tenants' });
+		await expect(tenants.getByText('dana.two@e2e.test')).toBeVisible();
+		await expect(tenants.getByText('dana.one@e2e.test')).toHaveCount(0);
+	});
+});
