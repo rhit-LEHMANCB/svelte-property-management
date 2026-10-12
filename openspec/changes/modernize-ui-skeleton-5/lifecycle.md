@@ -1,9 +1,9 @@
 # Lifecycle: modernize-ui-skeleton-5
 
 - Branch: `claude/practical-ptolemy-axp5zk` (the session's designated branch, created from `origin/develop` at 1f40174)
-- Stage: 5 Ship to develop (QA cycle 2 fix)
+- Stage: 7 Production PR open; waiting on Gate B (human verifies and merges)
 - Review round: 4 (rounds 1 to 3: implementation and the QA cycle 1 fix; round 4: the QA cycle 2 fix); all exited with no blockers or majors
-- QA cycle: 2 of 3
+- QA cycle: 3 of 3 (passed)
 - Started: 2026-10-11
 
 ## Interview summary
@@ -120,8 +120,29 @@ Review rounds for QA fixes: the skill gives each QA fix "one review round"; roun
 ### Owner decision after cycle 2 (2026-10-12)
 The owner preferred the `cerberus` theme to `vintage` and was not concerned about the filled-control contrast, and asked to go back to `cerberus`. Done on the cycle 2 fix branch (PR #127): theme `cerberus`; the `appearance` spec's contrast requirement now covers body text and links on page, card and dialog backgrounds and names filled color controls (buttons, badges, toasts, current nav entry; 2.7 to 3.6:1) as an accepted exception; light links one shade darker (primary-700) so they still pass. This is an owner-requested scope change after Gate A, so no extra review round was run for it; the full local suite passed.
 
+### Cycle 3 (2026-10-12, deployed commit f19f0bd, run 75): PASS
+Result: PASS, 0 failing scenarios; the final full QA run passed 45 of 45 tests. Every changed scenario was covered, including all four tenant-assignment (#86) scenarios (QA picked its own `qa-` tenant by option id) and the cycle 2 drawer fix; the properties empty state was checked with a simulated empty response.
+- Contrast: zero text or links below AA outside the accepted filled-control exception, light and dark, on sign-in, reset, every admin and tenant page, menus, dialogs, toasts, the combobox, phone cards and the drawer; the measurement self-checks against low-contrast samples. Filled controls measured 2.7 to 3.6:1, as the spec accepts.
+- Observations (not failures): disabled Previous/Next 3.5:1 in light (WCAG-exempt); about 3 of 170 page loads stayed un-hydrated for 20 s or more until reload (not reproduced in a 25-load loop; cause unknown); focus goes to the page body after changing a tenant's move-in month or saving the property form (the row is swapped for placeholders during refresh; matches deferred finding R1/R2); toasts auto-hide after about 5.4 s; a tenant opening an admin URL sees a bare unthemed 401 page; photos could not be judged (the sandbox blocks Storage images); QA's Add User created real welcome emails to the owner's inbox (`+qa` alias).
+- Evidence: [screenshots and specs on `qa-evidence/modernize-ui-skeleton-5`](https://github.com/rhit-LEHMANCB/svelte-property-management/tree/qa-evidence/modernize-ui-skeleton-5/openspec/changes/modernize-ui-skeleton-5/qa) (cycle 3 only; masked). Cycles 1 and 2 evidence is not published (cycle 1 screenshots are unmasked).
+
 ## Verification checklist for the human
-(filled in stage 7)
+Ranked by risk. Do these on the dev site before merging the production PR, then the production-only checks after deploying.
+
+1. **Screen reader pass (high).** NVDA or VoiceOver on the dev site as admin: Users row menu → Delete; View More; a failing sign-in; save a property; property Tabs and the tenant combobox; the phone drawer. Expect titles and bodies announced, tabs "selected", error toast spoken at once and success politely, combobox expanded/collapsed and options read.
+2. **Real phones (high).** iPhone Safari and Android Chrome, admin and tenant: Users, Properties, Maintenance, sort select, drawer open/close and scroll behind it, dark mode toggle. Expect no sideways scroll, readable cards, page behind the drawer does not scroll.
+3. **Hydration reliability (medium).** Cold cache, "Fast 3G" throttling: load `/signin`, `/admin/users`, `/admin/properties` a dozen times each. Expect buttons usable within a few seconds; note any page stuck with spinners over 10 s (QA saw this about 3 times in 170 loads).
+4. **Remove a tenant (#86) on real data (medium).** Property → Tenants: remove → Cancel, remove → Confirm, re-add, click the name. Expect only the confirmation dialog on remove, user-info only from the name.
+5. **Tenant with a property, dark mode (medium).** Submit a maintenance request; pay with test card `4242 4242 4242 4242`; return from Stripe. Expect legible pages and toasts.
+6. **Focus rings, hover and disabled states (low to medium).** Tab through Users, Properties and a property page in light and dark. Expect a clearly visible focus ring everywhere; the disabled Previous/Next are faint in light mode (accepted by WCAG).
+7. **Photos (low).** Property Photos tab on a normal network: upload two, reorder, delete one. Expect images render and order persists.
+8. **Look and feel (low).** Confirm you are happy with `cerberus` and the filled buttons' contrast (accepted in the spec).
+
+Production-only risks:
+- **Function dependencies:** `@skeletonlabs/skeleton-svelte` moved to `dependencies` because the server bundle imports its `@zag-js/*` packages; `check:server` passes. After the production deploy, open `/signin` and an admin list page on the production domain and confirm they render (no 500).
+- **No new environment variables, secrets or Stripe changes.** Stripe stays in its current mode.
+- **Theme and dark mode are client-side only;** a user's saved mode is per browser (`localStorage` key `theme`).
+- **Issues #89, #87 and #86 were closed by the merge into `develop`** (commit message keywords), before this release. Reopen them if they should stay open until production.
 
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
