@@ -49,7 +49,7 @@
 
 - [Large diff (~35 files) may not clear three review rounds] → Commit in the order above, keep each commit buildable, and keep behavior changes out of the diff so the reviewer rubric can be applied per area.
 - [Existing e2e specs break on popup-menu markup] → Update selectors to roles and names; never loosen an assertion; list every changed spec in the PR description.
-- [The first preset fails AA contrast in one mode] → Axe scan in both modes is a task; fall back to the next candidate preset.
+- [The first preset fails AA contrast in one mode] → Axe scan in both modes is a task; fall back to the next candidate preset. Result: `cerberus` passed the axe color-contrast scan on the sign-in, admin and tenant pages in light and dark mode, and on the no-script sign-in page in both modes, so no fallback was needed.
 - [Table semantics on phones: rows styled as blocks] → Chrome and Firefox keep table roles for restyled table elements; the header stays available to screen readers (visually hidden), and each cell also shows its label.
 - [skeleton-svelte API differs from this design (anatomy names, props)] → The first task reads the installed 5.0.1 type declarations and proves one `Dialog`, `Toast` and `Menu` end to end before any page is migrated.
 - [Dark mode flash or `localStorage` blocked] → Inline pre-paint script with try/catch; falls back to the system preference.

@@ -1,8 +1,8 @@
 # Lifecycle: modernize-ui-skeleton-5
 
 - Branch: `claude/practical-ptolemy-axp5zk` (the session's designated branch, created from `origin/develop` at 1f40174)
-- Stage: 4 Review (unattended)
-- Review round: 1 of 3
+- Stage: 5 Ship to develop (unattended)
+- Review round: 2 of 3 (exited: round 2 had no blockers or majors)
 - QA cycle: 0 of 3
 - Started: 2026-10-11
 
@@ -80,10 +80,17 @@ Decisions and deviations made while implementing, recorded for the reviewer and 
 
 ## Review rounds
 - Round 1 (2026-10-11): 0 blockers, 1 major, 4 minors, 1 nit. Fixed the major: the properties page showed two "Add Property" links when empty and the "No rows" scenario had no test (toolbar hidden when empty; new e2e empties the collection and restores it). Also fixed three minors: `refreshing` is now a counter so overlapping refreshes keep placeholders up; the no-results button is "Show all <list>" so it no longer shares the name "Clear search"; `TenantPicker` clears through an explicit `clear()` instead of an effect that wiped the user's first edit after a selection.
+- Round 2 (2026-10-12): 0 blockers, 0 majors, 6 minors, 5 nits. Review loop exits. Fixed the trivial ones: the drawer closes when the window widens past the sidebar breakpoint; the search field's Clear button is outside its label; the #86 "Open the row" scenario now says "the tenant's name" (what the row offers); `design.md` records that `cerberus` passed the contrast scan in both modes. Local suite after the fixes: lint, check, 308 unit/handler tests, build, check:server, e2e 91 passed.
 
 ## Deferred findings
 - (R1 minor) No e2e test that the current page is kept after a row action refreshes the list; covered only by the `clampPage` unit test.
 - (R1 minor) Placeholder rows during `refresh()` unmount the row, so a keyboard user loses focus on the control they used (for example the move-in month input). The spec asks for placeholders during refresh; consider keeping rows mounted with `aria-busy` and dimming instead.
+- (R2 minor, repeat of R1) Placeholders during `refresh()` unmount row controls; same item as above. Also the move-in month input keeps an invalid value shown if the PATCH fails.
+- (R2 minor) The closed-request address link now goes to `/edit` (the old `/view` route does not exist); untested.
+- (R2 minor) `RowMenu` matches actions by label; two actions with the same label would collide (no caller does).
+- (R2 minor) Two quick photo drags can race: the first to finish clears the optimistic order while the second is in flight.
+- (R2 nit) The pagination `nav` wraps Skeleton's Pagination root (a `div`, so no nested landmark today).
+- (R2 nit) `page` is clamped only in the derived value; after rows shrink and grow again the list can return to the old page.
 - (R1 nit) The profile photo upload still calls `invalidateAll()` on click before the upload finishes (pre-existing); move to `use:enhance` with `refresh()`.
 - The implementation commit's message says "Closes #89, #87 and #86", so GitHub closes those issues when the PR merges into `develop`, before the production release. Reopen them if they should stay open until production.
 
