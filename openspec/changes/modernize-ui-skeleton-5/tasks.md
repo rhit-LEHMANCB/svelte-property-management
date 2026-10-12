@@ -59,3 +59,8 @@
 
 - [x] 10.1 Return focus to the menu button after a drawer link is chosen (SvelteKit resets focus on navigation); verify a new keyboard e2e that fails without the fix and passes with it
 - [x] 10.2 Darken light-mode links (`--typo-anchor--color-light` to primary-900) and extend the contrast scan to the user-info dialog's property link and the closed-requests address links; verify the scan reports the old color at 3.39:1 and passes with the fix
+
+## 11. Owner decision: keep cerberus
+
+- [x] 11.1 Switch the theme back to `cerberus` at the owner's request, exempt filled color controls (`preset-filled-*`) from the contrast check, and update the `appearance` spec to match; verify the contrast scans pass in light, dark and no-script mode
+- [x] 11.2 Darken light-mode links to primary-700 (cerberus's primary-500 is 4.4:1 on its card surface); verify the closed-requests address link and the user-info property link pass the scan

@@ -117,6 +117,9 @@ Result: FAIL, 2 scenarios, both `app bug`. Contrast in dark mode, no scripts, no
 
 Review rounds for QA fixes: the skill gives each QA fix "one review round"; round 4 below is that round for cycle 2's fix (rounds 1 to 3 were the implementation and the cycle 1 fix).
 
+### Owner decision after cycle 2 (2026-10-12)
+The owner preferred the `cerberus` theme to `vintage` and was not concerned about the filled-control contrast, and asked to go back to `cerberus`. Done on the cycle 2 fix branch (PR #127): theme `cerberus`; the `appearance` spec's contrast requirement now covers body text and links on page, card and dialog backgrounds and names filled color controls (buttons, badges, toasts, current nav entry; 2.7 to 3.6:1) as an accepted exception; light links one shade darker (primary-700) so they still pass. This is an owner-requested scope change after Gate A, so no extra review round was run for it; the full local suite passed.
+
 ## Verification checklist for the human
 (filled in stage 7)
 
