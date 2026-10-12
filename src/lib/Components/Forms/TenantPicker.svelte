@@ -61,9 +61,12 @@
 	class="w-full"
 >
 	<Combobox.Label class="label-text">{label}</Combobox.Label>
-	<Combobox.Control class="input-group grid-cols-[1fr_auto]">
-		<Combobox.Input class="ig-input" {placeholder} />
-		<Combobox.Trigger class="ig-btn preset-tonal" aria-label="Show {label.toLowerCase()} options">
+	<Combobox.Control class="relative">
+		<Combobox.Input class="input pe-11" {placeholder} />
+		<Combobox.Trigger
+			class="btn-icon btn-icon-sm hover:preset-tonal absolute top-1/2 right-1 -translate-y-1/2"
+			aria-label="Show {label.toLowerCase()} options"
+		>
 			<IconSelector size={18} />
 		</Combobox.Trigger>
 	</Combobox.Control>

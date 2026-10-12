@@ -3,7 +3,7 @@
 
 @import '@skeletonlabs/skeleton';
 @import '@skeletonlabs/skeleton-svelte';
-@import '@skeletonlabs/skeleton/themes/cerberus';
+@import '@skeletonlabs/skeleton/themes/vintage';
 
 /*
 	Dark mode for Skeleton and the app. The inline script in app.html puts `dark` or `light` on <html>
