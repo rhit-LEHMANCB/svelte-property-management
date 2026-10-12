@@ -35,3 +35,18 @@ The system SHALL show each tenant in a property's add-tenant picker as their nam
 #### Scenario: No email on record
 - **WHEN** a tenant has no email
 - **THEN** the picker shows the name alone, without empty parentheses
+
+### Requirement: Move-in month is chosen from month and year dropdowns
+The system SHALL let an admin choose a tenant's move-in month on a property's Tenants tab from a Month dropdown and a Year dropdown, both when adding a tenant and on each tenant's row, so it works the same in every browser (Firefox and desktop Safari show `<input type="month">` as a plain text box).
+
+#### Scenario: Adding defaults to this month
+- **WHEN** an admin opens the Tenants tab
+- **THEN** the add row's Month and Year dropdowns show the current month
+
+#### Scenario: Changing a tenant's month
+- **WHEN** an admin picks a new month or year on a tenant's row
+- **THEN** the new move-in month is saved and shown after a reload
+
+#### Scenario: Saving fails
+- **WHEN** saving a changed move-in month fails
+- **THEN** an error is shown and the row's dropdowns go back to the stored month
