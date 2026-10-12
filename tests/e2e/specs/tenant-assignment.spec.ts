@@ -114,7 +114,10 @@ test.describe('tenant-assignment: the add-tenant row lines up', () => {
 			'options button',
 			page.getByRole('button', { name: 'Show tenant options' })
 		);
-		const month = await box('move-in month', page.getByLabel('Move-in month', { exact: true }));
+		const month = await box(
+			'move-in month',
+			page.getByRole('group', { name: 'Move-in month', exact: true })
+		);
 		const add = await box('Add', page.getByRole('button', { name: 'Add', exact: true }));
 		const tenantLabel = await box('tenant label', page.getByText('Tenant', { exact: true }));
 		const monthLabel = await box('month label', page.getByText('Move-in month', { exact: true }));
@@ -175,5 +178,43 @@ test.describe('tenant-assignment: tenants who share a name can be told apart', (
 		const tenants = page.getByRole('table', { name: 'tenants' });
 		await expect(tenants.getByText('dana.two@e2e.test')).toBeVisible();
 		await expect(tenants.getByText('dana.one@e2e.test')).toHaveCount(0);
+	});
+});
+
+test.describe('tenant-assignment: move-in month is chosen from dropdowns', () => {
+	test('Scenario: the add row offers month and year selects set to this month', async ({
+		page
+	}) => {
+		await openTenants(page);
+		const moveIn = page.getByRole('group', { name: 'Move-in month', exact: true });
+		const now = new Date();
+
+		// Selects work in every browser; <input type="month"> is a plain text box in Firefox.
+		await expect(moveIn.locator('select')).toHaveCount(2);
+		await expect(moveIn.locator('input')).toHaveCount(0);
+		await expect(moveIn.getByLabel('Month', { exact: true })).toHaveValue(
+			String(now.getMonth() + 1).padStart(2, '0')
+		);
+		await expect(moveIn.getByLabel('Year', { exact: true })).toHaveValue(String(now.getFullYear()));
+	});
+
+	test('Scenario: a tenant row shows the stored month and goes back to it when saving fails', async ({
+		page
+	}) => {
+		await openTenants(page);
+		const rowMonth = page.getByRole('group', { name: `Move-in month for ${NAME}` });
+		const month = rowMonth.getByLabel('Month', { exact: true });
+		await expect(month).toHaveValue('01');
+		await expect(rowMonth.getByLabel('Year', { exact: true })).toHaveValue('2026');
+
+		await page.route(`**/api/property/${PROPERTY_ID}/tenants`, (route) =>
+			route.request().method() === 'PATCH'
+				? route.fulfill({ status: 500, body: '{}' })
+				: route.continue()
+		);
+		await month.selectOption('03');
+
+		await expect(page.getByText('Error updating move-in month.')).toBeVisible();
+		await expect(month).toHaveValue('01');
 	});
 });

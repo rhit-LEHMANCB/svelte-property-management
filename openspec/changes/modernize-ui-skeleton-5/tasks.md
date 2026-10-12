@@ -77,3 +77,7 @@
 ## 14. Owner feedback: tenants who share a name
 
 - [x] 14.1 Label each option in the add-tenant picker "First Last (email)", falling back to the name when there is no email, so tenants who share a name can be told apart and found by email; verify a handler test and an e2e with two same-named tenants, both failing without the change
+
+## 15. Owner feedback: move-in month picker
+
+- [x] 15.1 Replace both `<input type="month">` fields (Firefox and desktop Safari show them as text boxes) with a `MonthPicker` of Month and Year selects; default the add row to the current month and put a row back to its stored month when saving fails; verify unit tests for the helpers and e2e for the default, saving and the failure revert

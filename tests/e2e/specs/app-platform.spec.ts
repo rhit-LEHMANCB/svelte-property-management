@@ -112,21 +112,25 @@ test.describe('app-platform: menus, autocompletes, tabs and pagination keep work
 		await search.fill('Ava');
 		await page.getByRole('option', { name: 'Ava Autocomplete' }).click();
 		await expect(search).toHaveValue('Ava Autocomplete (ava@e2e.test)');
-		await page.getByLabel('Move-in month', { exact: true }).fill('2026-05');
+		const moveIn = page.getByRole('group', { name: 'Move-in month', exact: true });
+		await moveIn.getByLabel('Month', { exact: true }).selectOption('05');
+		await moveIn.getByLabel('Year', { exact: true }).selectOption('2026');
 		await page.getByRole('button', { name: 'Add', exact: true }).click();
 
 		await expect(page.getByText('Successfully added tenant.')).toBeVisible();
 		await expect(page.getByText('ava@e2e.test')).toBeVisible();
 
 		// The month was stored and can be changed from the list.
-		const tenantMonth = page.getByLabel('Move-in month for Ava Autocomplete');
-		await expect(tenantMonth).toHaveValue('2026-05');
-		await tenantMonth.fill('2026-07');
+		const tenantMonth = page.getByRole('group', { name: 'Move-in month for Ava Autocomplete' });
+		await expect(tenantMonth.getByLabel('Month', { exact: true })).toHaveValue('05');
+		await expect(tenantMonth.getByLabel('Year', { exact: true })).toHaveValue('2026');
+		await tenantMonth.getByLabel('Month', { exact: true }).selectOption('07');
 		await expect(page.getByText('Move-in month updated.')).toBeVisible();
 		await page.reload();
 		await page.waitForLoadState('networkidle');
 		await page.getByText('Tenants', { exact: true }).click();
-		await expect(page.getByLabel('Move-in month for Ava Autocomplete')).toHaveValue('2026-07');
+		await expect(tenantMonth.getByLabel('Month', { exact: true })).toHaveValue('07');
+		await expect(tenantMonth.getByLabel('Year', { exact: true })).toHaveValue('2026');
 	});
 
 	test('Scenario: Tabs show one panel at a time', async ({ page }) => {
