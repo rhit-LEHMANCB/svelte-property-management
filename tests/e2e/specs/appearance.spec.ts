@@ -156,18 +156,23 @@ test.describe('appearance: pages without scripts stay readable', () => {
 	});
 
 	test('Scenario: No scripts keeps AA contrast in the system mode', async ({ browser }) => {
-		// axe needs scripts, so serve the page with every <script> removed instead: the result is the
-		// same CSS-only rendering a browser without scripts gets.
+		// axe needs scripts, so instead of turning them off, serve the page with a policy that blocks
+		// every page script (the inline mode script included). The page then gets the same CSS-only
+		// rendering as a browser without scripts, and axe still runs from Playwright.
 		for (const colorScheme of ['dark', 'light'] as const) {
 			const context = await browser.newContext({ colorScheme });
 			const page = await context.newPage();
 			await page.route('**/signin', async (route) => {
 				const response = await route.fetch();
-				const body = (await response.text()).replace(/<script[\s\S]*?<\/script>/g, '');
-				await route.fulfill({ response, body });
+				await route.fulfill({
+					response,
+					headers: { ...response.headers(), 'content-security-policy': "script-src 'none'" }
+				});
 			});
 			await page.goto('/signin');
 
+			// The inline script did not run, so the mode comes from the CSS fallback alone.
+			await expect(html(page)).not.toHaveClass(/\b(dark|light)\b/);
 			await expect(html(page)).toHaveCSS('color-scheme', colorScheme);
 			expect(await contrastViolations(page), colorScheme).toEqual([]);
 			await context.close();
