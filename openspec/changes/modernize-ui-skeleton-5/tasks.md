@@ -69,3 +69,7 @@
 
 - [x] 12.1 Make sidebar navigation entries span the full width of the sidebar (the wrapping `<nav>` shrank to its text under Skeleton's `align-items: start`); verify a new e2e that fails without the fix
 - [x] 12.2 Show the pointer cursor on enabled buttons, menu items, options, tabs and selects (Tailwind 4 gives buttons the default cursor), and keep the arrow on disabled controls; verify a new e2e that fails without the fix
+
+## 13. Owner feedback: add-tenant row
+
+- [x] 13.1 Center the tenant picker's dropdown icon inside its field (Skeleton's base style already applies `translateY(-50%)`, so the extra Tailwind translate moved it up by half its height) and line the Add button and labels up with the fields through a subgrid; verify a new e2e that fails without each part of the fix

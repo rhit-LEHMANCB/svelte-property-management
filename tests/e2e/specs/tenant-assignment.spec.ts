@@ -3,7 +3,8 @@ import { ADMIN } from '../support/constants';
 import { adminDb } from '../support/admin';
 import { signIn } from '../support/helpers';
 
-// tenant-assignment: the remove-tenant control opens only its confirmation (#86).
+// tenant-assignment: the remove-tenant control opens only its confirmation (#86), and the add-tenant
+// row lines up.
 
 const PROPERTY_ID = 'e2e-remove-tenant-property';
 const TENANT = { id: 'e2e-rita', firstName: 'Rita', lastName: 'Remove', email: 'rita@e2e.test' };
@@ -94,5 +95,39 @@ test.describe('tenant-assignment: remove-tenant control opens only its confirmat
 		);
 
 		expect(nested).toBe(0);
+	});
+});
+
+test.describe('tenant-assignment: the add-tenant row lines up', () => {
+	test('Scenario: the picker icon sits inside its field, and Add matches the fields', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await openTenants(page);
+		const box = async (name: string, locator: ReturnType<Page['locator']>) => {
+			const b = await locator.boundingBox();
+			if (!b) throw new Error(`${name} is not visible`);
+			return { top: b.y, bottom: b.y + b.height };
+		};
+		const field = await box('tenant field', page.getByRole('combobox', { name: 'Tenant' }));
+		const icon = await box(
+			'options button',
+			page.getByRole('button', { name: 'Show tenant options' })
+		);
+		const month = await box('move-in month', page.getByLabel('Move-in month', { exact: true }));
+		const add = await box('Add', page.getByRole('button', { name: 'Add', exact: true }));
+		const tenantLabel = await box('tenant label', page.getByText('Tenant', { exact: true }));
+		const monthLabel = await box('month label', page.getByText('Move-in month', { exact: true }));
+
+		// The icon was shifted up by half its height and stuck out of the top of the field.
+		expect(icon.top).toBeGreaterThanOrEqual(field.top);
+		expect(icon.bottom).toBeLessThanOrEqual(field.bottom);
+		expect(Math.abs(icon.top - field.top - (field.bottom - icon.bottom))).toBeLessThanOrEqual(1);
+		// The Add button was shorter than the fields beside it, and the labels sat at different heights.
+		for (const control of [month, add]) {
+			expect(Math.abs(control.top - field.top)).toBeLessThanOrEqual(1);
+			expect(Math.abs(control.bottom - field.bottom)).toBeLessThanOrEqual(1);
+		}
+		expect(Math.abs(monthLabel.top - tenantLabel.top)).toBeLessThanOrEqual(1);
 	});
 });

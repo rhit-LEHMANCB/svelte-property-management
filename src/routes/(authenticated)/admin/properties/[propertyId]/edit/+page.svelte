@@ -245,25 +245,32 @@
 					}}
 				>
 					<h2 class="h4">Tenants</h2>
-					<div class="grid items-end gap-3 md:grid-cols-[1fr_auto_auto]">
+					<!--
+						Two rows on wide screens, labels then controls, shared through subgrid: the labels line up
+						and the Add button stretches to the height of the fields beside it in every browser.
+					-->
+					<div class="grid gap-3 md:grid-cols-[1fr_auto_auto] md:gap-x-3 md:gap-y-2">
 						<TenantPicker
 							bind:this={tenantPicker}
 							label="Tenant"
 							options={data.usersOptions}
 							bind:selected={selectedTenant}
+							class="md:row-span-2 md:grid md:grid-rows-subgrid"
 						/>
-						<label class="label">
-							<span class="label-text">Move-in month</span>
+						<div class="flex flex-col gap-2 md:row-span-2 md:grid md:grid-rows-subgrid">
+							<label class="label-text" for="move-in-month">Move-in month</label>
 							<input
+								id="move-in-month"
 								class="input"
 								type="month"
 								name="moveInMonth"
-								aria-label="Move-in month"
 								bind:value={selectedMoveInMonth}
 							/>
-						</label>
-						<button data-needs-hydration type="submit" class="btn preset-filled-primary-500"
-							>Add</button
+						</div>
+						<button
+							data-needs-hydration
+							type="submit"
+							class="btn preset-filled-primary-500 md:col-start-3 md:row-start-2">Add</button
 						>
 					</div>
 				</form>
