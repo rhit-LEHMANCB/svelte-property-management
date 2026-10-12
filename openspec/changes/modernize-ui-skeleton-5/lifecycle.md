@@ -1,9 +1,9 @@
 # Lifecycle: modernize-ui-skeleton-5
 
 - Branch: `claude/practical-ptolemy-axp5zk` (the session's designated branch, created from `origin/develop` at 1f40174)
-- Stage: 5 Ship to develop (QA cycle 1 fix)
+- Stage: 6 QA, cycle 2 failed (2 app bugs); fix going through stages 3 to 5 with one review round
 - Review round: 3 of 3 (round 3 reviewed the QA cycle 1 fix: no blockers or majors)
-- QA cycle: 1 of 3
+- QA cycle: 2 of 3
 - Started: 2026-10-11
 
 ## Interview summary
@@ -104,6 +104,16 @@ Result: FAIL, 3 scenarios, one `app bug`. 41 scenario checks passed, covering ev
 - Observations: the search field rendered broken (Skeleton 5 has no `input-group` classes; dark mode showed a white input box); the combobox lists two tenants both named "New User"; search also matches email text (as specified).
 - Not covered: the properties empty state on real data, page kept after a refreshing row action, combobox choice submitted with the form on real users.
 - Triage: `app bug` → fix branch. Checking every built-in theme's filled 500 pairs showed `cerberus` also fails for error (2.7:1) and warning (3.3:1); only `vintage` passes all four. Fix: theme `vintage`, direct contrast measurement with a self-check (shown to fail on `cerberus` at 3.62:1, matching QA), destructive menu items colored by icon only, search and combobox fields rebuilt. Local suite: 308 unit/handler, 92 e2e, build, check:server. QA evidence of cycle 1 (10 specs, 45 screenshots) is kept for the evidence branch.
+
+### Cycle 2 (2026-10-12, deployed commit be895f0, run 74)
+Result: FAIL, 2 scenarios, both `app bug`. Contrast in dark mode, no scripts, no flash, toggle, every list-browsing, app-platform and ui-accessibility scenario except one passed (QA measured ratios itself with a self-checked helper).
+- App bug 1: after choosing a link in the phone drawer, focus ended on `<body>` instead of the menu button (SvelteKit's post-navigation focus reset). Spec: "close it ... after a link is chosen, return focus to the menu button".
+- App bug 2: light-mode links (`anchor`, vintage primary-600) measured 3.39:1 on the admin closed-requests address link; the same class is used for the user-info dialog's property link. My scan missed it because its data had no such links rendered.
+- Not covered (data limits on dev, not failures): all four tenant-assignment scenarios (every unassigned tenant on dev is named "New User", so QA could not safely pick its own); the properties empty state; the combobox submit. These are covered by the e2e suite on the emulators and go to the human checklist.
+- Test bugs QA fixed in its own scripts, and one transient 500 from the dev site (environment, passed on rerun).
+- Triage: both `app bug` → fix branch. Focus is restored in `afterNavigate` when the drawer closed for a link; light links use primary-900. Each new test was shown to fail without its fix (drawer: focus not on the button; scan: link at 3.39:1, matching QA) and pass with it. QA evidence of cycle 2 (6 specs, 49 screenshots) is kept for the evidence branch.
+
+Review rounds for QA fixes: the skill gives each QA fix "one review round"; round 4 below is that round for cycle 2's fix (rounds 1 to 3 were the implementation and the cycle 1 fix).
 
 ## Verification checklist for the human
 (filled in stage 7)
