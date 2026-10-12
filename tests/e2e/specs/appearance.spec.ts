@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import { ADMIN, TENANT } from '../support/constants';
+import { ADMIN, PROPERTY, TENANT } from '../support/constants';
+import { adminDb } from '../support/admin';
 import { contrastViolations } from '../support/contrast';
 import { signIn } from '../support/helpers';
 
@@ -12,6 +13,20 @@ async function check(page: Page, where: string) {
 }
 
 async function scanPages(page: Page) {
+	// A closed request, so the admin maintenance page renders its address links.
+	await adminDb()
+		.doc('maintenance/e2e-contrast-closed')
+		.set({
+			subject: 'Contrast check',
+			description: 'Seeded so the closed list has an address link',
+			status: 'Closed',
+			propertyId: PROPERTY.id,
+			propertyAddress: `${PROPERTY.streetAddress}, ${PROPERTY.city}, ${PROPERTY.state}`,
+			submitter: `${TENANT.firstName} ${TENANT.lastName}`,
+			workDone: 'Nothing to do',
+			dateAdded: new Date('2026-01-01T12:00:00Z'),
+			dateClosed: new Date('2026-01-02T12:00:00Z')
+		});
 	await page.goto('/signin');
 	await page.waitForLoadState('networkidle');
 	await check(page, 'sign-in page');
@@ -39,6 +54,21 @@ async function scanPages(page: Page) {
 		.click();
 	await check(page, 'user-info dialog');
 	await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+	// A tenant who rents a property: the dialog shows the property as a link.
+	await page
+		.getByRole('button', { name: new RegExp(`^${TENANT.firstName} ${TENANT.lastName}`) })
+		.click();
+	await expect(page.getByRole('dialog').getByRole('link')).toBeVisible();
+	await check(page, 'user-info dialog with a property link');
+	await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+	// The closed-requests list links each request's address.
+	await page.goto('/admin/maintenance');
+	await page.waitForLoadState('networkidle');
+	await expect(
+		page.getByRole('table', { name: 'closed maintenance requests' }).getByRole('link').first()
+	).toBeVisible();
+	await check(page, 'closed requests with address links');
+	await adminDb().doc('maintenance/e2e-contrast-closed').delete();
 	await page.context().clearCookies();
 
 	await signIn(page, TENANT);

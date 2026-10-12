@@ -1,9 +1,9 @@
 # Lifecycle: modernize-ui-skeleton-5
 
 - Branch: `claude/practical-ptolemy-axp5zk` (the session's designated branch, created from `origin/develop` at 1f40174)
-- Stage: 5 Ship to develop (QA cycle 1 fix)
-- Review round: 3 of 3 (round 3 reviewed the QA cycle 1 fix: no blockers or majors)
-- QA cycle: 1 of 3
+- Stage: 5 Ship to develop (QA cycle 2 fix)
+- Review round: 4 (rounds 1 to 3: implementation and the QA cycle 1 fix; round 4: the QA cycle 2 fix); all exited with no blockers or majors
+- QA cycle: 2 of 3
 - Started: 2026-10-11
 
 ## Interview summary
@@ -84,6 +84,8 @@ Decisions and deviations made while implementing, recorded for the reviewer and 
 
 - Round 3 (2026-10-12, QA cycle 1 fix): 0 blockers, 0 majors, 3 minors, 3 nits. Fixed: added an `oklch()` probe to the contrast self-check; stopped exempting `aria-hidden` content (it is still seen), which exposed avatar initials at 3.07:1 light and 1.14:1 dark, fixed with a filled surface preset; documented what the check does not cover (control borders, placeholders, text over images); corrected a stale comment. Kept as history: the ticked tasks 1.2, 1.3, 2.3 and 6.3 that name `cerberus` and axe (section 9 records the change). Local suite: 308 unit/handler, 93 e2e, build, check:server.
 
+- Round 4 (2026-10-12, QA cycle 2 fix): 0 blockers, 0 majors, 4 minors, 1 nit. Fixed: the focus-return flag is set only for plain clicks (a Ctrl/Cmd or middle click opens a new tab without navigating, which would have left it armed); the focus test polls instead of sleeping; the seeded closed request is deleted after the scan. Not changed: focusing the menu button when the window grew past `lg` mid-navigation is a no-op (the drawer is closed by then anyway). Local suite: 308 unit/handler, 94 e2e, build, check:server.
+
 ## Deferred findings
 - (R3 minor) The contrast check does not measure control borders (3:1), placeholders or text over images; translucent layers are composited over ancestors only.
 - (R1 minor) No e2e test that the current page is kept after a row action refreshes the list; covered only by the `clampPage` unit test.
@@ -104,6 +106,19 @@ Result: FAIL, 3 scenarios, one `app bug`. 41 scenario checks passed, covering ev
 - Observations: the search field rendered broken (Skeleton 5 has no `input-group` classes; dark mode showed a white input box); the combobox lists two tenants both named "New User"; search also matches email text (as specified).
 - Not covered: the properties empty state on real data, page kept after a refreshing row action, combobox choice submitted with the form on real users.
 - Triage: `app bug` → fix branch. Checking every built-in theme's filled 500 pairs showed `cerberus` also fails for error (2.7:1) and warning (3.3:1); only `vintage` passes all four. Fix: theme `vintage`, direct contrast measurement with a self-check (shown to fail on `cerberus` at 3.62:1, matching QA), destructive menu items colored by icon only, search and combobox fields rebuilt. Local suite: 308 unit/handler, 92 e2e, build, check:server. QA evidence of cycle 1 (10 specs, 45 screenshots) is kept for the evidence branch.
+
+### Cycle 2 (2026-10-12, deployed commit be895f0, run 74)
+Result: FAIL, 2 scenarios, both `app bug`. Contrast in dark mode, no scripts, no flash, toggle, every list-browsing, app-platform and ui-accessibility scenario except one passed (QA measured ratios itself with a self-checked helper).
+- App bug 1: after choosing a link in the phone drawer, focus ended on `<body>` instead of the menu button (SvelteKit's post-navigation focus reset). Spec: "close it ... after a link is chosen, return focus to the menu button".
+- App bug 2: light-mode links (`anchor`, vintage primary-600) measured 3.39:1 on the admin closed-requests address link; the same class is used for the user-info dialog's property link. My scan missed it because its data had no such links rendered.
+- Not covered (data limits on dev, not failures): all four tenant-assignment scenarios (every unassigned tenant on dev is named "New User", so QA could not safely pick its own); the properties empty state; the combobox submit. These are covered by the e2e suite on the emulators and go to the human checklist.
+- Test bugs QA fixed in its own scripts, and one transient 500 from the dev site (environment, passed on rerun).
+- Triage: both `app bug` → fix branch. Focus is restored in `afterNavigate` when the drawer closed for a link; light links use primary-900. Each new test was shown to fail without its fix (drawer: focus not on the button; scan: link at 3.39:1, matching QA) and pass with it. QA evidence of cycle 2 (6 specs, 49 screenshots) is kept for the evidence branch.
+
+Review rounds for QA fixes: the skill gives each QA fix "one review round"; round 4 below is that round for cycle 2's fix (rounds 1 to 3 were the implementation and the cycle 1 fix).
+
+### Owner decision after cycle 2 (2026-10-12)
+The owner preferred the `cerberus` theme to `vintage` and was not concerned about the filled-control contrast, and asked to go back to `cerberus`. Done on the cycle 2 fix branch (PR #127): theme `cerberus`; the `appearance` spec's contrast requirement now covers body text and links on page, card and dialog backgrounds and names filled color controls (buttons, badges, toasts, current nav entry; 2.7 to 3.6:1) as an accepted exception; light links one shade darker (primary-700) so they still pass. This is an owner-requested scope change after Gate A, so no extra review round was run for it; the full local suite passed.
 
 ## Verification checklist for the human
 (filled in stage 7)
