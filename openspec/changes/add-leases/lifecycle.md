@@ -1,7 +1,7 @@
 # Lifecycle: add-leases
 
 - Branch: `claude/add-leases`
-- Stage: 6 QA on the dev site (resumed: deploy job re-run after the backup permission was granted)
+- Stage: **HALTED** at 6 QA on the dev site (the deploy account cannot read or write Firestore data)
 - GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
 - QA cycle: 0 of 3
@@ -141,3 +141,9 @@ Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
   3. Re-run the failed job of that run (Actions, the run, "Re-run failed jobs"), or tell Claude to, and the lifecycle continues at stage 6 (QA).
   4. Do the same for the production project's service account before Gate B.
 - **Resolved 2026-10-13:** the user granted the permission to the dev and prod deploy service accounts. The failed job was re-run; the run continues at stage 6.
+- **Halted again 2026-10-13 19:40 (attempt 2 of run 38354071341):**
+  - The backup check passed. Restore point: `projects/lehman-realty-dev/locations/nam5/backups/a6e92c76-cbe3-4018-94b0-5a0d61e293f4`, snapshot 2026-10-13T12:06:54Z.
+  - The runner then failed reading `_migrations` with `7 PERMISSION_DENIED: Missing or insufficient permissions`. The deploy service account has deploy roles only and no Firestore data access. The preflight and the earlier instructions named only the backup permissions; the migration also reads and writes data with this account.
+  - No data changed, and hosting was not deployed.
+  - **Next step for a human:** grant the same deploy service account **Cloud Datastore User** (`roles/datastore.user`) on `lehman-realty-dev`, and on the production project before Gate B. Then re-run the failed job.
+  - The README section "Data migrations" and design.md must also name this role; that goes into the record PR at stage 7.
