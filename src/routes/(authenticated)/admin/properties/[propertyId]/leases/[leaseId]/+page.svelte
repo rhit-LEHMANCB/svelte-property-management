@@ -51,6 +51,14 @@
 			>
 		{/if}
 	</div>
+	{#if data.lease.missingTenants > 0}
+		<div class="card preset-tonal-warning p-4" role="status">
+			{data.lease.missingTenants === 1
+				? '1 tenant on this lease no longer has an account and'
+				: `${data.lease.missingTenants} tenants on this lease no longer have accounts and`} will be removed
+			from it when you save.
+		</div>
+	{/if}
 	<div class="card bg-surface-100-900 p-4 sm:p-6">
 		<LeaseForm
 			data={data.form}

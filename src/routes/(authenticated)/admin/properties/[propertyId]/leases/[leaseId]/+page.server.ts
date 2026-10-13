@@ -28,7 +28,12 @@ export const load = (async ({ locals, params }) => {
 			emails: summary.tenants.length > 0 ? summary.tenants.map((t) => t.email) : ['']
 		}),
 		property: { id: params.propertyId, title: property.title, address: propertyAddress(property) },
-		lease: { ...summary, documentName: lease.document?.fileName ?? null }
+		lease: {
+			...summary,
+			documentName: lease.document?.fileName ?? null,
+			// Ids with no user document cannot be shown as emails, so saving drops them.
+			missingTenants: lease.tenantIds.length - summary.tenants.length
+		}
 	};
 }) satisfies PageServerLoad;
 

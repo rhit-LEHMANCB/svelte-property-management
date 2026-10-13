@@ -107,6 +107,29 @@ describe('data-migrations: Leases from existing tenant links', () => {
 		expect(fake.peek('leases/migrated-p1')?.rent).toBe(1100);
 	});
 
+	it('Scenario: Run again never replaces history the app has recorded on the lease since', async () => {
+		link('t1', 'p1', '2026-03');
+		fake.seed('properties/p1/payment_history/2026', { March: { remainingBalance: 1000 } });
+		fake.seed('properties/p1/recorded_invoices/in_old', { recordedAt: 'old' });
+		await run();
+		// After the deploy, a payment is recorded on the lease.
+		fake.seed('leases/migrated-p1/payment_history/2026', { March: { remainingBalance: 500 } });
+		fake.seed('leases/migrated-p1/recorded_invoices/in_new', { recordedAt: 'new' });
+		fake.seed('properties/p1/recorded_invoices/in_late', { recordedAt: 'late' });
+		fake.remove('_migrations/0001-leases-from-tenant-links');
+
+		await run();
+
+		expect(fake.peek('leases/migrated-p1/payment_history/2026')).toEqual({
+			March: { remainingBalance: 500 }
+		});
+		expect(fake.peek('leases/migrated-p1/recorded_invoices/in_new')).toEqual({ recordedAt: 'new' });
+		// Documents the lease does not have yet are still copied.
+		expect(fake.peek('leases/migrated-p1/recorded_invoices/in_late')).toEqual({
+			recordedAt: 'late'
+		});
+	});
+
 	it('Scenario: Links kept: junctions and property history are left in place', async () => {
 		link('t1', 'p1', '2026-03');
 		fake.seed('properties/p1/payment_history/2026', { March: { remainingBalance: 0 } });

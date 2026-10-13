@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
+import { loadTenantLeases } from '$lib/server/leases';
 
 export const load = (async ({ locals }) => {
 	const uid = getUserIdOrError(locals.userID);
@@ -9,5 +10,7 @@ export const load = (async ({ locals }) => {
 	if (userData.permissions === 'admin') {
 		throw redirect(303, '/admin');
 	}
-	return {};
+	// The lease cards, with the other tenants' names, which the layout does not load.
+	const tenantLeases = await loadTenantLeases(uid, { withOtherTenants: true });
+	return { leaseCards: tenantLeases.map((l) => l.lease) };
 }) satisfies PageServerLoad;

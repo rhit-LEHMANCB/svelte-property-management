@@ -17,10 +17,17 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	if (!lease || !allowed) throw error(403, 'You do not have access to this lease.');
 	if (!lease.document) throw error(404, 'This lease has no document.');
 
-	const [bytes] = await adminStorage
-		.bucket(`gs://${PUBLIC_FB_STORAGE_BUCKET}`)
-		.file(lease.document.path)
-		.download();
+	let bytes: Buffer;
+	try {
+		[bytes] = await adminStorage
+			.bucket(`gs://${PUBLIC_FB_STORAGE_BUCKET}`)
+			.file(lease.document.path)
+			.download();
+	} catch (err) {
+		// The record points at a file that is gone (for example a cleanup that failed part way).
+		console.log('Lease document missing from storage', err instanceof Error ? err.message : err);
+		throw error(404, 'This lease has no document.');
+	}
 	const fileName = lease.document.fileName.replace(/[^\w.\- ]/g, '_');
 	return new Response(new Uint8Array(bytes), {
 		headers: {

@@ -502,6 +502,62 @@ describe('leases: Lease document', () => {
 	});
 });
 
+describe('leases: saving races and stale records (review round 1)', () => {
+	it('an edit of a lease deleted meanwhile answers 404 and does not recreate it', async () => {
+		setup();
+		seedLease('lease-1', { tenantIds: ['tenant-1'], startDate: '2026-11-01' });
+		const realTransaction = db.runTransaction.bind(db);
+		db.runTransaction = (async (fn: Parameters<typeof db.runTransaction>[0]) => {
+			db.remove('leases/lease-1');
+			return realTransaction(fn);
+		}) as typeof db.runTransaction;
+		try {
+			const result = await edit(
+				'lease-1',
+				leaseForm({ emails: ['tenant-1@example.com', 'x@new.com'] })
+			);
+			expect(result.status).toBe(404);
+		} finally {
+			db.runTransaction = realTransaction;
+		}
+		expect(db.peek('leases/lease-1')).toBeUndefined();
+		expect(db.peek('users/new-user-uid')).toBeUndefined();
+	});
+
+	it('an edit without a new file keeps a document another admin attached meanwhile', async () => {
+		setup();
+		seedLease('lease-1', { tenantIds: ['tenant-1'], startDate: '2026-11-01' });
+		const attached = {
+			path: 'leases/lease-1/9.pdf',
+			fileName: 'other.pdf',
+			size: 1,
+			uploadedAt: 'x'
+		};
+		const realTransaction = db.runTransaction.bind(db);
+		db.runTransaction = (async (fn: Parameters<typeof db.runTransaction>[0]) => {
+			db.seed('leases/lease-1', { ...db.peek('leases/lease-1'), document: attached });
+			return realTransaction(fn);
+		}) as typeof db.runTransaction;
+		try {
+			await edit('lease-1', leaseForm({ rent: '1300' }));
+		} finally {
+			db.runTransaction = realTransaction;
+		}
+		expect(db.peek('leases/lease-1')).toMatchObject({ rent: 1300, document: attached });
+	});
+
+	it('the edit page counts tenants whose account no longer exists', async () => {
+		setup();
+		seedLease('lease-1', { tenantIds: ['tenant-1', 'gone-user'], startDate: '2026-01-01' });
+		const result = await call(editLoad, {
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1', leaseId: 'lease-1' }
+		});
+		expect(result.data.lease.missingTenants).toBe(1);
+		expect(result.data.form.data.emails).toEqual(['tenant-1@example.com']);
+	});
+});
+
 describe('leases: Lease document route (GET /api/lease/{id}/document)', () => {
 	function setupDocument() {
 		setup();
@@ -553,6 +609,12 @@ describe('leases: Lease document route (GET /api/lease/{id}/document)', () => {
 	it('an anonymous caller is refused with 401', async () => {
 		setupDocument();
 		expect((await fetchAs(null)).status).toBe(401);
+	});
+
+	it('a document record whose file is gone answers 404', async () => {
+		setupDocument();
+		services.storage.log.files.clear();
+		expect((await fetchAs('tenant-1')).status).toBe(404);
 	});
 
 	it('a lease without a document answers 404', async () => {

@@ -7,9 +7,7 @@
 
 	const isTenant = $derived(data.user.permissions !== 'admin');
 	// Current and upcoming leases; an ended lease with money owed shows on the payment page.
-	const leases = $derived(
-		(data.userLeases ?? []).filter((lease) => lease.status !== 'ended').reverse()
-	);
+	const leases = $derived(data.leaseCards.filter((lease) => lease.status !== 'ended').reverse());
 	const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 	// Lease dates are calendar days (YYYY-MM-DD); parse them as local so they are not shifted a day.
 	const longDate = (day: string) =>
@@ -48,9 +46,9 @@
 							</dd>
 							<dt class="opacity-70">Monthly rent</dt>
 							<dd>{currency.format(lease.rent)}</dd>
-							{#if lease.otherTenants.length > 0}
+							{#if lease.otherTenants?.length}
 								<dt class="opacity-70">Also on the lease</dt>
-								<dd>{lease.otherTenants.join(', ')}</dd>
+								<dd>{lease.otherTenants?.join(', ')}</dd>
 							{/if}
 						</dl>
 						{#if lease.hasDocument}

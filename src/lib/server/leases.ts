@@ -90,8 +90,9 @@ export async function leasesOfTenant(uid: string): Promise<[string, LeaseDoc][]>
  */
 export async function loadTenantLeases(
 	uid: string,
-	today = businessToday()
+	options: { withOtherTenants?: boolean; today?: string } = {}
 ): Promise<{ lease: TenantLease; property: DocumentData | null }[]> {
+	const today = options.today ?? businessToday();
 	const own = await leasesOfTenant(uid);
 	const propertyIds = [...new Set(own.map(([, lease]) => lease.propertyId))];
 	const propertyDocs = await Promise.all(
@@ -101,7 +102,10 @@ export async function loadTenantLeases(
 	const result = await Promise.all(
 		own.map(async ([id, lease]) => {
 			const property = properties.get(lease.propertyId) ?? null;
-			const others = await tenantSummaries(lease.tenantIds.filter((t) => t !== uid));
+			// Only the dashboard shows the other tenants; every other page skips those reads.
+			const others = options.withOtherTenants
+				? await tenantSummaries(lease.tenantIds.filter((t) => t !== uid))
+				: undefined;
 			return {
 				lease: {
 					id,
@@ -111,7 +115,7 @@ export async function loadTenantLeases(
 					startDate: lease.startDate,
 					endDate: lease.endDate,
 					status: leaseStatus(lease, today),
-					otherTenants: others.map((t) => t.name || 'A tenant'),
+					...(others && { otherTenants: others.map((t) => t.name || 'A tenant') }),
 					hasDocument: Boolean(lease.document)
 				},
 				property
@@ -156,6 +160,9 @@ export async function documentProblem(file: File): Promise<string | null> {
 }
 
 const codeOf = (err: unknown) => (err as { code?: string } | undefined)?.code;
+
+/** Raised inside the save transaction when the lease being edited was deleted meanwhile. */
+class LeaseGoneError extends Error {}
 
 /** Raised inside the save transaction when a conflict appeared after the first check. */
 class LeaseConflictError extends Error {
@@ -284,6 +291,8 @@ export async function saveLease(options: {
 
 	const created: (CreatedAccount & { email: string })[] = [];
 	let uploadedPath: string | null = null;
+	// The document file the saved lease replaced, read in the transaction.
+	let replacedPath: string | undefined;
 	try {
 		for (const email of newEmails) {
 			created.push({ email, ...(await createTenantAccount(email, { sendWelcome: false })) });
@@ -314,6 +323,13 @@ export async function saveLease(options: {
 		]);
 
 		await adminDB.runTransaction(async (tx) => {
+			// An edit re-reads the lease, so it never recreates one deleted meanwhile and keeps the
+			// document and creation time stored now.
+			const stored = leaseId
+				? ((await tx.get(leaseRef)).data() as LeaseDoc | undefined)
+				: undefined;
+			if (leaseId && !stored) throw new LeaseGoneError();
+			replacedPath = stored?.document?.path;
 			const fresh = await Promise.all(
 				tenantIds.map((uid) => tx.get(leases().where('tenantIds', 'array-contains', uid)))
 			);
@@ -334,8 +350,8 @@ export async function saveLease(options: {
 				rent: input.rent,
 				startDate: dates.startDate,
 				endDate: dates.endDate,
-				document,
-				createdAt: existing?.createdAt ?? now.toISOString(),
+				document: upload ? document : (stored?.document ?? null),
+				createdAt: stored?.createdAt ?? now.toISOString(),
 				updatedAt: now.toISOString()
 			};
 			tx.set(leaseRef, lease);
@@ -349,13 +365,14 @@ export async function saveLease(options: {
 		}
 		for (const account of created) await account.undo();
 		if (err instanceof LeaseConflictError) return { kind: 'conflicts', problems: err.problems };
+		if (err instanceof LeaseGoneError) throw error(404, 'Lease not found');
 		throw err;
 	}
 
 	// The lease now points at the new document; the old file is no longer needed.
-	if (uploadedPath && existing?.document?.path && existing.document.path !== uploadedPath) {
+	if (uploadedPath && replacedPath && replacedPath !== uploadedPath) {
 		await bucket()
-			.file(existing.document.path)
+			.file(replacedPath)
 			.delete()
 			.catch((err) => console.log('Could not delete the replaced lease document', err));
 	}

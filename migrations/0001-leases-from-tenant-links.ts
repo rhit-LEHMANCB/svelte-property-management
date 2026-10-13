@@ -100,8 +100,9 @@ const migration: Migration = {
 				}
 			}
 
-			// A re-run keeps a lease that already exists (it may have been edited since) and copies the
-			// history again with the same document ids, which changes nothing.
+			// A re-run keeps a lease that already exists (it may have been edited since) and copies only
+			// the history and invoice documents the lease does not have yet: once the app records
+			// payments on the lease, its copies are newer than the property's and must not be replaced.
 			if (!(await leaseRef.get()).exists) {
 				const lease: DocumentData = {
 					propertyId,
@@ -116,11 +117,14 @@ const migration: Migration = {
 				};
 				await write.set(leaseRef, lease);
 			}
-			for (const doc of history.docs) {
-				await write.set(leaseRef.collection('payment_history').doc(doc.id), doc.data());
-			}
-			for (const doc of invoices.docs) {
-				await write.set(leaseRef.collection('recorded_invoices').doc(doc.id), doc.data());
+			for (const [name, snapshot] of [
+				['payment_history', history],
+				['recorded_invoices', invoices]
+			] as const) {
+				for (const doc of snapshot.docs) {
+					const target = leaseRef.collection(name).doc(doc.id);
+					if (!(await target.get()).exists) await write.set(target, doc.data());
+				}
 			}
 			created.push(
 				`${leaseId} (${tenants.length} tenant(s), ${history.size} history and ${invoices.size} invoice document(s))`

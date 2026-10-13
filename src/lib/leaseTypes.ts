@@ -41,7 +41,10 @@ export type TenantLease = {
 	startDate: string;
 	endDate: string | null;
 	status: LeaseStatus;
-	/** Names of the other tenants on the lease, never their contact details. */
-	otherTenants: string[];
+	/**
+	 * Names of the other tenants on the lease, never their contact details. Loaded only for the
+	 * dashboard.
+	 */
+	otherTenants?: string[];
 	hasDocument: boolean;
 };

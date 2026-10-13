@@ -3,7 +3,7 @@
 - Branch: `claude/add-leases`
 - Stage: 4 Review
 - GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
-- Review round: 0 of 5
+- Review round: 1 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-13
 
@@ -91,7 +91,15 @@ Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
 - Stage 3 done 2026-10-13: 34/34 tasks; lint, check, 409 unit/handler tests, build, check:server and 105 e2e tests pass. Manual emulator run of `npm run migrate` (dry run, apply, re-run) matched the spec.
 
 ## Review rounds
-(none yet)
+- Round 1 (2026-10-13): 0 blockers, 1 major, 5 minors, 1 nit.
+  - Fixed: major, migration 0001 re-run replaced lease history recorded after the first run (now copies only missing documents; test added; design updated).
+  - Fixed: minor, the edit transaction now re-reads the lease (404 if deleted meanwhile; keeps a document attached meanwhile).
+  - Fixed: minor, the edit page warns about tenants whose account no longer exists.
+  - Fixed: minor, a missing PDF file answers 404 instead of a 500.
+  - Fixed: minor (half), the layout no longer reads the other tenants' names on every page; only the dashboard load does.
+  - Not fixed: minor, the webhook acknowledging an unknown lease with 200. The rent-payments spec ("Unknown property") requires 200, and the race needs an admin to delete a lease with no payments while its tenant is mid-checkout.
+  - Not fixed: minor (other half), the users page reading the whole leases collection. It already reads every user document, so this is the same order of cost for an admin-only page.
+  - Not fixed: nit, property delete removing its leases' payment history. That is the specified cascade ("Delete property"), as before for property history.
 
 ## Out-of-scope observations
 (none yet)

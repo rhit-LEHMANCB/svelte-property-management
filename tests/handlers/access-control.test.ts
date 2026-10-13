@@ -42,7 +42,6 @@ describe('access-control: tenant property context (authenticated layout)', () =>
 				startDate: '2020-01-01',
 				endDate: null,
 				status: 'current',
-				otherTenants: ['Tess Two'],
 				hasDocument: true
 			}
 		]);
@@ -215,6 +214,37 @@ describe('access-control: role-based landing (home page load)', () => {
 
 	it('Scenario: anonymous callers are rejected with 401', async () => {
 		expect((await call(homeLoad, { userID: null })).status).toBe(401);
+	});
+});
+
+describe('leases: Tenant lease card (dashboard load)', () => {
+	it('Scenario: Current lease: the card data names the other tenants, never their emails', async () => {
+		seedTenant('t1');
+		seedTenant('t2', { firstName: 'Tess', lastName: 'Two' });
+		seedProperty('p1', { streetAddress: '9 Oak Ave', city: 'Brazil' });
+		seedLease('l1', { propertyId: 'p1', tenantIds: ['t1', 't2'], startDate: '2020-01-01' });
+
+		const result = await call(homeLoad, { userID: 't1' });
+
+		expect(result.data.leaseCards).toEqual([
+			expect.objectContaining({
+				id: 'l1',
+				address: '9 Oak Ave, Brazil',
+				otherTenants: ['Tess Two']
+			})
+		]);
+		expect(JSON.stringify(result.data)).not.toContain('t2@example.com');
+	});
+
+	it('the layout does not load the other tenants (only the dashboard does)', async () => {
+		seedTenant('t1');
+		seedTenant('t2');
+		seedProperty('p1');
+		seedLease('l1', { propertyId: 'p1', tenantIds: ['t1', 't2'], startDate: '2020-01-01' });
+
+		const result = await call(layoutLoad, { userID: 't1' });
+
+		expect(result.data.userLeases[0]).not.toHaveProperty('otherTenants');
 	});
 });
 
