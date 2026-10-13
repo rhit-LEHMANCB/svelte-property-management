@@ -1,10 +1,10 @@
 # Lifecycle: remove-address-lookup
 
 - Branch: `remove-address-lookup`
-- Stage: 5 Ship to develop (PR #136 open; waiting on `tests` and `build_and_preview` checks for head 907a481)
+- Stage: 7 Production PR (QA passed; waiting on Gate B: a human merges the develop -> production PR)
 - Renamed from `fix-maps-address-autocomplete` on 2026-10-13 when the scope changed (see interview summary)
-- Review round: 1 of 3
-- QA cycle: 0 of 3
+- Review round: 1 of 5 (skill updated to 5 rounds by #135 mid-run)
+- QA cycle: 1 of 3
 - Started: 2026-10-13
 - Issue: #134
 
@@ -73,7 +73,7 @@ Run 2026-10-13. GitHub backend: **GitHub MCP** (`gh` token in GH_TOKEN is invali
 | `npm run lint` / `npm run check` / `npm test` | OK / 0 errors / 314 passed |
 | Java for emulators | Present |
 | Secrets for this change | None needed |
-| Production PR | **Gap:** release PR #129 (develop -> production) is already open, so GitHub won't accept a second develop -> production PR. Stage 7 adds this change's QA report and checklist as a comment on #129 instead |
+| Production PR | **Gap (resolved):** release PR #129 (develop -> production) was open at preflight, so the plan was to post this change's QA report on #129. #129 was merged at 03:06 UTC, before #136 reached `develop` at 03:08, so this change did not ship with it. A QA comment was posted on #129 in error and has been corrected; this change gets its own production PR |
 
 ## Review rounds
 - Round 1 (2026-10-13, fresh Explore/Sonnet reviewer): blockers 0, majors 0, minors 2, nits 2. Fixed both minors (create test now asserts streetAddress and zip; the no-Maps test also types into Street Address). Fixed the lifecycle.md-reference nit by rewording the proposal/tasks. The e2e-cleanup nit needs no change: `emulators:exec` starts empty emulators on every run, and other specs seed fixed ids the same way. Review loop exited.
@@ -83,10 +83,41 @@ Run 2026-10-13. GitHub backend: **GitHub MCP** (`gh` token in GH_TOKEN is invali
 - Environment: Playwright 1.63 expects chromium build 1243, but the cloud image ships 1194. Worth a cloud setup fix (pin or install matching browsers) so a local override config is not needed.
 
 ## QA report
-(filled in stage 6; link to the QA evidence branch)
+Evidence branch: `qa-evidence/remove-address-lookup` (screenshots in `openspec/changes/remove-address-lookup/qa/screenshots/`, spec in `tests/qa/remove-address-lookup/address-lookup.spec.ts`).
+
+- Deployed commit: `090c17c` on `develop` (dev site: https://lehman-realty-dev.web.app), deploy run 83 succeeded
+- QA cycle: 1 of 3, fresh Sonnet agent given only the dev URL, proposal, delta specs and QA guide
+- Run at: 2026-10-13 ~03:15 UTC
+- Result: **PASS** (final run 7/7; two earlier runs failed on test bugs in the agent's own selectors, which it fixed; no app bugs)
+
+| Capability | Scenario | Result | Evidence |
+|---|---|---|---|
+| property-management | Form fields (add page): five address fields shown, no Address Lookup | pass | [property-management-form-fields-add](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/remove-address-lookup/openspec/changes/remove-address-lookup/qa/screenshots/property-management-form-fields-add.png?raw=true) |
+| property-management | Form fields (edit page of a `qa-` property) | pass | [property-management-form-fields-edit](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/remove-address-lookup/openspec/changes/remove-address-lookup/qa/screenshots/property-management-form-fields-edit.png?raw=true) |
+| property-management | Typed address is saved (22 QA Test Ave / Apt 3B / Terre Haute / IN / 47803, matched after reload) | pass | [property-management-typed-address-saved](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/remove-address-lookup/openspec/changes/remove-address-lookup/qa/screenshots/property-management-typed-address-saved.png?raw=true) |
+| property-management | No third-party lookup requests (load + typing on add and edit: 0 requests to maps.googleapis.com or maps.gstatic.com, 0 Maps console messages, 0 Maps script tags) | pass | [property-management-no-third-party-lookup-requests](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/remove-address-lookup/openspec/changes/remove-address-lookup/qa/screenshots/property-management-no-third-party-lookup-requests.png?raw=true) |
+| app-platform | Autocomplete selection (tenant picker opens, suggests, filters, fills; Add not clicked to avoid changing a real tenant) | pass (partial) | [app-platform-autocomplete-selection](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/remove-address-lookup/openspec/changes/remove-address-lookup/qa/screenshots/app-platform-autocomplete-selection.png?raw=true) |
+| regression | Admin top-level pages load, no page errors or 5xx | pass | [regression-admin-pages](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/remove-address-lookup/openspec/changes/remove-address-lookup/qa/screenshots/regression-admin-pages.png?raw=true) |
+| regression | Tenant top-level pages load, no page errors or 5xx | pass | [regression-tenant-pages](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/remove-address-lookup/openspec/changes/remove-address-lookup/qa/screenshots/regression-tenant-pages.png?raw=true) |
+
+Cleanup: the `qa-` property was deleted and confirmed gone. Screenshots were masked (tenant email; user list emails, phone, avatar) before publishing.
+
+Observations outside the specs:
+- Low, pre-existing: `/admin/properties/<deleted id>/edit` returns HTTP 500 instead of a 404/redirect. This is the current spec'd "Unknown property" behavior (property-management: fails with 500 "Error retrieving property"), so not a bug in this change. Worth a follow-up issue if a friendlier page is wanted.
+- Environment: the Playwright 1.63 / Chromium 1194 mismatch in the cloud image (already listed under Deferred findings).
+
+Not covered by automation: submitting the tenant picker (would change real tenant data); visual layout on phones; keyboard and screen reader use; anything on production.
 
 ## Verification checklist for the human
-(filled in stage 7)
+Ranked high to low risk. Included in the production PR body.
+
+1. **Production property form after the #129 deploy** (high): on the production site, open Admin > Properties > Add Property with dev tools open (Network + Console). Expect no Address Lookup field, no requests to `maps.googleapis.com`, no console errors; type an address and save; it saves. Why a person: QA never touches production.
+2. **Tenant picker end to end** (high): on a throwaway property, Tenants tab, pick a tenant, choose the move-in month, click Add. Expect a success toast and the tenant listed; then remove them. Why a person: it changes real tenant data, so QA stopped before Add.
+3. **Address with apartment and ZIP+4** (medium): add a property with an apartment number and a zip like `47803-1234`, save, reopen. Expect values exactly as typed, and the list shows street, city and state. Why a person: data-quality judgement.
+4. **Phone layout** (medium): add and edit pages at ~375 px wide. Expect the Address section stacks cleanly with no gap where the lookup was. Why a person: visual judgement.
+5. **Keyboard entry** (low): tab from Title to Save on the add page. Expect a logical order and no orphaned focus stop. Why a person: accessibility judgement.
+
+Production-only risks: none from this change (no env vars, secrets, Stripe, domain or runtime changes). Optional: once you are sure the lookup will not come back soon, you can leave the Google Cloud Maps APIs as they are; nothing calls them now.
 
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
