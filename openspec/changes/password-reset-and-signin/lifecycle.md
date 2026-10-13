@@ -1,13 +1,13 @@
 # Lifecycle: password-reset-and-signin
 
 - Branch: `claude/password-reset-and-signin`
-- Stage: 1 Interview
+- Stage: 2 Propose (awaiting Gate A)
 - Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-13
 
 ## Interview summary
-Approved: no
+Approved: yes (2026-10-13)
 
 **Goal.** A signed-out user can reset a forgotten password from the sign-in page, the reset page fails cleanly on bad links and ends on sign-in, and sign-in errors say what actually went wrong. Issues: #46, #55, #56, and the sign-in items of #119.
 
@@ -46,11 +46,24 @@ Approved: no
 **Assumptions.** Error wording above; rate-limit numbers fixed in code; the profile page's reset button keeps working with the generic success.
 
 ## Gate A
-Approved: no
+Approved: yes (2026-10-13)
 Accepted preflight gaps: none
 
 ## Preflight
-(table of checks and results, from stage 2)
+GitHub backend: **GitHub MCP** (`gh` token invalid; cloud session; `get_me` = rhit-LEHMANCB).
+
+| Check | Result |
+| --- | --- |
+| git commit and push to origin | ok (branch pushed) |
+| GitHub backend | MCP, `get_me` ok |
+| Env files (`scripts/pull-env.sh` via 1Password) | ok, `.env` and `.env.qa` written, mode 600, untracked |
+| QA credentials (4 vars, dev project) | present in `.env.qa` |
+| Playwright `qa` project | present in `playwright.config.ts` |
+| Browsers | Playwright 1.63 expects headless shell build 1243; container has 1194. Worked around by symlinking the preinstalled Chromium to the expected path (container only, no repo change); `npm run test:e2e` 100 passed |
+| Dev deploy on develop | last run success (#135 merge) |
+| Dev site | https://lehman-realty-dev.web.app/signin answers 200 |
+| `npm run lint`, `check`, `test`, `build` | all pass |
+| New secrets or variables | none needed |
 
 ## Review rounds
 (none yet; one line per round: blockers, majors, minors, nits, fixed, rejected with reason)
