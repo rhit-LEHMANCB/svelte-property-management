@@ -83,7 +83,7 @@ export default async function globalSetup() {
 			fileURLToPath(new URL('../../../migrations', import.meta.url))
 		),
 		dryRun: false,
-		findRestorePoint: async () => null,
+		findRestorePoint: async () => undefined,
 		log: () => undefined
 	});
 }

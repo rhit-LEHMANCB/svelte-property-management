@@ -46,7 +46,7 @@ async function main() {
 		migrations,
 		dryRun,
 		findRestorePoint: emulator
-			? async () => null
+			? async () => undefined
 			: () =>
 					findRestorePoint({
 						projectId,

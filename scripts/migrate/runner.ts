@@ -17,8 +17,11 @@ export type RunOptions = {
 	db: Firestore;
 	migrations: Migration[];
 	dryRun: boolean;
-	/** Refuses (throws) when the database has no backup schedule; returns the newest backup. */
-	findRestorePoint: () => Promise<RestorePoint>;
+	/**
+	 * Refuses (throws) when the database has no backup schedule; returns the newest backup, null when
+	 * none has finished yet, or undefined when there is nothing to check (the emulator).
+	 */
+	findRestorePoint: () => Promise<RestorePoint | undefined>;
 	log?: (message: string) => void;
 	now?: () => Date;
 };
@@ -72,9 +75,12 @@ export async function runMigrations(options: RunOptions): Promise<RunResult> {
 	if (problems.length > 0) throw new Error(`Invalid migrations:\n${problems.join('\n')}`);
 	const migrations = [...options.migrations].sort((a, b) => a.name.localeCompare(b.name));
 
-	const restorePoint = await options.findRestorePoint();
-	if (restorePoint) {
-		log(`Restore point: backup ${restorePoint.backup} (snapshot ${restorePoint.snapshotTime})`);
+	const found = await options.findRestorePoint();
+	const restorePoint = found ?? null;
+	if (found === undefined) {
+		log('Backup check skipped (emulator): there is no restore point.');
+	} else if (found) {
+		log(`Restore point: backup ${found.backup} (snapshot ${found.snapshotTime})`);
 	} else {
 		log(
 			'WARNING: the database has a backup schedule but no finished backup yet; continuing with no restore point.'

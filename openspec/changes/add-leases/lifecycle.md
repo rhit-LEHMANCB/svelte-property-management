@@ -1,7 +1,7 @@
 # Lifecycle: add-leases
 
 - Branch: `claude/add-leases`
-- Stage: 3 Implement
+- Stage: 4 Review
 - GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 0 of 5
 - QA cycle: 0 of 3
@@ -84,6 +84,11 @@ Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
 - Unexpected failures while saving a lease come back as a form message ("could not be saved and nothing was changed") instead of an error page, to meet the spec's "the admin sees an error".
 - Backups REST calls use firebase-admin's `applicationDefault().getAccessToken()` rather than adding `google-auth-library`.
 - Pure lease date rules live in `src/lib/server/leaseDates.ts`; Firestore work in `leases.ts`.
+- The admin Users modal showed a user's property through the removed `/api/user/{id}/assoc`; the users page load now passes each user's current-lease property instead.
+- The tenant picker was the last combobox, so `app-platform` and `ui-accessibility` got small deltas dropping its examples; their picker e2e tests were removed with it.
+- e2e: the global setup seeds the old tenant link and runs the real migration runner, so every e2e run exercises migration 0001; the fake Stripe server also answers `/v1/customers` and Resend's `/emails` (via `RESEND_BASE_URL`).
+- README: the documented emulator command needs `--config firebase.emulators.json`; fixed while verifying it.
+- Stage 3 done 2026-10-13: 34/34 tasks; lint, check, 409 unit/handler tests, build, check:server and 105 e2e tests pass. Manual emulator run of `npm run migrate` (dry run, apply, re-run) matched the spec.
 
 ## Review rounds
 (none yet)

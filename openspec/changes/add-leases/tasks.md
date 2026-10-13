@@ -12,7 +12,7 @@
 - [x] 2.3 Add the backup-schedule check and restore-point lookup through the Firestore Admin REST API (fail with instructions when there is no schedule; record the newest `READY` backup for `(default)`, or warn and record none), skipped when `FIRESTORE_EMULATOR_HOST` is set; verify with unit tests on the response parsing (schedule present, no schedule, only unfinished backups, request error)
 - [x] 2.4 Add `tests/unit/migrations.test.ts` checking every file in `migrations/` for the `NNNN-name` pattern, unique numbers, and non-empty `description` and `undo`; verify it fails on a deliberately bad fixture
 - [x] 2.5 Add the migrate step to `.github/workflows/firebase-hosting-merge.yml` between the rules deploy and the hosting deploy, with the service account written to a temp file the same way as the rules step; verify with `npx actionlint` if available, otherwise by reading the YAML against the rules step
-- [ ] 2.6 Document migrations in `README.md` (how to write one, dry run, how the deploy runs them, the backup-schedule prerequisite and how to create it, where the start time and restore point are shown, how to roll back including restoring a backup into a new database); verify the documented commands run as written against the emulator
+- [x] 2.6 Document migrations in `README.md` (how to write one, dry run, how the deploy runs them, the backup-schedule prerequisite and how to create it, where the start time and restore point are shown, how to roll back including restoring a backup into a new database); verify the documented commands run as written against the emulator
 
 ## 3. Lease model and rules
 
@@ -61,8 +61,8 @@
 
 ## 10. Integration checks
 
-- [ ] 10.1 Run `npm run migrate` against the emulator with seeded junction data, then load the app and verify the migrated tenant sees the same balance
-- [ ] 10.2 Run `npm run lint`, `npm run check`, `npm test`, `npm run test:e2e` and `npm run build` and verify they all pass
+- [x] 10.1 Run `npm run migrate` against the emulator with seeded junction data, then load the app and verify the migrated tenant sees the same balance
+- [x] 10.2 Run `npm run lint`, `npm run check`, `npm test`, `npm run test:e2e` and `npm run build` and verify they all pass
 
 ## Workflow follow-up
 

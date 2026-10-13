@@ -115,6 +115,17 @@ describe('data-migrations: Restore point', () => {
 	});
 });
 
+describe('data-migrations: emulator runs', () => {
+	it('says the backup check was skipped, records no restore point, and applies', async () => {
+		await run([migration('0001-a')], { findRestorePoint: async () => undefined });
+		expect(logs[0]).toBe('Backup check skipped (emulator): there is no restore point.');
+		expect(fake.peek('_migrations/0001-a')).toMatchObject({
+			status: 'applied',
+			restorePoint: null
+		});
+	});
+});
+
 describe('data-migrations: Backup schedule required', () => {
 	it('Scenario: No schedule: nothing is applied and the run fails with the message', async () => {
 		const up = vi.fn(async () => ({}));
