@@ -274,7 +274,9 @@ describe('FakeFirestore: array queries', () => {
 
 	it('array-contains-any matches any of the values, once per document', async () => {
 		expect(
-			await ids(db.collection('leases').where('tenantIds', 'array-contains-any', ['u2', 'u3', 'u1']))
+			await ids(
+				db.collection('leases').where('tenantIds', 'array-contains-any', ['u2', 'u3', 'u1'])
+			)
 		).toEqual(['a', 'b']);
 	});
 });
