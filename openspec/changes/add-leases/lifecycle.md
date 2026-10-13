@@ -1,13 +1,14 @@
 # Lifecycle: add-leases
 
 - Branch: `claude/add-leases`
-- Stage: 1 Interview
+- Stage: 2 Propose (Gate A pending)
+- GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-13
 
 ## Interview summary
-(approved: no)
+(approved: yes, 2026-10-13)
 
 **Goal.** An admin creates leases on a property and adds tenants to a lease by email. If a user with that email already exists, they are attached. If not, a new tenant account is created for them. The lease becomes the source of truth for who lives where and what they owe. This change also sets the pattern for data migrations.
 
@@ -21,7 +22,7 @@
 - Payments are tracked per lease in `leases/{id}/payment_history/{year}`. The balance runs from the lease's start month through the earlier of this month and its end month, using the lease's rent. Checkout sessions carry `leaseId`, and the webhook records against that lease. Tenants on the same lease share its balance.
 - When a lease ends, rent stops after its end month. Any unpaid balance stays payable on `/payment`. The tenant keeps their login but is no longer assigned to the property and cannot file maintenance requests for it.
 - Tenant dashboard: a read-only lease card with dates, rent, the other tenants' names and a PDF link.
-- Data migrations: numbered files in `migrations/`, and a runner that applies any not yet recorded in a Firestore `_migrations` collection. Migrations must be safe to re-run, and the runner has a dry-run flag and an `npm run migrate` script. It runs in `firebase-hosting-merge.yml` after the rules deploy and before hosting, for both develop and production.
+- Data migrations: numbered files in `migrations/`, and a runner that applies any not yet recorded in a Firestore `_migrations` collection. Migrations must be safe to re-run, and the runner has a dry-run flag and an `npm run migrate` script. It runs in `firebase-hosting-merge.yml` after the rules deploy and before hosting, for both develop and production. Before applying anything, the runner records the current time in the `_migrations` record and the workflow log, so you know the exact minute to restore to. Point-in-time recovery (PITR, 7 days) must be on for both databases. Each migration file says how to undo it.
 - First migration: for each property with assigned tenants, create one lease from the property's rent, a start date of the earliest move-in month, no end date, those tenants, and the property's `payment_history` copied into the lease. The junction documents are left in place, so the old code still works until the new code is live. A later migration can remove them.
 
 **Out of scope:** Rent proration, deposits, fees, lease renewal workflows, e-signature, lease templates, tenant self-service edits, removing `junction_user_property` documents.
@@ -50,6 +51,7 @@
 
 **Rollout**
 - No new secrets. The migrate step reuses `FIREBASE_SERVICE_ACCOUNT_LEHMAN_REALTY` and `FB_PROJECT_ID`, which are already in both environments.
+- Turn on PITR for the `(default)` database in both Firebase projects (a one-time console or `gcloud` setting) before the first deploy that runs migrations. The runner refuses to apply migrations when PITR is off.
 - Firestore indexes for leases by tenant and by property are deployed by the existing rules and indexes step.
 - On production, the migration runs automatically at deploy. The human checking Gate B should compare a few tenants' balances before and after.
 
@@ -60,7 +62,22 @@ Approved: no
 Accepted preflight gaps: none
 
 ## Preflight
-(table of checks and results, from stage 2)
+Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
+
+| Check | Result |
+| --- | --- |
+| git commit and push to `origin` | Pass: commit 1d64577 pushed to `claude/add-leases` |
+| GitHub backend | Pass: GitHub MCP (`gh` has an invalid `GH_TOKEN`) |
+| Env files from 1Password | Pass: `.env` and `.env.qa` pulled, mode 600, gitignored, not printed |
+| QA credentials | Pass: all four `QA_*` keys present in `.env.qa` |
+| Playwright `qa` project and browsers | Pass: `qa` project in `playwright.config.ts`; Chromium installed to the version Playwright needs (README cloud-session fix) |
+| Dev deploy workflow on `develop` | Pass: run 83 succeeded; run 84 (#139, a docs-only QA record) was still running at check time |
+| Node | Pass: v22.22.0 matches `.nvmrc` |
+| `npm run lint`, `check`, `test`, `build` | Pass |
+| `npm run test:e2e` (emulators, Java) | Pass: 101 passed |
+| GitHub `develop` secrets for this change | Pass: none needed (the migrate step reuses `FIREBASE_SERVICE_ACCOUNT_LEHMAN_REALTY` and `FB_PROJECT_ID`) |
+| PITR on `lehman-realty-dev` | **Not verified**: `gcloud` is not signed in and the Firebase connector has no access to the project. If PITR is off at merge, the new migrate step fails the dev deploy (by design) and the run halts in stage 6 |
+| Deploy service account can read database metadata (PITR check) | **Not verified**: same reason; the first dev deploy will show it |
 
 ## Review rounds
 (none yet)
