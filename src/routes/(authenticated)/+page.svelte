@@ -58,8 +58,7 @@
 								class="btn btn-sm preset-tonal"
 								href="/api/lease/{lease.id}/document"
 								target="_blank"
-								rel="noopener"
-								><IconFileText size={18} aria-hidden="true" />View lease document</a
+								rel="noopener"><IconFileText size={18} aria-hidden="true" />View lease document</a
 							>
 						{/if}
 					</section>
