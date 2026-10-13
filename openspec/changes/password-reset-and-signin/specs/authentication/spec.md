@@ -111,7 +111,7 @@ The system SHALL let a user sign in with the sign-in form before or without clie
 ## ADDED Requirements
 
 ### Requirement: Password reset rate limit
-The system SHALL send at most one password reset email per email address per minute and at most five per hour, counting requests case-insensitively by address, whether or not an account exists.
+The system SHALL send at most one password reset email per mailbox per minute and at most five per hour, whether or not an account exists. Addresses that deliver to the same mailbox count together: case is ignored, a `+tag` is ignored, and for Gmail dots in the name are ignored.
 
 #### Scenario: Second request within a minute
 - **WHEN** a reset is requested twice for the same address within one minute
@@ -124,6 +124,10 @@ The system SHALL send at most one password reset email per email address per min
 #### Scenario: Case-insensitive address
 - **WHEN** resets are requested for `Tenant@Example.com` and `tenant@example.com` within one minute
 - **THEN** they count as the same address
+
+#### Scenario: Variants of one mailbox
+- **WHEN** resets are requested for `tenant+one@example.com` and `tenant+two@example.com`, or for `first.last@gmail.com` and `firstlast@gmail.com`, within one minute
+- **THEN** each pair counts as one mailbox and only one email is sent
 
 ### Requirement: Forgot password page
 The system SHALL provide a public `/forgot` page, linked as "Forgot password?" from `/signin`, where a signed-out user requests a reset email, with or without client-side scripts.

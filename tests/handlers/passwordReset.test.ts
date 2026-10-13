@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { requestPasswordReset } from '../../src/lib/server/passwordReset';
+import { mailboxKey, requestPasswordReset } from '../../src/lib/server/passwordReset';
 import { services } from '../helpers/services';
 
 const unknownAccount = () =>
@@ -28,6 +28,27 @@ describe('authentication: password reset rate limit (requestPasswordReset)', () 
 
 		await expect(requestPasswordReset(' tenant@example.com ')).resolves.toBe('suppressed');
 		expect(services.sendPasswordResetEmail).toHaveBeenCalledTimes(1);
+	});
+
+	it('Scenario: Variants of one mailbox (plus tags, Gmail dots) count as the same address', async () => {
+		await requestPasswordReset('tenant+one@example.com');
+		await expect(requestPasswordReset('tenant+two@example.com')).resolves.toBe('suppressed');
+
+		await requestPasswordReset('first.last@gmail.com');
+		await expect(requestPasswordReset('firstlast+x@googlemail.com')).resolves.toBe('suppressed');
+
+		expect(services.sendPasswordResetEmail).toHaveBeenCalledTimes(2);
+		// The email still goes to the address as typed.
+		expect(services.sendPasswordResetEmail).toHaveBeenCalledWith('tenant+one@example.com', false);
+	});
+
+	it.each([
+		['Tenant@Example.com', 'tenant@example.com'],
+		['a.b+tag@example.com', 'a.b@example.com'],
+		['A.B+tag@GMail.com', 'ab@gmail.com'],
+		['a.b@googlemail.com', 'ab@gmail.com']
+	])('mailboxKey(%s) is %s', (email, key) => {
+		expect(mailboxKey(email)).toBe(key);
 	});
 
 	it('does not limit a different address', async () => {

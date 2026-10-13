@@ -10,11 +10,27 @@ const MAX_PER_HOUR = 5;
 /** `sent`: the email went out. `suppressed`: no account, or over the rate limit; nothing was sent. */
 export type ResetOutcome = 'sent' | 'suppressed';
 
+const GMAIL_DOMAINS = new Set(['gmail.com', 'googlemail.com']);
+
+/**
+ * The mailbox an address delivers to, so variants of one inbox share a limit: lowercased, without a
+ * `+tag`, and for Gmail without dots in the local part.
+ */
+export const mailboxKey = (email: string) => {
+	const address = email.trim().toLowerCase();
+	const at = address.lastIndexOf('@');
+	if (at < 1) return address;
+	let local = address.slice(0, at).split('+')[0];
+	const domain = address.slice(at + 1);
+	if (GMAIL_DOMAINS.has(domain)) local = local.replaceAll('.', '');
+	return `${local}@${domain === 'googlemail.com' ? 'gmail.com' : domain}`;
+};
+
 // Keyed by a hash so the collection never holds raw addresses. Only the Admin SDK reads it.
 const limitDoc = (email: string) =>
 	adminDB
 		.collection('passwordResetRequests')
-		.doc(createHash('sha256').update(email.trim().toLowerCase()).digest('hex'));
+		.doc(createHash('sha256').update(mailboxKey(email)).digest('hex'));
 
 /**
  * Records a reset request for the address and says whether it may send: at most one per minute and
