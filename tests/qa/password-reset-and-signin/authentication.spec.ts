@@ -1,7 +1,16 @@
 import { test, expect, type Page } from '@playwright/test';
 
 const SHOTS = 'openspec/changes/password-reset-and-signin/qa/screenshots';
-const shot = (page: Page, name: string) => page.screenshot({ path: `${SHOTS}/${name}.png` });
+// Never capture QA account values: hide the contents of any input holding the QA emails/passwords.
+const shot = async (page: Page, name: string) => {
+	const secrets = [process.env.QA_ADMIN_EMAIL, process.env.QA_TENANT_EMAIL].filter(Boolean) as string[];
+	await page.evaluate((vals) => {
+		document.querySelectorAll('input').forEach((i) => {
+			if (vals.includes((i as HTMLInputElement).value)) (i as HTMLInputElement).style.color = 'transparent';
+		});
+	}, secrets).catch(() => undefined);
+	await page.screenshot({ path: `${SHOTS}/${name}.png` });
+};
 const runId = Date.now().toString(36);
 const unknown = (tag: string) => `qa-${tag}-${runId}@example.com`;
 
@@ -31,7 +40,8 @@ async function signInUi(page: Page, email: string, password: string) {
 test.describe('session establishment', () => {
 	test('Successful sign-in + Cookie lifetime (admin)', async ({ page, context }) => {
 		await signInUi(page, need('QA_ADMIN_EMAIL'), need('QA_ADMIN_PASSWORD'));
-		await page.waitForURL((u) => u.pathname === '/', { timeout: 20000 });
+		// '/' may redirect an admin onward to their home (/admin); the sign-in page must be left.
+		await page.waitForURL((u) => u.pathname === '/' || u.pathname.startsWith('/admin'), { timeout: 20000 });
 		const c = (await context.cookies()).find((x) => x.name === '__session');
 		expect(c).toBeTruthy();
 		expect(c!.httpOnly).toBe(true);
@@ -56,6 +66,7 @@ test.describe('session establishment', () => {
 
 	test('Invalid credentials', async ({ page }) => {
 		await signInUi(page, need('QA_TENANT_EMAIL'), 'Wrong-password-1!');
+		await page.waitForTimeout(500);
 		await expect(page.getByText(MSG.wrong)).toBeVisible({ timeout: 15000 });
 		await expect(page).toHaveURL(/\/signin/);
 		await shot(page, 'authentication-invalid-credentials');
@@ -201,8 +212,9 @@ test.describe('forgot page', () => {
 		await expect(page).toHaveURL(/\/forgot$/);
 		await page.getByTitle('Email').fill(unknown('forgot'));
 		await page.getByRole('button', { name: 'Send reset link' }).click();
-		await expect(page.getByText(MSG.sent)).toBeVisible({ timeout: 15000 });
+		await page.waitForTimeout(4000);
 		await shot(page, 'forgot-request-from-the-sign-in-page');
+		await expect(page.getByText(MSG.sent)).toBeVisible({ timeout: 15000 });
 	});
 
 	test.describe('without JavaScript', () => {
