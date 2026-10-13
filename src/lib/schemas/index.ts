@@ -116,3 +116,67 @@ export const insuranceSchema = z
 		message: 'End date must be after start date',
 		path: ['endDate']
 	});
+
+const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** A real calendar day written as `YYYY-MM-DD` (rejects 2026-02-30). */
+export function isIsoDate(value: string) {
+	const match = ISO_DATE.exec(value);
+	if (!match) return false;
+	const [y, m, d] = match.slice(1).map(Number);
+	const date = new Date(Date.UTC(y, m - 1, d));
+	return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
+
+export const NO_TENANTS_MESSAGE = 'A lease needs at least one tenant.';
+
+export const leaseSchema = z
+	.object({
+		rent: z
+			.number({
+				error: (issue) => (issue.input === undefined ? 'Required' : 'Rent must be a number')
+			})
+			.positive('Rent must be greater than 0')
+			.refine(
+				(rent) => Math.abs(rent * 100 - Math.round(rent * 100)) < 1e-6,
+				'Rent can have at most two decimal places'
+			),
+		startDate: z
+			.string()
+			.min(1, 'Please select a start date')
+			.refine(isIsoDate, 'Please enter a date in the correct format'),
+		// Empty means month to month.
+		endDate: z
+			.string()
+			.refine((v) => v === '' || isIsoDate(v), 'Please enter a date in the correct format'),
+		// One row per tenant; blank rows are ignored.
+		emails: z.array(z.string().max(320, 'Email is too long')).superRefine((emails, ctx) => {
+			const filled = emails.map((e) => e.trim()).filter((e) => e !== '');
+			if (filled.length === 0) {
+				ctx.addIssue({ code: 'custom', message: NO_TENANTS_MESSAGE });
+				return;
+			}
+			emails.forEach((email, index) => {
+				const trimmed = email.trim();
+				if (trimmed !== '' && !emailSchema.safeParse(trimmed).success) {
+					ctx.addIssue({
+						code: 'custom',
+						message: `"${trimmed}" is not a valid email address`,
+						path: [index]
+					});
+				}
+			});
+		}),
+		// Set when the admin chose "Save anyway" after an overlap warning.
+		confirmOverlap: z.boolean().default(false)
+	})
+	.refine((lease) => lease.endDate === '' || lease.endDate > lease.startDate, {
+		message: 'End date must be after start date',
+		path: ['endDate']
+	});
+export type LeaseInput = z.infer<typeof leaseSchema>;
+
+/** Trimmed, lowercased, de-duplicated tenant emails, in the order given. */
+export function normalizeEmails(emails: string[]) {
+	return [...new Set(emails.map((e) => e.trim().toLowerCase()).filter((e) => e !== ''))];
+}

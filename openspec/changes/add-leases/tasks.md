@@ -16,10 +16,10 @@
 
 ## 3. Lease model and rules
 
-- [ ] 3.1 Add the lease zod schema (rent, dates, emails, end after start) to `src/lib/schemas/index.ts`, with unit tests for each validation scenario in the `leases` spec
-- [ ] 3.2 Write `src/lib/server/leases.ts` with status (business time zone), date-overlap and conflict helpers; verify with unit tests for current, ended, upcoming, back-to-back and open-ended leases
-- [ ] 3.3 Add the `leases` composite index (`propertyId` asc, `startDate` desc) to `firestore.indexes.json`; verify the JSON parses and the e2e emulator starts
-- [ ] 3.4 Change `storage.rules` to allow public `get` only under `properties/` and `users/`; extend `tests/e2e/specs/rules.spec.ts` with a denied `leases/` read, and verify the rules spec passes
+- [x] 3.1 Add the lease zod schema (rent, dates, emails, end after start) to `src/lib/schemas/index.ts`, with unit tests for each validation scenario in the `leases` spec
+- [x] 3.2 Write `src/lib/server/leases.ts` with status (business time zone), date-overlap and conflict helpers; verify with unit tests for current, ended, upcoming, back-to-back and open-ended leases
+- [x] 3.3 Add the `leases` composite index (`propertyId` asc, `startDate` desc) to `firestore.indexes.json`; verify the JSON parses and the e2e emulator starts
+- [x] 3.4 Change `storage.rules` to allow public `get` only under `properties/` and `users/`; extend `tests/e2e/specs/rules.spec.ts` with a denied `leases/` read, and verify the rules spec passes
 
 ## 4. Accounts and email
 

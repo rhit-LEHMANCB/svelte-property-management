@@ -58,6 +58,10 @@ for (const [caller, headers] of [
 				headers: auth
 			});
 			expect(read.status).toBe(404);
+			const userFile = await fetch(`${storage}/users%2Fnone%2Fprofile%2Fnone?alt=media`, {
+				headers: auth
+			});
+			expect(userFile.status).toBe(404);
 
 			const write = await fetch(`${storage}?name=rules_probe.txt`, {
 				method: 'POST',
@@ -68,6 +72,14 @@ for (const [caller, headers] of [
 
 			const list = await fetch(storage, { headers: auth });
 			expect(list.status).toBe(403);
+		});
+
+		test('Scenario: Lease documents are private', async () => {
+			const auth = await headers();
+			const read = await fetch(`${storage}/leases%2Fany-lease%2Fdocument.pdf?alt=media`, {
+				headers: auth
+			});
+			expect(read.status).toBe(403);
 		});
 	});
 }
