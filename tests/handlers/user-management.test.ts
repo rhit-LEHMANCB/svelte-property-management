@@ -153,6 +153,38 @@ describe('user-management: delete user (DELETE /api/user/{userId})', () => {
 		expect(db.peek('properties/prop-1/payment_history/2026')).toBeDefined();
 	});
 
+	it('Scenario: Delete removes the user from their leases and keeps the leases', async () => {
+		seedAdmin('admin-1');
+		seedTenant('tenant-9');
+		seedTenant('tenant-8');
+		seedProperty('prop-1');
+		seedLease('shared', { tenantIds: ['tenant-8', 'tenant-9'], startDate: '2026-01-01' });
+		seedLease('other', { tenantIds: ['tenant-8'], startDate: '2025-01-01' });
+		db.seed('leases/shared/payment_history/2026', { January: { remainingBalance: 0 } });
+
+		const result = await call(deleteUser, {
+			method: 'DELETE',
+			userID: 'admin-1',
+			params: { userId: 'tenant-9' }
+		});
+
+		expect(result.status).toBe(200);
+		expect(db.peek('leases/shared')?.tenantIds).toEqual(['tenant-8']);
+		expect(db.peek('leases/other')?.tenantIds).toEqual(['tenant-8']);
+		expect(db.peek('leases/shared/payment_history/2026')).toBeDefined();
+	});
+
+	it('Scenario: Last tenant on a lease: the lease is kept with no tenants', async () => {
+		seedAdmin('admin-1');
+		seedTenant('tenant-9');
+		seedProperty('prop-1');
+		seedLease('solo', { tenantIds: ['tenant-9'], startDate: '2026-01-01' });
+
+		await call(deleteUser, { method: 'DELETE', userID: 'admin-1', params: { userId: 'tenant-9' } });
+
+		expect(db.peek('leases/solo')).toMatchObject({ tenantIds: [], propertyId: 'prop-1' });
+	});
+
 	it('Scenario: Already gone Stripe customer and Auth account still complete the delete', async () => {
 		seedAdmin('admin-1');
 		seedTenant('tenant-9');

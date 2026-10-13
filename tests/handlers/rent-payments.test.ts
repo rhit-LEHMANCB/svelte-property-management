@@ -8,24 +8,62 @@ import { getMonthKey } from '../../src/lib/server/payments';
 import { load as paymentLoad } from '../../src/routes/(authenticated)/payment/+page.server';
 import { call } from '../helpers/callHandler';
 import { VALID_STRIPE_SIGNATURE, services } from '../helpers/services';
-import { db, linkTenant, seedProperty, seedTenant } from '../helpers/seed';
+import { db, seedLease, seedProperty, seedTenant } from '../helpers/seed';
 
-const setupTenant = () => {
+/** The first day of the month `monthsAgo` months before this one, as YYYY-MM-DD. */
+const monthStart = (monthsAgo = 0) => {
+	const current = getMonthKey(new Date());
+	return `${getMonthKey(new Date(Date.UTC(current.year, current.month - 1 - monthsAgo, 15))).key}-01`;
+};
+
+/** Tenant t1 on lease-1 at prop-1, rent 1000, starting this month (or `monthsAgo` months back). */
+const setupTenant = (monthsAgo = 0) => {
 	seedTenant('t1', { stripeID: 'cus_t1' });
 	seedProperty('prop-1', {
 		streetAddress: '1 Main St',
 		city: 'Terre Haute',
 		state: 'IN',
-		rent: 1000
+		rent: 1200
 	});
-	linkTenant('t1', 'prop-1');
+	seedLease('lease-1', {
+		propertyId: 'prop-1',
+		tenantIds: ['t1'],
+		rent: 1000,
+		startDate: monthStart(monthsAgo)
+	});
 };
 
+const pay = (amount: unknown, leaseId: string | undefined = 'lease-1', userID = 't1') =>
+	call(startPayment, { userID, body: { amount, leaseId } });
+
+/** What the authenticated layout hands the payment page for a tenant's leases. */
+const parentFor = (
+	...leases: {
+		id: string;
+		startDate: string;
+		endDate?: string | null;
+		rent?: number;
+		status?: string;
+	}[]
+) => ({
+	userLeases: leases.map((l) => ({
+		id: l.id,
+		propertyId: 'prop-1',
+		address: '1 Main St, Terre Haute',
+		rent: l.rent ?? 1000,
+		startDate: l.startDate,
+		endDate: l.endDate ?? null,
+		status: l.status ?? 'current',
+		otherTenants: [],
+		hasDocument: false
+	}))
+});
+
 describe('rent-payments: start a payment (POST /api/stripe/create-checkout-session/payment)', () => {
-	it('Scenario: Valid amount creates a session with a Rent line, a 2.9% + $0.30 fee line and the property metadata', async () => {
+	it('Scenario: Valid amount creates a session with a Rent line, a 2.9% + $0.30 fee line and the lease metadata', async () => {
 		setupTenant();
 
-		const result = await call(startPayment, { userID: 't1', body: { amount: 1000 } });
+		const result = await pay(1000);
 
 		expect(result).toMatchObject({ status: 200, json: { url: 'https://checkout.test/session' } });
 		expect(services.stripe.checkout.sessions.create).toHaveBeenCalledOnce();
@@ -43,6 +81,7 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 		// $1000 * 2.9% + $0.30 = $29.30
 		expect(fee.price_data.unit_amount).toBe(2930);
 		expect(session.invoice_creation.invoice_data.metadata).toEqual({
+			leaseID: 'lease-1',
 			propertyID: 'prop-1',
 			rentCents: '100000',
 			feeCents: '2930'
@@ -54,7 +93,7 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 	it('Scenario: the fee is rounded to whole cents', async () => {
 		setupTenant();
 
-		await call(startPayment, { userID: 't1', body: { amount: 333 } });
+		await pay(333);
 
 		const [, fee] = services.stripe.checkout.sessions.create.mock.calls[0][0].line_items;
 		// 33300 * 0.029 + 30 = 995.7 cents -> 996
@@ -64,7 +103,7 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 	it('Scenario: an amount above the balance responds 400 and creates no session', async () => {
 		setupTenant();
 
-		const result = await call(startPayment, { userID: 't1', body: { amount: 1000.01 } });
+		const result = await pay(1000.01);
 
 		expect(result).toMatchObject({ status: 400, error: 'Amount is greater than the balance owed' });
 		expect(services.stripe.checkout.sessions.create).not.toHaveBeenCalled();
@@ -73,36 +112,56 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 	it('Scenario: the cap shrinks with payments already made this month', async () => {
 		setupTenant();
 		const { year, monthName } = getMonthKey(new Date());
-		db.seed(`properties/prop-1/payment_history/${year}`, {
+		db.seed(`leases/lease-1/payment_history/${year}`, {
 			[monthName]: { remainingBalance: 600, transactions: [] }
 		});
 
-		expect((await call(startPayment, { userID: 't1', body: { amount: 600.01 } })).status).toBe(400);
-		expect((await call(startPayment, { userID: 't1', body: { amount: 600 } })).status).toBe(200);
+		expect((await pay(600.01)).status).toBe(400);
+		expect((await pay(600)).status).toBe(200);
 	});
 
-	it('Scenario: unpaid past months from moveInMonth raise the cap', async () => {
+	it("Scenario: unpaid past months since the lease's start raise the cap", async () => {
+		setupTenant(2);
+
+		expect((await pay(3000.01)).status).toBe(400);
+		expect((await pay(3000)).status).toBe(200);
+	});
+
+	it("Scenario: Not the tenant's lease: missing, unknown or someone else's lease responds 403", async () => {
+		setupTenant();
+		seedTenant('t2');
+		seedLease('lease-2', { propertyId: 'prop-1', tenantIds: ['t2'], startDate: monthStart() });
+
+		for (const leaseId of [undefined, '', 'nope', 'lease-2']) {
+			const result = await call(startPayment, { userID: 't1', body: { amount: 100, leaseId } });
+			expect(result).toMatchObject({
+				status: 403,
+				error: 'You can only pay for a lease you are on.'
+			});
+		}
+		expect(services.stripe.checkout.sessions.create).not.toHaveBeenCalled();
+	});
+
+	it('an ended lease with unpaid rent can still be paid, up to what it owes', async () => {
 		seedTenant('t1', { stripeID: 'cus_t1' });
-		seedProperty('prop-1', { rent: 1000 });
-		const current = getMonthKey(new Date());
-		const start = getMonthKey(new Date(Date.UTC(current.year, current.month - 3, 15)));
-		db.seed('junction_user_property/t1_prop-1', {
-			tenantId: 't1',
+		seedProperty('prop-1');
+		seedLease('old', {
 			propertyId: 'prop-1',
-			moveInMonth: start.key
+			tenantIds: ['t1'],
+			rent: 1000,
+			startDate: monthStart(3),
+			endDate: `${monthStart(2).slice(0, 7)}-28`
 		});
 
-		expect((await call(startPayment, { userID: 't1', body: { amount: 3000.01 } })).status).toBe(
-			400
-		);
-		expect((await call(startPayment, { userID: 't1', body: { amount: 3000 } })).status).toBe(200);
+		expect((await pay(2000.01, 'old')).status).toBe(400);
+		expect((await pay(2000, 'old')).status).toBe(200);
 	});
 
 	it('Scenario: negative or fractional-cent amounts respond 400 and create no session', async () => {
 		setupTenant();
 
 		for (const amount of [-5, 10.005, 0.001]) {
-			expect((await call(startPayment, { userID: 't1', body: { amount } })).status).toBe(400);
+			expect((await pay(amount)).status).toBe(400);
 		}
 		expect(services.stripe.checkout.sessions.create).not.toHaveBeenCalled();
 	});
@@ -110,7 +169,7 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 	it('Scenario: amounts are rounded to whole cents for Stripe', async () => {
 		setupTenant();
 
-		await call(startPayment, { userID: 't1', body: { amount: 19.99 } });
+		await pay(19.99);
 
 		const [rent] = services.stripe.checkout.sessions.create.mock.calls[0][0].line_items;
 		expect(rent.price_data.unit_amount).toBe(1999);
@@ -120,22 +179,24 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 		setupTenant();
 
 		for (const body of [{}, { amount: 0 }, { amount: '50' }, { amount: null }]) {
-			const result = await call(startPayment, { userID: 't1', body });
+			const result = await call(startPayment, {
+				userID: 't1',
+				body: { ...body, leaseId: 'lease-1' }
+			});
 			expect(result.status).toBe(400);
 			expect(result.error).toBe('Amount must be a provided number for the amount to charge');
 		}
 		expect(services.stripe.checkout.sessions.create).not.toHaveBeenCalled();
 	});
 
-	it('Scenario: a tenant without exactly one property responds 500 and creates no session', async () => {
+	it('Scenario: Upcoming lease: nothing is owed yet, so any amount responds 400', async () => {
 		seedTenant('t1');
+		seedProperty('prop-1');
+		seedLease('soon', { propertyId: 'prop-1', tenantIds: ['t1'], startDate: '2099-01-01' });
 
-		const result = await call(startPayment, { userID: 't1', body: { amount: 100 } });
+		const result = await pay(100, 'soon');
 
-		expect(result).toMatchObject({
-			status: 500,
-			error: 'User is associated with wrong number of properties: 0'
-		});
+		expect(result).toMatchObject({ status: 400, error: 'Amount is greater than the balance owed' });
 		expect(services.stripe.checkout.sessions.create).not.toHaveBeenCalled();
 	});
 
@@ -143,7 +204,7 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 		setupTenant();
 		services.stripe.checkout.sessions.create.mockResolvedValue({ id: 'cs_1', url: null });
 
-		const result = await call(startPayment, { userID: 't1', body: { amount: 100 } });
+		const result = await pay(100);
 
 		expect(result.status).toBe(500);
 	});
@@ -187,22 +248,32 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 	// Mid-month, mid-day UTC so the month and year are the same in every timezone.
 	const created = Date.UTC(2026, 2, 15, 12, 0, 0) / 1000;
 
-	const invoiceEvent = (
-		lines: { description: string; amount: number }[],
-		propertyID = 'prop-1'
-	) => ({
+	const invoiceEvent = (lines: { description: string; amount: number }[], leaseID = 'lease-1') => ({
 		type: 'invoice.payment_succeeded',
-		data: { object: { id: 'in_1', created, metadata: { propertyID }, lines: { data: lines } } }
+		data: {
+			object: {
+				id: 'in_1',
+				created,
+				customer: 'cus_t1',
+				metadata: { leaseID, propertyID: 'prop-1' } as Record<string, string>,
+				lines: { data: lines }
+			}
+		}
 	});
+	/** lease-1 at prop-1, rent 1000, starting March 2026 (or `startDate`). */
+	const seedPaidLease = (startDate = '2026-03-01') => {
+		seedProperty('prop-1', { rent: 1200 });
+		seedLease('lease-1', { propertyId: 'prop-1', tenantIds: ['t1'], rent: 1000, startDate });
+	};
 	const send = (event: object, signature: string | null = VALID_STRIPE_SIGNATURE) =>
 		call(webhook, {
 			rawBody: JSON.stringify(event),
 			headers: signature ? { 'stripe-signature': signature } : {}
 		});
-	const history = () => db.peek('properties/prop-1/payment_history/2026');
+	const history = () => db.peek('leases/lease-1/payment_history/2026');
 
 	it('Scenario: First payment of the month sets remainingBalance to rent minus the amount and appends the transaction', async () => {
-		seedProperty('prop-1', { rent: 1000 });
+		seedPaidLease();
 
 		const result = await send(
 			invoiceEvent([
@@ -223,9 +294,9 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 	});
 
 	it('Scenario: Later payment in the month decrements remainingBalance and appends the transaction', async () => {
-		seedProperty('prop-1', { rent: 1000 });
+		seedPaidLease();
 		const earlier = { date: FakeTimestamp.fromMillis(created * 1000 - 86_400_000), amount: 400 };
-		db.seed('properties/prop-1/payment_history/2026', {
+		db.seed('leases/lease-1/payment_history/2026', {
 			March: { remainingBalance: 600, transactions: [earlier] }
 		});
 
@@ -241,8 +312,8 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 	});
 
 	it('Scenario: a first payment in a new month leaves earlier months untouched', async () => {
-		seedProperty('prop-1', { rent: 1000 });
-		db.seed('properties/prop-1/payment_history/2026', {
+		seedPaidLease();
+		db.seed('leases/lease-1/payment_history/2026', {
 			February: { remainingBalance: 0, transactions: [] }
 		});
 
@@ -256,7 +327,7 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 	});
 
 	it('Scenario: metadata amounts record the rent and the fee on the transaction', async () => {
-		seedProperty('prop-1', { rent: 1000 });
+		seedPaidLease();
 		const event = invoiceEvent([{ description: 'Something else', amount: 1 }]);
 		(event.data.object.metadata as Record<string, string>).rentCents = '40000';
 		(event.data.object.metadata as Record<string, string>).feeCents = '1190';
@@ -274,7 +345,7 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 	});
 
 	it('Scenario: the fallback Rent and Transaction Fee lines record the fee too', async () => {
-		seedProperty('prop-1', { rent: 1000 });
+		seedPaidLease();
 
 		await send(
 			invoiceEvent([
@@ -288,7 +359,7 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 	});
 
 	it('Scenario: an invoice created just before midnight local time lands in that month', async () => {
-		seedProperty('prop-1', { rent: 1000 });
+		seedPaidLease();
 		// 23:30 on 31 March in Indianapolis (EDT) is 03:30 UTC on 1 April.
 		const late = Date.UTC(2026, 3, 1, 3, 30, 0) / 1000;
 		const event = invoiceEvent([{ description: 'Rent', amount: 10000 }]);
@@ -301,7 +372,7 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 	});
 
 	it('Scenario: a failed Firestore write responds 500 so Stripe retries', async () => {
-		seedProperty('prop-1', { rent: 1000 });
+		seedPaidLease();
 		const failing = vi.spyOn(FakeDocRef.prototype, 'set').mockRejectedValue(new Error('boom'));
 
 		const result = await send(invoiceEvent([{ description: 'Rent', amount: 10000 }]));
@@ -311,9 +382,9 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 	});
 
 	it('Scenario: a payment toward carried-over months clears the oldest months first', async () => {
-		seedProperty('prop-1', { rent: 1000 });
+		seedPaidLease('2026-01-01');
 		const event = invoiceEvent([{ description: 'Rent', amount: 150000 }]);
-		Object.assign(event.data.object.metadata, { moveInMonth: '2026-01', rentCents: '150000' });
+		Object.assign(event.data.object.metadata, { rentCents: '150000' });
 
 		await send(event);
 
@@ -329,21 +400,13 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 	});
 
 	it('Scenario: paying the whole carried-over total leaves nothing owed on /payment', async () => {
-		seedTenant('t1');
-		seedProperty('prop-1', { rent: 1000 });
-		const current = getMonthKey(new Date());
-		const start = getMonthKey(new Date(Date.UTC(current.year, current.month - 3, 15)));
-		db.seed('junction_user_property/t1_prop-1', {
-			tenantId: 't1',
-			propertyId: 'prop-1',
-			moveInMonth: start.key
-		});
-		const checkout = await call(startPayment, { userID: 't1', body: { amount: 3000 } });
+		setupTenant(2);
+		const checkout = await pay(3000);
 		expect(checkout.status).toBe(200);
 		const metadata =
 			services.stripe.checkout.sessions.create.mock.calls[0][0].invoice_creation.invoice_data
 				.metadata;
-		expect(metadata.moveInMonth).toBe(start.key);
+		expect(metadata.leaseID).toBe('lease-1');
 
 		await call(webhook, {
 			rawBody: JSON.stringify({
@@ -353,33 +416,99 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 			headers: { 'stripe-signature': VALID_STRIPE_SIGNATURE }
 		});
 
-		const parent = { userProperty: { id: 'prop-1', data: { rent: 1000 } } };
-		expect((await call(paymentLoad, { userID: 't1', parent })).data).toEqual({
-			balanceCents: 0,
-			dueDate: null
+		const parent = parentFor({ id: 'lease-1', startDate: monthStart(2) });
+		expect((await call(paymentLoad, { userID: 't1', parent })).data.leases).toMatchObject([
+			{ id: 'lease-1', balanceCents: 0, dueDate: null }
+		]);
+	});
+
+	it("Scenario: Invoice without a lease is recorded against the payer's current lease at that property", async () => {
+		seedTenant('t1', { stripeID: 'cus_t1' });
+		seedProperty('prop-1');
+		seedLease('lease-old', {
+			propertyId: 'prop-1',
+			tenantIds: ['t1'],
+			startDate: '2025-01-01',
+			endDate: '2025-12-31'
 		});
+		seedLease('lease-1', {
+			propertyId: 'prop-1',
+			tenantIds: ['t1'],
+			rent: 1000,
+			startDate: '2026-01-01'
+		});
+		const event = invoiceEvent([{ description: 'Rent', amount: 40000 }]);
+		event.data.object.metadata = { propertyID: 'prop-1' };
+
+		expect((await send(event)).status).toBe(200);
+
+		expect(history()).toMatchObject({ January: { remainingBalance: 600 } });
+		expect(db.peek('leases/lease-old/payment_history/2026')).toBeUndefined();
+		expect(db.peek('leases/lease-1/recorded_invoices/in_1')).toBeDefined();
+	});
+
+	it('Scenario: Invoice without a lease and no matching lease is acknowledged and records nothing', async () => {
+		seedTenant('t1', { stripeID: 'cus_t1' });
+		seedProperty('prop-1');
+		const event = invoiceEvent([{ description: 'Rent', amount: 40000 }]);
+		event.data.object.metadata = { propertyID: 'prop-1' };
+
+		expect((await send(event)).status).toBe(200);
+		expect((await db.collection('leases').get()).size).toBe(0);
+	});
+
+	it("Scenario: Shared lease: one tenant's payment lowers the balance both see", async () => {
+		seedTenant('t1', { stripeID: 'cus_t1' });
+		seedTenant('t2', { stripeID: 'cus_t2' });
+		seedProperty('prop-1');
+		seedLease('lease-1', {
+			propertyId: 'prop-1',
+			tenantIds: ['t1', 't2'],
+			rent: 1000,
+			startDate: monthStart()
+		});
+		await call(webhook, {
+			rawBody: JSON.stringify({
+				type: 'invoice.payment_succeeded',
+				data: {
+					object: {
+						id: 'in_shared',
+						created: Date.now() / 1000,
+						customer: 'cus_t1',
+						metadata: { leaseID: 'lease-1', propertyID: 'prop-1', rentCents: '50000' },
+						lines: { data: [] }
+					}
+				}
+			}),
+			headers: { 'stripe-signature': VALID_STRIPE_SIGNATURE }
+		});
+
+		const parent = parentFor({ id: 'lease-1', startDate: monthStart() });
+		for (const userID of ['t1', 't2']) {
+			expect((await call(paymentLoad, { userID, parent })).data.leases[0].balanceCents).toBe(50000);
+		}
 	});
 
 	it('Scenario: a payment across a year boundary is recorded in both year documents', async () => {
-		seedProperty('prop-1', { rent: 1000 });
+		seedPaidLease('2025-12-01');
 		const event = invoiceEvent([{ description: 'Rent', amount: 150000 }]);
 		event.data.object.created = Date.UTC(2026, 0, 15, 12) / 1000;
-		Object.assign(event.data.object.metadata, { moveInMonth: '2025-12', rentCents: '150000' });
+		Object.assign(event.data.object.metadata, { rentCents: '150000' });
 
 		const result = await send(event);
 
 		expect(result.status).toBe(200);
-		expect(db.peek('properties/prop-1/payment_history/2025')).toMatchObject({
+		expect(db.peek('leases/lease-1/payment_history/2025')).toMatchObject({
 			December: { remainingBalance: 0 }
 		});
 		expect(history()).toMatchObject({ January: { remainingBalance: 500 } });
 	});
 
 	it('Scenario: a failed write in a multi-year payment responds 500', async () => {
-		seedProperty('prop-1', { rent: 1000 });
+		seedPaidLease('2025-12-01');
 		const event = invoiceEvent([{ description: 'Rent', amount: 150000 }]);
 		event.data.object.created = Date.UTC(2026, 0, 15, 12) / 1000;
-		Object.assign(event.data.object.metadata, { moveInMonth: '2025-12', rentCents: '150000' });
+		Object.assign(event.data.object.metadata, { rentCents: '150000' });
 		const failing = vi
 			.spyOn(FakeDocRef.prototype, 'set')
 			.mockImplementationOnce(async () => {})
@@ -390,13 +519,13 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 		failing.mockRestore();
 		expect(result.status).toBe(500);
 		// Nothing partial is left behind, not even the first year's document.
-		expect(db.peek('properties/prop-1/payment_history/2025')).toBeUndefined();
+		expect(db.peek('leases/lease-1/payment_history/2025')).toBeUndefined();
 		expect(history()).toBeUndefined();
-		expect(db.peek('properties/prop-1/recorded_invoices/in_1')).toBeUndefined();
+		expect(db.peek('leases/lease-1/recorded_invoices/in_1')).toBeUndefined();
 	});
 
 	it('Scenario: redelivery of an already recorded invoice is acknowledged and not counted twice', async () => {
-		seedProperty('prop-1', { rent: 1000 });
+		seedPaidLease();
 		const event = invoiceEvent([{ description: 'Rent', amount: 40000 }]);
 
 		expect((await send(event)).status).toBe(200);
@@ -409,8 +538,8 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 	});
 
 	it('Scenario: an entry without a numeric remainingBalance is treated as unrecorded', async () => {
-		seedProperty('prop-1', { rent: 1000 });
-		db.seed('properties/prop-1/payment_history/2026', { March: { transactions: [] } });
+		seedPaidLease();
+		db.seed('leases/lease-1/payment_history/2026', { March: { transactions: [] } });
 
 		await send(invoiceEvent([{ description: 'Rent', amount: 40000 }]));
 
@@ -452,20 +581,19 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 		expect(history()).toBeUndefined();
 	});
 
-	it('Scenario: an invoice for a property that does not exist is acknowledged and records nothing', async () => {
+	it('Scenario: Unknown property: an invoice for a lease that does not exist records nothing', async () => {
 		const result = await send(
-			invoiceEvent([{ description: 'Rent', amount: 100000 }], 'missing-property')
+			invoiceEvent([{ description: 'Rent', amount: 100000 }], 'missing-lease')
 		);
 
 		expect(result.status).toBe(200);
-		expect(db.peek('properties/missing-property/payment_history/2026')).toBeUndefined();
+		expect(db.peek('leases/missing-lease/payment_history/2026')).toBeUndefined();
+		expect(db.peek('leases/missing-lease/recorded_invoices/in_1')).toBeUndefined();
 	});
 });
 
 describe('rent-payments: balance and due date (/payment load)', () => {
-	const parent = { userProperty: { id: 'prop-1', data: { rent: 1000 } } };
-
-	it('Scenario: a tenant without a property is sent to the dashboard', async () => {
+	it('Scenario: a tenant with no lease is sent to the dashboard', async () => {
 		setupTenant();
 
 		const result = await call(paymentLoad, { userID: 't1', parent: {} });
@@ -473,50 +601,118 @@ describe('rent-payments: balance and due date (/payment load)', () => {
 		expect(result).toMatchObject({ status: 303, redirect: '/' });
 	});
 
-	it('Scenario: no payments yet shows the rent due on the 1st of this month', async () => {
+	it('Scenario: No payments yet shows the rent due on the 1st of this month', async () => {
 		setupTenant();
 
-		const result = await call(paymentLoad, { userID: 't1', parent });
+		const result = await call(paymentLoad, {
+			userID: 't1',
+			parent: parentFor({ id: 'lease-1', startDate: monthStart() })
+		});
 
-		const current = getMonthKey(new Date());
-		expect(result.data).toEqual({ balanceCents: 100000, dueDate: `${current.key}-01` });
+		expect(result.data.leases).toEqual([
+			{
+				id: 'lease-1',
+				address: '1 Main St, Terre Haute',
+				status: 'current',
+				startDate: monthStart(),
+				endDate: null,
+				balanceCents: 100000,
+				dueDate: monthStart()
+			}
+		]);
 	});
 
-	it('Scenario: a partial payment lowers the balance', async () => {
+	it('Scenario: Partial payment lowers the balance', async () => {
 		setupTenant();
 		const { year, monthName } = getMonthKey(new Date());
-		db.seed(`properties/prop-1/payment_history/${year}`, {
+		db.seed(`leases/lease-1/payment_history/${year}`, {
 			[monthName]: { remainingBalance: 600, transactions: [] }
 		});
 
-		expect((await call(paymentLoad, { userID: 't1', parent })).data.balanceCents).toBe(60000);
+		const parent = parentFor({ id: 'lease-1', startDate: monthStart() });
+		expect((await call(paymentLoad, { userID: 't1', parent })).data.leases[0].balanceCents).toBe(
+			60000
+		);
 	});
 
-	it('Scenario: months since moveInMonth carry over', async () => {
-		seedTenant('t1');
-		seedProperty('prop-1', { rent: 1000 });
-		const current = getMonthKey(new Date());
-		const start = getMonthKey(new Date(Date.UTC(current.year, current.month - 3, 15)));
-		db.seed('junction_user_property/t1_prop-1', {
-			tenantId: 't1',
+	it('Scenario: Unpaid past months carry over since the lease started', async () => {
+		setupTenant(2);
+
+		const parent = parentFor({ id: 'lease-1', startDate: monthStart(2) });
+		expect((await call(paymentLoad, { userID: 't1', parent })).data.leases[0].balanceCents).toBe(
+			300000
+		);
+	});
+
+	it('Scenario: Ended lease is listed with its unpaid months beside the current lease', async () => {
+		setupTenant();
+		const ended = {
+			id: 'old',
+			startDate: monthStart(3),
+			endDate: `${monthStart(2).slice(0, 7)}-28`,
+			status: 'ended'
+		};
+		seedLease('old', {
 			propertyId: 'prop-1',
-			moveInMonth: start.key
+			tenantIds: ['t1'],
+			rent: 1000,
+			startDate: ended.startDate,
+			endDate: ended.endDate
 		});
 
-		expect((await call(paymentLoad, { userID: 't1', parent })).data.balanceCents).toBe(300000);
+		const result = await call(paymentLoad, {
+			userID: 't1',
+			parent: parentFor({ id: 'lease-1', startDate: monthStart() }, ended)
+		});
+
+		expect(
+			result.data.leases.map((l: { id: string; balanceCents: number }) => [l.id, l.balanceCents])
+		).toEqual([
+			['lease-1', 100000],
+			['old', 200000]
+		]);
 	});
 
-	it('Scenario: paid in full shows nothing to pay', async () => {
+	it('an ended lease that is paid in full is not listed', async () => {
+		setupTenant();
+		const ended = { id: 'old', startDate: '2020-01-01', endDate: '2020-01-31', status: 'ended' };
+		seedLease('old', {
+			propertyId: 'prop-1',
+			tenantIds: ['t1'],
+			startDate: '2020-01-01',
+			endDate: '2020-01-31'
+		});
+		db.seed('leases/old/payment_history/2020', { January: { remainingBalance: 0 } });
+
+		const result = await call(paymentLoad, {
+			userID: 't1',
+			parent: parentFor({ id: 'lease-1', startDate: monthStart() }, ended)
+		});
+
+		expect(result.data.leases.map((l: { id: string }) => l.id)).toEqual(['lease-1']);
+	});
+
+	it('Scenario: Upcoming lease only: nothing to pay, so the tenant is sent to the dashboard', async () => {
+		setupTenant();
+		const result = await call(paymentLoad, {
+			userID: 't1',
+			parent: parentFor({ id: 'soon', startDate: '2099-01-01', status: 'upcoming' })
+		});
+
+		expect(result).toMatchObject({ status: 303, redirect: '/' });
+	});
+
+	it('Scenario: Paid in full shows nothing to pay', async () => {
 		setupTenant();
 		const { year, monthName } = getMonthKey(new Date());
-		db.seed(`properties/prop-1/payment_history/${year}`, {
+		db.seed(`leases/lease-1/payment_history/${year}`, {
 			[monthName]: { remainingBalance: 0, transactions: [] }
 		});
 
-		expect((await call(paymentLoad, { userID: 't1', parent })).data).toEqual({
-			balanceCents: 0,
-			dueDate: null
-		});
+		const parent = parentFor({ id: 'lease-1', startDate: monthStart() });
+		expect((await call(paymentLoad, { userID: 't1', parent })).data.leases).toMatchObject([
+			{ balanceCents: 0, dueDate: null }
+		]);
 	});
 
 	it('Scenario: an anonymous caller is rejected with 401', async () => {

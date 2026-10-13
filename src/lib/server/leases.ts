@@ -12,9 +12,15 @@ import {
 	type LeaseDocument
 } from './leaseDates';
 import { createTenantAccount, type CreatedAccount } from './users';
-import type { EmailProblem, LeaseSummary, OverlapSummary, TenantSummary } from '$lib/leaseTypes';
+import type {
+	EmailProblem,
+	LeaseSummary,
+	OverlapSummary,
+	TenantLease,
+	TenantSummary
+} from '$lib/leaseTypes';
 
-export type { EmailProblem, LeaseSummary, OverlapSummary, TenantSummary };
+export type { EmailProblem, LeaseSummary, OverlapSummary, TenantLease, TenantSummary };
 
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
@@ -76,6 +82,62 @@ export async function listPropertyLeases(propertyId: string): Promise<LeaseSumma
 export async function leasesOfTenant(uid: string): Promise<[string, LeaseDoc][]> {
 	const snapshot = await leases().where('tenantIds', 'array-contains', uid).get();
 	return snapshot.docs.map((doc) => [doc.id, doc.data() as LeaseDoc]);
+}
+
+/**
+ * A tenant's leases, newest start first, with the property data of each (null when the property
+ * no longer exists).
+ */
+export async function loadTenantLeases(
+	uid: string,
+	today = businessToday()
+): Promise<{ lease: TenantLease; property: DocumentData | null }[]> {
+	const own = await leasesOfTenant(uid);
+	const propertyIds = [...new Set(own.map(([, lease]) => lease.propertyId))];
+	const propertyDocs = await Promise.all(
+		propertyIds.map((id) => adminDB.collection('properties').doc(id).get())
+	);
+	const properties = new Map(propertyDocs.map((doc) => [doc.id, doc.data() ?? null]));
+	const result = await Promise.all(
+		own.map(async ([id, lease]) => {
+			const property = properties.get(lease.propertyId) ?? null;
+			const others = await tenantSummaries(lease.tenantIds.filter((t) => t !== uid));
+			return {
+				lease: {
+					id,
+					propertyId: lease.propertyId,
+					address: propertyAddress(property ?? undefined),
+					rent: lease.rent,
+					startDate: lease.startDate,
+					endDate: lease.endDate,
+					status: leaseStatus(lease, today),
+					otherTenants: others.map((t) => t.name || 'A tenant'),
+					hasDocument: Boolean(lease.document)
+				},
+				property
+			};
+		})
+	);
+	return result.sort((a, b) => b.lease.startDate.localeCompare(a.lease.startDate));
+}
+
+type TenantLeaseWithProperty = Awaited<ReturnType<typeof loadTenantLeases>>[number];
+
+/**
+ * The tenant's current lease whose property still exists: the one with the latest start date if
+ * there are several (only data written outside the app can cause that). Expects the newest-first
+ * order `loadTenantLeases` returns.
+ */
+export function currentTenancy(
+	tenantLeases: TenantLeaseWithProperty[]
+): (TenantLeaseWithProperty & { property: DocumentData }) | undefined {
+	const current = tenantLeases.filter((l) => l.lease.status === 'current' && l.property);
+	if (current.length > 1) {
+		console.log(
+			`A tenant is on ${current.length} current leases (${current.map((l) => l.lease.id).join(', ')}); using the latest.`
+		);
+	}
+	return current[0] as (TenantLeaseWithProperty & { property: DocumentData }) | undefined;
 }
 
 export type SaveLeaseResult =

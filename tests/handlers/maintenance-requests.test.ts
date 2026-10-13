@@ -7,7 +7,7 @@ import {
 } from '../../src/routes/(authenticated)/maintenance/+page.server';
 import { load as adminLoad } from '../../src/routes/(authenticated)/admin/maintenance/+page.server';
 import { call } from '../helpers/callHandler';
-import { db, linkTenant, seedAdmin, seedProperty, seedTenant } from '../helpers/seed';
+import { db, seedAdmin, seedLease, seedProperty, seedTenant } from '../helpers/seed';
 
 const at = (ms: number) => FakeTimestamp.fromMillis(ms);
 
@@ -28,7 +28,11 @@ describe('maintenance-requests: submit request (tenant page action)', () => {
 	const setup = () => {
 		seedTenant('tenant-1', { firstName: 'Tom', lastName: 'Tenant' });
 		seedProperty('prop-1', { streetAddress: '1 Main St', city: 'Terre Haute', state: 'IN' });
-		linkTenant('tenant-1', 'prop-1');
+		seedLease('lease-1', {
+			propertyId: 'prop-1',
+			tenantIds: ['tenant-1'],
+			startDate: '2020-01-01'
+		});
 	};
 
 	it('Scenario: Valid submission creates an Open request with property, address, submitter and a server date', async () => {
@@ -67,7 +71,7 @@ describe('maintenance-requests: submit request (tenant page action)', () => {
 		expect(db.peek('maintenance/auto-id-1')).toBeUndefined();
 	});
 
-	it('Scenario: a tenant with no property cannot submit (500, wrong number of properties)', async () => {
+	it('Scenario: a tenant with no lease cannot submit and is sent to the dashboard', async () => {
 		seedTenant('tenant-1');
 
 		const result = await call(tenantActions.default, {
@@ -75,10 +79,26 @@ describe('maintenance-requests: submit request (tenant page action)', () => {
 			form: { subject: 'Leak', description: 'x' }
 		});
 
-		expect(result).toMatchObject({
-			status: 500,
-			error: 'User is associated with wrong number of properties: 0'
+		expect(result).toMatchObject({ status: 303, redirect: '/' });
+		expect(db.peek('maintenance/auto-id-1')).toBeUndefined();
+	});
+
+	it('Scenario: Lease ended: nothing is created and the tenant is sent to the dashboard', async () => {
+		seedTenant('tenant-1');
+		seedProperty('prop-1');
+		seedLease('old', {
+			propertyId: 'prop-1',
+			tenantIds: ['tenant-1'],
+			startDate: '2020-01-01',
+			endDate: '2020-12-31'
 		});
+
+		const result = await call(tenantActions.default, {
+			userID: 'tenant-1',
+			form: { subject: 'Leak', description: 'x' }
+		});
+
+		expect(result).toMatchObject({ status: 303, redirect: '/' });
 		expect(db.peek('maintenance/auto-id-1')).toBeUndefined();
 	});
 
@@ -96,7 +116,11 @@ describe('maintenance-requests: tenant request list (tenant page load)', () => {
 	it('Scenario: View shows only requests for the tenant’s own property, 5 per status', async () => {
 		seedTenant('tenant-1');
 		seedProperty('prop-1');
-		linkTenant('tenant-1', 'prop-1');
+		seedLease('lease-1', {
+			propertyId: 'prop-1',
+			tenantIds: ['tenant-1'],
+			startDate: '2020-01-01'
+		});
 		for (let i = 1; i <= 7; i++) {
 			seedRequest(`open-${i}`, { status: 'Open', dateAdded: at(i * 1000) });
 			seedRequest(`closed-${i}`, {

@@ -31,3 +31,17 @@ export type LeaseSummary = {
 	tenants: TenantSummary[];
 	hasDocument: boolean;
 };
+
+/** A lease as its tenant sees it on the dashboard and payment page. */
+export type TenantLease = {
+	id: string;
+	propertyId: string;
+	address: string;
+	rent: number;
+	startDate: string;
+	endDate: string | null;
+	status: LeaseStatus;
+	/** Names of the other tenants on the lease, never their contact details. */
+	otherTenants: string[];
+	hasDocument: boolean;
+};

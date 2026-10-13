@@ -41,18 +41,18 @@
 
 ## 7. Tenant side and payments
 
-- [ ] 7.1 Change the authenticated layout to load the tenant's leases, expose `userLeases` and `userProperty` from the current lease, and pick the latest start date (with a log) for several current leases; verify with `access-control` handler tests for one, none and several current leases
-- [ ] 7.2 Add `startMonth`/`endMonth` to `monthsOwed`, `computeBalance` and `allocatePayment`, and make `loadHistories` take a parent document reference; verify with `tests/unit/payments.test.ts` cases for an ended lease, an upcoming lease and carry-over across a year boundary
+- [x] 7.1 Change the authenticated layout to load the tenant's leases, expose `userLeases` and `userProperty` from the current lease, and pick the latest start date (with a log) for several current leases; verify with `access-control` handler tests for one, none and several current leases
+- [x] 7.2 Add `startMonth`/`endMonth` to `monthsOwed`, `computeBalance` and `allocatePayment`, and make `loadHistories` take a parent document reference; verify with `tests/unit/payments.test.ts` cases for an ended lease, an upcoming lease and carry-over across a year boundary
 - [ ] 7.3 Rework `/payment` to list each current lease or lease with money owed, with its balance and a pay form that sends `leaseId`; verify with handler tests and update `tests/e2e/specs/payment.spec.ts`
-- [ ] 7.4 Make checkout require a `leaseId` the tenant is on, cap at that lease's balance and add `leaseID` to the invoice metadata; verify with `rent-payments` handler tests for a valid lease, someone else's lease and an amount above the balance
-- [ ] 7.5 Make the webhook record against `leases/{id}` (history and recorded invoices), with the legacy fallback by Stripe customer and property for invoices without `leaseID`; verify with handler tests for each Record payments scenario, including the fallback and a redelivery
+- [x] 7.4 Make checkout require a `leaseId` the tenant is on, cap at that lease's balance and add `leaseID` to the invoice metadata; verify with `rent-payments` handler tests for a valid lease, someone else's lease and an amount above the balance
+- [x] 7.5 Make the webhook record against `leases/{id}` (history and recorded invoices), with the legacy fallback by Stripe customer and property for invoices without `leaseID`; verify with handler tests for each Record payments scenario, including the fallback and a redelivery
 - [ ] 7.6 Add the lease cards to the tenant dashboard (address, dates or month to month, rent, other tenants' names, document link, "no lease on file"); verify with an e2e spec
-- [ ] 7.7 Make `/maintenance` use the current lease's property and redirect without one; verify with `maintenance-requests` handler tests for a current and an ended lease
+- [x] 7.7 Make `/maintenance` use the current lease's property and redirect without one; verify with `maintenance-requests` handler tests for a current and an ended lease
 
 ## 8. Cascades
 
-- [ ] 8.1 Make property delete also remove its leases with their `payment_history` and `recorded_invoices`, and their documents; verify with `property-management` handler tests including a property with more than 500 documents
-- [ ] 8.2 Make user delete remove the user from every lease (keeping leases left with no tenants); verify with `user-management` handler tests for a shared lease and a sole-tenant lease
+- [x] 8.1 Make property delete also remove its leases with their `payment_history` and `recorded_invoices`, and their documents; verify with `property-management` handler tests including a property with more than 500 documents
+- [x] 8.2 Make user delete remove the user from every lease (keeping leases left with no tenants); verify with `user-management` handler tests for a shared lease and a sole-tenant lease
 
 ## 9. First migration
 

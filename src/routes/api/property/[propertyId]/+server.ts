@@ -13,24 +13,41 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 	const propertyRef = adminDB.collection('properties').doc(params.propertyId);
 
 	try {
-		const [junctions, maintenance, paymentHistory] = await Promise.all([
+		const [junctions, maintenance, paymentHistory, recordedInvoices, leases] = await Promise.all([
+			// Tenant links from before leases; kept by the lease migration until a later cleanup.
 			adminDB
 				.collection('junction_user_property')
 				.where('propertyId', '==', params.propertyId)
 				.get(),
 			adminDB.collection('maintenance').where('propertyId', '==', params.propertyId).get(),
-			propertyRef.collection('payment_history').get()
+			propertyRef.collection('payment_history').get(),
+			propertyRef.collection('recorded_invoices').get(),
+			adminDB.collection('leases').where('propertyId', '==', params.propertyId).get()
 		]);
+		const leaseChildren = await Promise.all(
+			leases.docs.flatMap((lease) => [
+				lease.ref.collection('payment_history').get(),
+				lease.ref.collection('recorded_invoices').get()
+			])
+		);
 
-		// The property document goes last so a failed delete can be repeated to finish the cleanup.
+		const bucket = adminStorage.bucket(`gs://${PUBLIC_FB_STORAGE_BUCKET}`);
+		// The leases and the property document go last, so a failed delete can be repeated to find
+		// and finish the rest of the cleanup.
 		await Promise.all([
 			deleteDocs(
-				[...junctions.docs, ...maintenance.docs, ...paymentHistory.docs].map((d) => d.ref)
+				[
+					...junctions.docs,
+					...maintenance.docs,
+					...paymentHistory.docs,
+					...recordedInvoices.docs,
+					...leaseChildren.flatMap((snapshot) => snapshot.docs)
+				].map((d) => d.ref)
 			),
-			adminStorage.bucket(`gs://${PUBLIC_FB_STORAGE_BUCKET}`).deleteFiles({
-				prefix: `properties/${params.propertyId}/`
-			})
+			bucket.deleteFiles({ prefix: `properties/${params.propertyId}/` }),
+			...leases.docs.map((lease) => bucket.deleteFiles({ prefix: `leases/${lease.id}/` }))
 		]);
+		await deleteDocs(leases.docs.map((d) => d.ref));
 		await propertyRef.delete();
 
 		return json({ status: 'Property Deleted' });

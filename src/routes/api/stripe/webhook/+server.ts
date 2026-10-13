@@ -6,7 +6,9 @@ import type { Stripe } from 'stripe';
 import { adminDB } from '$lib/server/admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { allocatePayment } from '$lib/server/payments';
-import { loadHistories } from '$lib/server/balance';
+import { leaseMonths, loadHistories } from '$lib/server/balance';
+import { businessToday, leaseStatus, type LeaseDoc } from '$lib/server/leaseDates';
+import { leasesOfTenant } from '$lib/server/leases';
 
 const wholeCents = (value: string | undefined) =>
 	value !== undefined && /^\d+$/.test(value) ? Number(value) : undefined;
@@ -23,6 +25,32 @@ function readAmounts(invoice: Stripe.Invoice) {
 	const line = (description: string) =>
 		invoice.lines.data.find((l) => l.description === description)?.amount;
 	return { rentCents: line('Rent'), feeCents: line('Transaction Fee') };
+}
+
+/**
+ * The lease an invoice pays for. Invoices carry `leaseID`; ones created before leases existed carry
+ * only `propertyID`, and are recorded against the paying customer's lease at that property that was
+ * current when the invoice was created.
+ */
+async function leaseIdOf(invoice: Stripe.Invoice): Promise<string | undefined> {
+	const leaseId = invoice.metadata?.leaseID;
+	if (leaseId) return leaseId;
+
+	const propertyId = invoice.metadata?.propertyID;
+	const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id;
+	if (!propertyId || !customerId) return undefined;
+
+	const payer = await adminDB
+		.collection('users')
+		.where('stripeID', '==', customerId)
+		.limit(1)
+		.get();
+	if (payer.empty) return undefined;
+	const day = businessToday(new Date(invoice.created * 1000));
+	const [match] = (await leasesOfTenant(payer.docs[0].id))
+		.filter(([, lease]) => lease.propertyId === propertyId && leaseStatus(lease, day) === 'current')
+		.sort(([, a], [, b]) => b.startDate.localeCompare(a.startDate));
+	return match?.[0];
 }
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -50,9 +78,8 @@ export const POST: RequestHandler = async ({ request }) => {
 	switch (event.type) {
 		case 'invoice.payment_succeeded': {
 			const invoice = event.data.object;
-			const propertyId = invoice.metadata?.propertyID;
-			if (!propertyId) {
-				console.log('No property in invoice metadata');
+			if (!invoice.metadata?.leaseID && !invoice.metadata?.propertyID) {
+				console.log('No lease or property in invoice metadata');
 				break;
 			}
 
@@ -63,37 +90,39 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 
 			const eventDate = Timestamp.fromMillis(invoice.created * 1000);
-			const moveInMonth = invoice.metadata?.moveInMonth;
 
 			// Any failure below responds 500 so that Stripe redelivers the event. Everything is read and
 			// written in one transaction: concurrent events cannot overwrite each other, a payment
 			// spanning two years is recorded completely or not at all, and the invoice is marked as
 			// recorded in the same commit, so a redelivery never counts a payment twice.
 			try {
-				const propertyRef = adminDB.collection('properties').doc(propertyId);
+				const leaseId = await leaseIdOf(invoice);
+				if (!leaseId) {
+					console.log('Could not find the lease this invoice pays for');
+					break;
+				}
+				const leaseRef = adminDB.collection('leases').doc(leaseId);
 				const outcome = await adminDB.runTransaction(async (tx) => {
 					const recordedRef = invoice.id
-						? propertyRef.collection('recorded_invoices').doc(invoice.id)
+						? leaseRef.collection('recorded_invoices').doc(invoice.id)
 						: undefined;
 					if (recordedRef && (await tx.get(recordedRef)).exists) {
 						return 'already-recorded';
 					}
 
-					const propertyData = (await tx.get(propertyRef)).data();
-					if (!propertyData) {
-						return 'unknown-property';
+					const lease = (await tx.get(leaseRef)).data() as LeaseDoc | undefined;
+					if (!lease) {
+						return 'unknown-lease';
 					}
 
 					// A payment clears the oldest unpaid months first, the same order the balance uses.
-					const histories = await loadHistories(
-						propertyId,
-						moveInMonth,
-						eventDate.toDate(),
-						(ref) => tx.get(ref)
+					const billing = leaseMonths(lease);
+					const histories = await loadHistories(leaseRef, billing, eventDate.toDate(), (ref) =>
+						tx.get(ref)
 					);
 					const allocations = allocatePayment({
-						rent: propertyData.rent,
-						moveInMonth,
+						rent: lease.rent,
+						...billing,
 						histories,
 						now: eventDate.toDate(),
 						amountCents: rentCents
@@ -112,14 +141,14 @@ export const POST: RequestHandler = async ({ request }) => {
 						months[a.month.monthName] = {
 							remainingBalance: a.hasEntry
 								? FieldValue.increment(-1 * amount)
-								: (propertyData.rent * 100 - a.cents) / 100,
+								: (lease.rent * 100 - a.cents) / 100,
 							transactions: FieldValue.arrayUnion(transaction)
 						};
 						years.set(String(a.month.year), months);
 					});
 
 					for (const [year, months] of years) {
-						tx.set(propertyRef.collection('payment_history').doc(year), months, { merge: true });
+						tx.set(leaseRef.collection('payment_history').doc(year), months, { merge: true });
 					}
 					if (recordedRef) {
 						tx.set(recordedRef, { recordedAt: eventDate });
@@ -127,8 +156,8 @@ export const POST: RequestHandler = async ({ request }) => {
 					return 'recorded';
 				});
 
-				if (outcome === 'unknown-property') {
-					console.log('Could not find property details');
+				if (outcome === 'unknown-lease') {
+					console.log('Could not find the lease this invoice pays for');
 				} else if (outcome === 'already-recorded') {
 					console.log('Invoice already recorded; ignoring redelivery');
 				}

@@ -1,29 +1,32 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { adminDB } from '$lib/server/admin';
 import { getUserIdOrError } from '$lib/server/authHelpers';
-import { loadBalance } from '$lib/server/balance';
+import { loadLeaseBalance } from '$lib/server/balance';
 
 export const load = (async (event) => {
-	const uid = getUserIdOrError(event.locals.userID);
+	getUserIdOrError(event.locals.userID);
 
-	const { userProperty } = await event.parent();
+	const { userLeases = [] } = await event.parent();
 
-	// A tenant without a property has nothing to pay; the dashboard explains why.
-	if (!userProperty) {
+	// Each lease has its own balance. Show the current lease, and any other lease with money owed
+	// (an ended lease keeps its unpaid rent payable).
+	const leases = (
+		await Promise.all(
+			userLeases.map(async (lease) => ({
+				id: lease.id,
+				address: lease.address,
+				status: lease.status,
+				startDate: lease.startDate,
+				endDate: lease.endDate,
+				...(await loadLeaseBalance(lease.id, lease))
+			}))
+		)
+	).filter((lease) => lease.status === 'current' || lease.balanceCents > 0);
+
+	// A tenant with nothing to show here has nothing to pay; the dashboard explains why.
+	if (leases.length === 0) {
 		throw redirect(303, '/');
 	}
 
-	const junction = await adminDB
-		.collection('junction_user_property')
-		.doc(`${uid}_${userProperty.id}`)
-		.get();
-
-	const { balanceCents, dueDate } = await loadBalance(
-		userProperty.id,
-		userProperty.data.rent,
-		junction.data()?.moveInMonth
-	);
-
-	return { balanceCents, dueDate };
+	return { leases };
 }) satisfies PageServerLoad;
