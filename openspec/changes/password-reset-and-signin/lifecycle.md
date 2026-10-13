@@ -1,7 +1,7 @@
 # Lifecycle: password-reset-and-signin
 
 - Branch: `claude/password-reset-and-signin`
-- Stage: 2 Propose (awaiting Gate A)
+- Stage: 4 Review
 - Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-13
@@ -47,7 +47,7 @@ Approved: yes (2026-10-13)
 
 ## Gate A
 Approved: yes (2026-10-13)
-Accepted preflight gaps: none
+Accepted preflight gaps: none (browser build mismatch worked around in the container)
 
 ## Preflight
 GitHub backend: **GitHub MCP** (`gh` token invalid; cloud session; `get_me` = rhit-LEHMANCB).
