@@ -1,9 +1,9 @@
 # Lifecycle: password-reset-and-signin
 
 - Branch: `claude/password-reset-and-signin`
-- Stage: 5 Ship to develop (waiting on PR #141 checks tests + build_and_preview, then merge with merge commit)
+- Stage: 6 QA (cycle 1 failed: app bug; fix on `claude/password-reset-unknown-account`)
 - Review round: 3 of 5
-- QA cycle: 0 of 3
+- QA cycle: 1 of 3
 - Started: 2026-10-13
 
 ## Interview summary
@@ -74,7 +74,9 @@ GitHub backend: **GitHub MCP** (`gh` token invalid; cloud session; `get_me` = rh
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)
 
 ## QA report
-(filled in stage 6; link to the QA evidence branch)
+Evidence branch: `qa-evidence/password-reset-and-signin` (not merged).
+
+- **Cycle 1** (deployed `15f2795`, 2026-10-13 04:25 UTC): FAIL, one app bug. On the dev project a reset request for an unknown address answered 500 (`PUT /api/signin/reset`) and `/forgot` showed the delivery-failure message, revealing which addresses have accounts. Cause: email enumeration protection makes link generation for an unknown address fail as `auth/internal-error` instead of a not-found code; the emulator does not model it. Fix: look the account up first. 20 of 26 QA checks passed; the other failures were the same cause.
 
 ## Verification checklist for the human
 (filled in stage 7)

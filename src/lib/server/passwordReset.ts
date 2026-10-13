@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { adminDB } from './admin';
+import { adminAuth, adminDB } from './admin';
 import { sendPasswordResetEmail } from './email';
 import { isUnknownAccountError } from '$lib/authErrors';
 
@@ -73,6 +73,10 @@ export const requestPasswordReset = async (email: string): Promise<ResetOutcome>
 		return 'suppressed';
 	}
 	try {
+		// Asked first because, with email enumeration protection on, Firebase does not report an
+		// unknown address when generating the link: it answers without a link and the Admin SDK
+		// raises an internal error instead.
+		await adminAuth.getUserByEmail(email);
 		await sendPasswordResetEmail(email, false);
 	} catch (err) {
 		// An unknown address keeps its slot, so it is counted exactly like a real one.
