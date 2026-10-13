@@ -12,6 +12,7 @@ describe('authentication: password reset rate limit (requestPasswordReset)', () 
 	it('sends the first request for an address', async () => {
 		await expect(requestPasswordReset('tenant@example.com')).resolves.toBe('sent');
 
+		expect(services.auth.getUserByEmail).toHaveBeenCalledWith('tenant@example.com');
 		expect(services.sendPasswordResetEmail).toHaveBeenCalledTimes(1);
 		expect(services.sendPasswordResetEmail).toHaveBeenCalledWith('tenant@example.com', false);
 	});

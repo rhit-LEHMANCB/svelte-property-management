@@ -79,7 +79,8 @@ export const requestPasswordReset = async (email: string): Promise<ResetOutcome>
 		await adminAuth.getUserByEmail(email);
 		await sendPasswordResetEmail(email, false);
 	} catch (err) {
-		// An unknown address keeps its slot, so it is counted exactly like a real one.
+		// An unknown address keeps its slot, so it is counted exactly like a real one. Link generation
+		// can still report one if the account is deleted between the lookup and the send.
 		if (isUnknownAccountError(err)) {
 			return 'suppressed';
 		}
