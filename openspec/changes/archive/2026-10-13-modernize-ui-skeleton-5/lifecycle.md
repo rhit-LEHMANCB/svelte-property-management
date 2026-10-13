@@ -1,7 +1,7 @@
 # Lifecycle: modernize-ui-skeleton-5
 
 - Branch: `claude/practical-ptolemy-axp5zk` (the session's designated branch, created from `origin/develop` at 1f40174)
-- Stage: 7 Production PR open; waiting on Gate B (human verifies and merges)
+- Stage: **complete (archived automatically on 2026-10-13 after the production release `1192ed3`)**
 - Review round: 4 (rounds 1 to 3: implementation and the QA cycle 1 fix; round 4: the QA cycle 2 fix); all exited with no blockers or majors
 - QA cycle: 3 of 3 (passed)
 - Started: 2026-10-11
@@ -156,3 +156,6 @@ Production-only risks:
 
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
+
+## Archive
+Archived automatically on 2026-10-13 after the production release `1192ed3` ([workflow run](https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/38340137186)). That marks this lifecycle complete.
