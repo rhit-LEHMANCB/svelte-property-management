@@ -1,9 +1,9 @@
 # Lifecycle: password-reset-and-signin
 
 - Branch: `claude/password-reset-and-signin`
-- Stage: 6 QA (cycle 1 failed: app bug; fix on `claude/password-reset-unknown-account`)
+- Stage: 7 Production PR (Gate B: human verifies and merges production PR #140, which carries this change)
 - Review round: 4 of 5
-- QA cycle: 1 of 3
+- QA cycle: 2 of 3
 - Started: 2026-10-13
 
 ## Interview summary
@@ -75,12 +75,44 @@ GitHub backend: **GitHub MCP** (`gh` token invalid; cloud session; `get_me` = rh
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)
 
 ## QA report
-Evidence branch: `qa-evidence/password-reset-and-signin` (not merged).
+Evidence branch: `qa-evidence/password-reset-and-signin` (not merged). Specs: `tests/qa/password-reset-and-signin/`.
 
-- **Cycle 1** (deployed `15f2795`, 2026-10-13 04:25 UTC): FAIL, one app bug. On the dev project a reset request for an unknown address answered 500 (`PUT /api/signin/reset`) and `/forgot` showed the delivery-failure message, revealing which addresses have accounts. Cause: email enumeration protection makes link generation for an unknown address fail as `auth/internal-error` instead of a not-found code; the emulator does not model it. Fix: look the account up first. 20 of 26 QA checks passed; the other failures were the same cause.
+- **Cycle 1** (deployed `15f2795`, 2026-10-13 04:25 UTC): FAIL, one app bug. On the dev project a reset request for an unknown address answered 500 (`PUT /api/signin/reset`) and `/forgot` showed the delivery-failure message, revealing which addresses have accounts. Cause: email enumeration protection makes link generation for an unknown address fail as `auth/internal-error` instead of a not-found code; the emulator does not model it. Fixed in #143 (look the account up first), with one review round (round 4). 20 of 26 QA checks passed; the other failures were the same cause.
+- **Cycle 2** (deployed `61655cc`, 2026-10-13 ~05:00 UTC): **PASS**, 31 passed, 1 skipped (delivery failure needs a forced provider error). Both cycle 1 failures retested and fixed, with and without scripts. Regression pass: admin and tenant sign in and load every navigation page with no console errors or 4xx/5xx.
+
+| Scenario | Result | Evidence |
+|---|---|---|
+| Successful sign-in (admin, tenant), cookie lifetime | pass | [admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/authentication-successful-sign-in-admin.png) · [tenant](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/authentication-successful-sign-in-tenant.png) |
+| Invalid credentials | pass | [shot](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/authentication-invalid-credentials.png) |
+| Disabled account / Too many attempts (Firebase response intercepted) | pass, partial | [disabled](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/authentication-disabled-account.png) · [throttled](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/authentication-too-many-attempts.png) |
+| Session cookie cannot be created (`/api/signin` intercepted) | pass, partial | [shot](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/authentication-session-cookie-cannot-be-created.png) |
+| Unauthenticated page redirect, API not redirected | pass | HTTP-level |
+| Forgot password page is public | pass | [shot](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/authentication-forgot-password-page-is-public.png) |
+| Request from the sign-in page | pass | [shot](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/forgot-request-from-the-sign-in-page.png) |
+| Same answer for unknown or limited emails (JS and no JS) | pass | [JS](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/forgot-same-answer-for-unknown-or-limited-emails.png) · [no JS](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/forgot-same-answer-for-unknown-emails-no-js.png) |
+| Reset email sent (real tenant account; delivery not seen) | pass, partial | [shot](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/forgot-reset-email-sent-real-account.png) |
+| Unknown email (API 200 `email_sent`) | pass | HTTP-level |
+| Empty or invalid email (page and API 400) | pass | [shot](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/forgot-empty-or-invalid-email.png) |
+| Wrong mode / Missing code (400 "Invalid action") | pass | [wrong mode](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/authentication-wrong-mode.png) · [missing code](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/authentication-missing-code.png) |
+| Continue after a reset (notice on `/signin?reset=success`; Continue press not exercised) | partial | [shot](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/authentication-continue-after-a-reset-signin-notice.png) |
+| Submit before hydration, typed early, wrong credentials on POST form | pass | [no JS](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/authentication-submit-before-hydration.png) · [typed early](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/authentication-typed-early.png) · [POST error](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/authentication-wrong-credentials-post-form.png) |
+| Rate limit (1/min, 5/h, case, `+tag`) | answers identical; suppression not observable | — |
+| Email failure / Delivery failure, POST-form disabled/throttled/session failure, stale token 401 | not covered | needs fault injection or real accounts |
+| Regression: admin and tenant pages | pass | [admin](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/regression-admin-home.png) · [tenant](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/password-reset-and-signin/openspec/changes/password-reset-and-signin/qa/screenshots/regression-tenant-home.png) |
+
+Observations outside the specs: none needing action (admins are redirected from tenant pages to `/admin`, as intended; after a `/forgot` request the page offers only "Back to sign in"). The QA scenarios that passed are already covered by the e2e suite on the emulators (`tests/e2e/specs/signin.spec.ts`, `password-reset.spec.ts`), so no QA script needed porting.
 
 ## Verification checklist for the human
-(filled in stage 7)
+On the dev site before merging production PR #140, then on production after the deploy:
+- [ ] **Reset email end to end (high).** `/signin` → "Forgot password?" → a mailbox you control. Open the email, follow the link, set a new password, press Continue. Expect `/signin` with "Your password was changed. Please sign in.", no "Leave site?" prompt, and the new password works. Repeat with the link's `continueUrl` edited to another site: Continue must still land on `/signin`. Why a person: needs a real inbox. On production also confirm the link uses the production domain.
+- [ ] **Rate limit (high).** Submit the same mailbox twice within a minute (second time upper-cased or with `+tag`). Expect one email, identical answers. Why a person: suppression is invisible by design.
+- [ ] **Unknown address on production (high).** Submit an address with no account on production `/forgot`. Expect the generic message, not "We couldn't send the email". Why: the fix depends on the project's email enumeration protection setting, which QA only saw on dev.
+- [ ] **Disabled account (medium).** Disable a throwaway user in the Firebase console and sign in with and without JavaScript. Expect "This account has been disabled. Please contact Lehman Family LLC." without JavaScript; with JavaScript it may show "incorrect" when enumeration protection is on (documented trade-off).
+- [ ] **Profile reset button (medium).** Profile → Reset. Expect the toast "Reset email requested. Check your inbox." and one email.
+- [ ] **Phone layout (low).** `/signin`, `/forgot`, `/reset` at about 375 px: readable, "Forgot password?" reachable.
+- [ ] **Archive PR.** After the production deploy, confirm the "Archive OpenSpec changes" PR into `develop` opens and merges.
+
+Production-only risks: no new env vars, secrets or Stripe changes. New server-only Firestore collection `passwordResetRequests` (client rules stay deny-all). Behavior for unknown reset addresses depends on Firebase Auth's email enumeration protection; the code handles it on or off.
 
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
