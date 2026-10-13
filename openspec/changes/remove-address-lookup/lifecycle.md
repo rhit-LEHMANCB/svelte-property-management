@@ -1,9 +1,9 @@
 # Lifecycle: remove-address-lookup
 
 - Branch: `remove-address-lookup`
-- Stage: 4 Review
+- Stage: 5 Ship to develop
 - Renamed from `fix-maps-address-autocomplete` on 2026-10-13 when the scope changed (see interview summary)
-- Review round: 0 of 3
+- Review round: 1 of 3
 - QA cycle: 0 of 3
 - Started: 2026-10-13
 - Issue: #134
@@ -76,10 +76,11 @@ Run 2026-10-13. GitHub backend: **GitHub MCP** (`gh` token in GH_TOKEN is invali
 | Production PR | **Gap:** release PR #129 (develop -> production) is already open, so GitHub won't accept a second develop -> production PR. Stage 7 adds this change's QA report and checklist as a comment on #129 instead |
 
 ## Review rounds
-(none yet; one line per round: blockers, majors, fixed, rejected with reason)
+- Round 1 (2026-10-13, fresh Explore/Sonnet reviewer): blockers 0, majors 0, minors 2, nits 2. Fixed both minors (create test now asserts streetAddress and zip; the no-Maps test also types into Street Address). Fixed the lifecycle.md-reference nit by rewording the proposal/tasks. The e2e-cleanup nit needs no change: `emulators:exec` starts empty emulators on every run, and other specs seed fixed ids the same way. Review loop exited.
 
 ## Deferred findings
-(minors, nits and known gaps to turn into issues at wrap-up)
+- None from review.
+- Environment: Playwright 1.63 expects chromium build 1243, but the cloud image ships 1194. Worth a cloud setup fix (pin or install matching browsers) so a local override config is not needed.
 
 ## QA report
 (filled in stage 6; link to the QA evidence branch)

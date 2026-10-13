@@ -28,4 +28,4 @@ The Address Lookup on the admin property form has stopped working (#134). The Go
 - Dependencies: `google-maps` removed from `package.json` and the lockfile.
 - Tests: `tests/e2e/specs/*.spec.ts` (route stubs removed, a no-Maps-request check added).
 - No data, rules, env var, secret or Google Cloud console changes. `PUBLIC_FB_API_KEY` stays because Firebase uses it.
-- Closes #134. A lookup can come back later as a new change; the provider comparison is recorded in the issue and in this change's `lifecycle.md`.
+- Closes #134. A lookup can come back later as a new change; the investigation and provider comparison are recorded in this change's `lifecycle.md`, which is archived with it.

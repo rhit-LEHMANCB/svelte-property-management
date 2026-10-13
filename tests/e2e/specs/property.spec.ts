@@ -58,6 +58,8 @@ test.describe('property-management', () => {
 		const stored = await findProperty(title);
 		expect(stored?.city?.stringValue).toBe('Terre Haute');
 		expect(stored?.state?.stringValue).toBe('IN');
+		expect(stored?.streetAddress?.stringValue).toBe('12 Birch Lane');
+		expect(stored?.zip?.stringValue).toBe('47803');
 		expect(stored?.bathrooms?.doubleValue).toBe(1.5);
 
 		// Property directory: the new property is listed.
@@ -123,6 +125,9 @@ test.describe('property-management', () => {
 			for (const field of ['Street Address', 'Apartment Info', 'City', 'State', 'Zip Code']) {
 				await expect(page.getByTitle(field, { exact: true })).toBeVisible();
 			}
+			// Typing in the address fields must not start a lookup either.
+			await page.getByTitle('Street Address').fill('7 Elm St');
+			await page.waitForLoadState('networkidle');
 		}
 		expect(mapsRequests).toEqual([]);
 	});

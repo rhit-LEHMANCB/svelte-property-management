@@ -14,4 +14,4 @@
 
 ## Workflow follow-up
 
-- The production PR body says it closes #134 and notes that a lookup can come back later as a new change (provider notes are in #134).
+- The production PR body says it closes #134 and notes that a lookup can come back later as a new change (provider comparison: this change's `lifecycle.md`).
