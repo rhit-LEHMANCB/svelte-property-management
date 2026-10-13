@@ -56,8 +56,8 @@
 
 ## 9. First migration
 
-- [ ] 9.1 Write `migrations/0001-leases-from-tenant-links.ts` (id `migrated-{propertyId}`, non-admin existing tenants, property rent, earliest move-in month or current month, copy `payment_history` and `recorded_invoices`, summary per property, undo steps); verify with tests against the fake Firestore for each scenario of Leases from existing tenant links, including a second run
-- [ ] 9.2 Make the dry run print each linked tenant's balance before and after; verify with a test where two housemates have different move-in months
+- [x] 9.1 Write `migrations/0001-leases-from-tenant-links.ts` (id `migrated-{propertyId}`, non-admin existing tenants, property rent, earliest move-in month or current month, copy `payment_history` and `recorded_invoices`, summary per property, undo steps); verify with tests against the fake Firestore for each scenario of Leases from existing tenant links, including a second run
+- [x] 9.2 Make the dry run print each linked tenant's balance before and after; verify with a test where two housemates have different move-in months
 
 ## 10. Integration checks
 
