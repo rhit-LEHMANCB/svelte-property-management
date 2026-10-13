@@ -59,7 +59,21 @@ Approved: no
 Accepted preflight gaps: none
 
 ## Preflight
-(table of checks and results, from stage 2)
+Run 2026-10-13. GitHub backend: **GitHub MCP** (`gh` token in GH_TOKEN is invalid; cloud session; `get_me` = rhit-LEHMANCB).
+
+| Check | Result |
+| --- | --- |
+| git commit and push to origin | OK (pushed `remove-address-lookup`) |
+| GitHub backend | MCP (`get_me` OK). `gh`: invalid token |
+| Env files | Pulled `.env` and `.env.qa` from 1Password (mode 600, untracked); `.env` targets lehman-realty-dev |
+| QA credentials (4 vars in `.env.qa`) | All set |
+| Playwright `qa` project | Present in `playwright.config.ts` |
+| Playwright browsers | Playwright 1.63 expects chromium 1243; container has 1194. Worked around with an untracked `playwright.local.config.ts` (excluded via `.git/info/exclude`) that sets `executablePath`; `property.spec.ts` e2e: 3 passed |
+| Dev deploy `firebase-hosting-merge.yml` on develop | Success (run 80, head cb2f2d7 = this branch's base) |
+| `npm run lint` / `npm run check` / `npm test` | OK / 0 errors / 314 passed |
+| Java for emulators | Present |
+| Secrets for this change | None needed |
+| Production PR | **Gap:** release PR #129 (develop -> production) is already open, so GitHub won't accept a second develop -> production PR. Stage 7 adds this change's QA report and checklist as a comment on #129 instead |
 
 ## Review rounds
 (none yet; one line per round: blockers, majors, fixed, rejected with reason)
