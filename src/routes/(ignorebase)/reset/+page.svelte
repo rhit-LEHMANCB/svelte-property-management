@@ -1,43 +1,31 @@
 <script lang="ts">
-	import { page } from '$app/stores';
 	import { errorToast } from '$lib/Hooks/toasts';
 	import { auth } from '$lib/firebase';
 	import { getModalStore, getToastStore, type ModalSettings } from '$lib/ui';
-	import { error } from '@sveltejs/kit';
 	import { confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
 	import type { PageData } from './$types';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
 	import { passwordChangeSchema } from '$lib/schemas';
-	import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 
 	export let data: PageData;
 
 	const { form, errors, validateForm, enhance } = superForm(data.form, {
 		customValidity: true,
 		validators: zodClient(passwordChangeSchema),
-		validationMethod: 'onblur'
+		validationMethod: 'onblur',
+		// Never ask "Leave site?": the form is done with once the password has changed.
+		taintedMessage: false
 	});
 
 	const toastStore = getToastStore();
 	const modalStore = getModalStore();
 
-	const mode = $page.url.searchParams.get('mode');
-
-	const actionCode = $page.url.searchParams.get('oobCode');
-
-	const continueUrl = $page.url.searchParams.get('continueUrl');
-
-	if (mode !== 'resetPassword') {
-		throw error(400, 'Invalid action');
-	}
+	// The server load has already rejected links without a code or with another mode.
+	const actionCode = data.oobCode;
 
 	async function handleVerifyPasswordReset(event: Event) {
 		event.preventDefault();
-
-		if (!actionCode) {
-			throw error(400, 'Invalid action');
-		}
 
 		const result = await validateForm({ update: true });
 
@@ -52,18 +40,15 @@
 				// Save the new password.
 				confirmPasswordReset(auth, actionCode, newPassword)
 					.then(() => {
-						// Password reset has been confirmed and new password updated.
 						const modal: ModalSettings = {
 							type: 'alert',
-							// Data
 							title: 'Success!',
 							body: 'Your password was reset successfully. Press continue to proceed.',
 							buttonTextCancel: 'Continue',
-							// TRUE if confirm pressed, FALSE if cancel pressed
-							response: () => window.location.assign(continueUrl ?? `${PUBLIC_FRONTEND_URL}/`)
+							// Always to sign-in on this site: the link's continueUrl is not trusted.
+							response: () => window.location.assign('/signin?reset=success')
 						};
 						modalStore.trigger(modal);
-						// TODO: create a modal that confirms success and then on confirm sends user to login page
 					})
 					.catch(() => {
 						errorToast('Error resetting password. Please try again.', toastStore);
