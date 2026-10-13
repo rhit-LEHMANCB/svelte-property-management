@@ -5,10 +5,8 @@
 	import { successToast } from '$lib/Hooks/toasts';
 	import { IconCurrencyDollar } from '@tabler/icons-svelte';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
 	import type { SuperValidated } from 'sveltekit-superforms';
 	import { getToastStore } from '$lib/ui';
-	import { getGoogle } from '$lib/google';
 
 	const toastStore = getToastStore();
 
@@ -28,79 +26,6 @@
 			}
 		}
 	});
-
-	// eslint-disable-next-line no-undef
-	let autocomplete: google.maps.places.Autocomplete;
-	let addressLookupField: HTMLInputElement;
-
-	onMount(async () => {
-		const google = await getGoogle();
-		if (!google) {
-			console.warn('Error loading google maps Api');
-			return;
-		}
-		// Create the autocomplete object, restricting the search predictions to
-		// addresses in the US and Canada.
-		autocomplete = new google.maps.places.Autocomplete(addressLookupField, {
-			componentRestrictions: { country: ['us'] },
-			fields: ['address_components', 'geometry'],
-			types: ['address']
-		});
-
-		// When the user selects an address from the drop-down, populate the
-		// address fields in the form.
-		autocomplete.addListener('place_changed', fillInAddress);
-	});
-
-	function fillInAddress() {
-		// Get the place details from the autocomplete object.
-		const place = autocomplete.getPlace();
-		let address1 = '';
-		let postcode = '';
-
-		// Get each component of the address from the place details,
-		// and then fill-in the corresponding field on the form.
-		// place.address_components are google.maps.GeocoderAddressComponent objects
-		// which are documented at http://goo.gle/3l5i5Mr
-		// eslint-disable-next-line no-undef
-		for (const component of place.address_components as google.maps.GeocoderAddressComponent[]) {
-			const componentType = component.types[0];
-
-			switch (componentType) {
-				case 'street_number': {
-					address1 = `${component.long_name} ${address1}`;
-					break;
-				}
-
-				case 'route': {
-					address1 += component.short_name;
-					break;
-				}
-
-				case 'postal_code': {
-					postcode = `${component.long_name}${postcode}`;
-					break;
-				}
-
-				case 'postal_code_suffix': {
-					postcode = `${postcode}-${component.long_name}`;
-					break;
-				}
-
-				case 'locality':
-					$form.city = component.long_name;
-					break;
-
-				case 'administrative_area_level_1': {
-					$form.state = component.short_name;
-					break;
-				}
-			}
-		}
-
-		$form.streetAddress = address1;
-		$form.zip = postcode;
-	}
 </script>
 
 <form method="POST" action="?/basicInfo" use:enhance class="">
@@ -177,16 +102,6 @@
 			>
 		</div>
 		<h2 class="h4">Address</h2>
-		<div>
-			<label class="label"
-				><span>Address Lookup</span><input
-					class="input"
-					bind:this={addressLookupField}
-					title="Address Lookup"
-					type="text"
-				/></label
-			>
-		</div>
 		<div class="grid md:grid-cols-2 gap-4">
 			<label class="label"
 				><span>Street Address</span><input

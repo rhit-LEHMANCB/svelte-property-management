@@ -143,7 +143,6 @@ test.describe('list-browsing: sort lists in the browser', () => {
 
 test.describe('list-browsing: empty and no-result states', () => {
 	test('Scenario: No rows', async ({ page }) => {
-		await page.route('**/maps.googleapis.com/**', (route) => route.abort());
 		await signIn(page, ADMIN);
 		await page.goto(`/admin/properties/${EMPTY_PROPERTY}/edit`);
 		await page.waitForLoadState('networkidle');
