@@ -107,6 +107,17 @@ describe('authentication: password reset request (PUT /api/signin/reset)', () =>
 		expect(services.sendPasswordResetEmail).not.toHaveBeenCalled();
 	});
 
+	it.each(['not-an-email', 'x'.repeat(300), 42])(
+		'rejects an invalid email (%j) with 400 before touching the rate limit',
+		async (email) => {
+			const result = await call(PUT, { method: 'PUT', body: { email } });
+
+			expect(result.status).toBe(400);
+			expect(services.sendPasswordResetEmail).not.toHaveBeenCalled();
+			expect(services.db.listCollection('passwordResetRequests')).toEqual([]);
+		}
+	);
+
 	it('rejects a request without an email with 400', async () => {
 		const result = await call(PUT, { method: 'PUT', body: {} });
 

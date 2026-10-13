@@ -1,3 +1,10 @@
+// How the Admin SDK reports a reset link requested for an address with no account.
+const UNKNOWN_ACCOUNT_CODES = new Set(['auth/email-not-found', 'auth/user-not-found']);
+
+/** True when a Firebase Admin error means the address has no account. */
+export const isUnknownAccountError = (err: unknown) =>
+	UNKNOWN_ACCOUNT_CODES.has(String((err as { code?: unknown } | null)?.code));
+
 /** Why a sign-in failed, as far as the user needs to know. */
 export type SignInFailure = 'credentials' | 'disabled' | 'throttled' | 'unavailable';
 

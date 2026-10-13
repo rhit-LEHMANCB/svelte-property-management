@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { adminDB } from './admin';
 import { sendPasswordResetEmail } from './email';
+import { isUnknownAccountError } from '$lib/authErrors';
 
 const MINUTE_MS = 60 * 1000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -37,13 +38,13 @@ const forgetResetRequest = (email: string, time: number) =>
 	adminDB.runTransaction(async (tx) => {
 		const ref = limitDoc(email);
 		const stored = ((await tx.get(ref)).data()?.requests ?? []) as number[];
-		tx.set(ref, { requests: stored.filter((recorded) => recorded !== time) });
+		const remaining = stored.filter((recorded) => recorded !== time);
+		if (remaining.length) {
+			tx.set(ref, { requests: remaining });
+		} else {
+			tx.delete(ref);
+		}
 	});
-
-// The Admin SDK reports an unknown address on reset links as `auth/email-not-found`.
-const UNKNOWN_ACCOUNT = new Set(['auth/email-not-found', 'auth/user-not-found']);
-const isUnknownUser = (err: unknown) =>
-	UNKNOWN_ACCOUNT.has(String((err as { code?: unknown } | null)?.code));
 
 /**
  * Sends a password reset email unless the address has no account or is over the rate limit. Callers
@@ -59,7 +60,7 @@ export const requestPasswordReset = async (email: string): Promise<ResetOutcome>
 		await sendPasswordResetEmail(email, false);
 	} catch (err) {
 		// An unknown address keeps its slot, so it is counted exactly like a real one.
-		if (isUnknownUser(err)) {
+		if (isUnknownAccountError(err)) {
 			return 'suppressed';
 		}
 		await forgetResetRequest(email, recorded).catch((undoError) =>

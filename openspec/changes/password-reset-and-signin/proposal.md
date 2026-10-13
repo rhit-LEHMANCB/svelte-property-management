@@ -27,7 +27,7 @@ A tenant who forgets their password cannot reset it without first signing in (#4
 
 - Routes: new `src/routes/(ignorebase)/forgot/`; changes to `signin`, `reset`, `api/signin/reset`; `hooks.server.ts` public paths.
 - Server: `src/lib/server/email.ts` (unknown-user handling), new server-only rate limit helper using a `passwordResetRequests` Firestore collection (client rules stay deny-all), `verifyPassword.ts` error classification.
-- Profile page reset button keeps working; it gets the same generic success.
+- Profile page reset button keeps working; since a rate-limited request answers like a sent one, its toast becomes "Reset email requested. Check your inbox."
 - Tests: handler tests for the new action, load and endpoint; unit tests for the rate limit and error mapping; e2e tests for `/forgot`, reset Continue and the 400s.
 - No new environment variables, secrets or console changes.
 - With Firebase email enumeration protection on, the client SDK may report a disabled account as wrong credentials, so the hydrated sign-in path can show "incorrect" where the no-script path shows "disabled" (see design.md, Risks).

@@ -361,12 +361,14 @@ export class FakeFirestore {
 		fn: (tx: {
 			get: (ref: FakeDocRef) => Promise<FakeSnapshot>;
 			set: (ref: FakeDocRef, data: Data, options?: { merge?: boolean }) => unknown;
+			delete: (ref: FakeDocRef) => unknown;
 		}) => Promise<T>
 	): Promise<T> {
 		const batch = this.batch();
 		const result = await fn({
 			get: (ref) => ref.get(),
-			set: (ref, data, options) => batch.set(ref, data, options)
+			set: (ref, data, options) => batch.set(ref, data, options),
+			delete: (ref) => batch.delete(ref)
 		});
 		await batch.commit();
 		return result;

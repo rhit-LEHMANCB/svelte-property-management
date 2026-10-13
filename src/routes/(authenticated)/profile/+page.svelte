@@ -52,7 +52,7 @@
 			body: JSON.stringify({ email: data.user.email })
 		});
 		if (response.ok) {
-			successToast('Reset email successfully sent.', toastStore);
+			successToast('Reset email requested. Check your inbox.', toastStore);
 		} else {
 			errorToast('Error sending reset email.', toastStore);
 		}

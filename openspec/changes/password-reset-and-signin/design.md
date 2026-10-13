@@ -27,7 +27,7 @@
 ## Risks / Trade-offs
 
 - [Firestore transaction adds latency to every reset request] → One small document per address; resets are rare.
-- [The rate-limit collection grows] → One document per address ever requested, a few numbers each; acceptable. A TTL policy can be added later without code changes.
+- [The rate-limit collection grows] → Only well-formed email addresses reach it (the endpoint and `/forgot` answer 400 otherwise), a failed send that leaves no request deletes its document, and each document holds at most five numbers. Someone scripting many distinct valid-looking addresses can still add documents; IP throttling is a non-goal, and a TTL policy can be added later without code changes.
 - [Client SDK with email enumeration protection reports `auth/invalid-credential` for disabled accounts in some projects] → Then the client path shows "incorrect"; the POST path still distinguishes. Covered by unit tests on the mapping, not on Firebase's behavior.
 
 - [A known address answers more slowly than an unknown or rate-limited one, because only it waits for the email provider, so response timing can hint that an account exists] → Accepted: the answer text and status are identical, and the per-address limit caps probing to five tries an hour. Not awaiting the send would hide delivery failures, which the specs require to surface.

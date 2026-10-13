@@ -57,7 +57,10 @@ describe('authentication: password reset rate limit (requestPasswordReset)', () 
 		// Only the request two minutes ago is still within the hour, and it is over a minute old.
 
 		await expect(requestPasswordReset('tenant@example.com')).resolves.toBe('sent');
-		expect(services.db.peek(doc)?.requests).toHaveLength(2);
+		const kept = services.db.peek(doc)?.requests as number[];
+		expect(kept).toHaveLength(2);
+		expect(kept[0]).toBe(now - 2 * 60 * 1000);
+		expect(kept[1]).toBeGreaterThanOrEqual(now);
 	});
 
 	it('stores a hash of the lowercased address, never the address itself', async () => {
@@ -90,6 +93,14 @@ describe('authentication: password reset rate limit (requestPasswordReset)', () 
 		await expect(requestPasswordReset('tenant@example.com')).resolves.toBe('sent');
 		expect(services.sendPasswordResetEmail).toHaveBeenCalledTimes(2);
 		expect(services.db.peek(limitDocPath('tenant@example.com'))?.requests).toHaveLength(1);
+	});
+
+	it('leaves no rate-limit document behind when the only request failed to send', async () => {
+		services.sendPasswordResetEmail.mockRejectedValue(new Error('email provider down'));
+
+		await requestPasswordReset('tenant@example.com').catch(() => undefined);
+
+		expect(services.db.peek(limitDocPath('tenant@example.com'))).toBeUndefined();
 	});
 });
 
