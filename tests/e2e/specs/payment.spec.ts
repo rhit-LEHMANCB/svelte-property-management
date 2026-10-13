@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { ADMIN, FAKE_STRIPE_URL, PROPERTY, TENANT } from '../support/constants';
+import { ADMIN, FAKE_STRIPE_URL, LEASE_ID, PROPERTY, TENANT } from '../support/constants';
 import { signIn } from '../support/helpers';
 
 type Recorded = { path: string; body: Record<string, string> };
@@ -39,6 +39,7 @@ test.describe('rent-payments', () => {
 		// $500 * 2.9% + $0.30 = $14.80
 		expect(body['line_items[1][price_data][unit_amount]']).toBe('1480');
 		expect(body['invoice_creation[invoice_data][metadata][propertyID]']).toBe(PROPERTY.id);
+		expect(body['invoice_creation[invoice_data][metadata][leaseID]']).toBe(LEASE_ID);
 	});
 
 	test('Scenario: an amount above the balance is refused in the browser and nothing is sent to Stripe', async ({
@@ -74,16 +75,36 @@ test.describe('rent-payments', () => {
 		await page.goto('/payment');
 		await page.waitForLoadState('networkidle');
 
+		const status = await page.evaluate(async (leaseId) => {
+			const response = await fetch('/api/stripe/create-checkout-session/payment', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ amount: 1000.01, leaseId })
+			});
+			return response.status;
+		}, LEASE_ID);
+
+		expect(status).toBe(400);
+		expect(await recorded()).toHaveLength(0);
+	});
+
+	test("Scenario: Not the tenant's lease: paying against another lease is refused with 403", async ({
+		page
+	}) => {
+		await signIn(page, TENANT);
+		await page.goto('/payment');
+		await page.waitForLoadState('networkidle');
+
 		const status = await page.evaluate(async () => {
 			const response = await fetch('/api/stripe/create-checkout-session/payment', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ amount: 1000.01 })
+				body: JSON.stringify({ amount: 10, leaseId: 'someone-elses-lease' })
 			});
 			return response.status;
 		});
 
-		expect(status).toBe(400);
+		expect(status).toBe(403);
 		expect(await recorded()).toHaveLength(0);
 	});
 

@@ -5,10 +5,22 @@
 //   GET    /pay/<id>              the page the browser lands on
 //   GET    /__requests            what the app has sent so far (used by the specs)
 //   DELETE /__requests            forget recorded requests
+//   POST   /v1/customers          answers with a new customer id
+//   DELETE /v1/customers/<id>     answers that the customer is deleted
+//
+// It also stands in for the Resend API (the app's RESEND_BASE_URL points here in e2e mode):
+//
+//   POST   /emails                records the email, answers with an id
+//   GET    /__emails              the emails sent so far
+//   DELETE /__emails              forget sent emails
+//   POST   /__emails/fail-next    make the next email fail, as an outage would
 import http from 'node:http';
 
 const port = Number(process.env.FAKE_STRIPE_PORT ?? 12111);
 const requests = [];
+const emails = [];
+let customers = 0;
+let failNextEmail = false;
 
 const send = (res, status, body, type = 'application/json') => {
 	res.writeHead(status, { 'content-type': type });
@@ -33,6 +45,31 @@ const server = http.createServer(async (req, res) => {
 			object: 'checkout.session',
 			url: `http://127.0.0.1:${port}/pay/cs_fake_1`
 		});
+	}
+	if (req.method === 'POST' && pathname === '/v1/customers') {
+		customers += 1;
+		return send(res, 200, { id: `cus_fake_${customers}`, object: 'customer' });
+	}
+	if (req.method === 'DELETE' && pathname.startsWith('/v1/customers/')) {
+		return send(res, 200, { id: pathname.split('/').pop(), object: 'customer', deleted: true });
+	}
+	if (req.method === 'POST' && pathname === '/emails') {
+		if (failNextEmail) {
+			failNextEmail = false;
+			return send(res, 500, { name: 'internal_server_error', message: 'fake outage' });
+		}
+		const email = JSON.parse(raw);
+		emails.push({ to: email.to, subject: email.subject, text: email.text });
+		return send(res, 200, { id: `email_${emails.length}` });
+	}
+	if (req.method === 'GET' && pathname === '/__emails') return send(res, 200, emails);
+	if (req.method === 'DELETE' && pathname === '/__emails') {
+		emails.length = 0;
+		return send(res, 200, {});
+	}
+	if (req.method === 'POST' && pathname === '/__emails/fail-next') {
+		failNextEmail = true;
+		return send(res, 200, {});
 	}
 	if (req.method === 'GET' && pathname.startsWith('/pay/')) {
 		return send(res, 200, '<h1 id="fake-checkout">Fake Stripe Checkout</h1>', 'text/html');

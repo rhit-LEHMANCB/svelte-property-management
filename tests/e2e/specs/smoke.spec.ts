@@ -5,7 +5,8 @@ import {
 	FIRESTORE_EMULATOR,
 	PROJECT_ID,
 	PROPERTY,
-	TENANT
+	TENANT,
+	LEASE_ID
 } from '../support/constants';
 
 // Infrastructure smoke: proves the emulators, the seed, the fake Stripe and the app are all up.
@@ -36,6 +37,17 @@ test.describe('end-to-end infrastructure', () => {
 
 		const link = await document(`junction_user_property/${TENANT.uid}_${PROPERTY.id}`);
 		expect(link.body.fields.tenantId.stringValue).toBe(TENANT.uid);
+	});
+
+	test('data-migrations: the setup ran migration 0001, which made a lease from the link', async () => {
+		const lease = await document(`leases/${LEASE_ID}`);
+		expect(lease.status).toBe(200);
+		expect(lease.body.fields.propertyId.stringValue).toBe(PROPERTY.id);
+		expect(lease.body.fields.tenantIds.arrayValue.values).toEqual([{ stringValue: TENANT.uid }]);
+		expect(Number(lease.body.fields.rent.integerValue)).toBe(PROPERTY.rent);
+
+		const record = await document('_migrations/0001-leases-from-tenant-links');
+		expect(record.body.fields.status.stringValue).toBe('applied');
 	});
 
 	test('the fake Stripe server is reachable and starts with no recorded requests', async () => {

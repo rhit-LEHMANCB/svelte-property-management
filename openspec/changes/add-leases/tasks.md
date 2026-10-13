@@ -35,18 +35,18 @@
 
 ## 6. Admin pages
 
-- [ ] 6.1 Replace the Tenants tab on the property edit page with a Leases tab listing leases newest first with status, dates, rent, tenant names and emails, plus the empty state; remove `TenantPicker.svelte`, `MonthPicker.svelte`, `monthPicker.ts` and `tests/unit/monthPicker.test.ts`; verify with `npm run check` and an e2e spec for the list and empty state
-- [ ] 6.2 Build `LeaseForm.svelte` and the `leases/new` and `leases/[leaseId]` pages (rent prefilled from the property, email rows, PDF field with client-side size check, overlap confirmation with "Save anyway", per-email errors and email-failure notice, delete with confirmation); verify with e2e specs for create with an existing and a new email, a conflict, an overlap confirmed, an edit, and a delete refused for a lease with payments
-- [ ] 6.3 Remove `/api/property/[propertyId]/tenants`, `/api/user/[userId]/assoc`, `tests/handlers/tenant-assignment.test.ts` and `tests/e2e/specs/tenant-assignment.spec.ts`; verify `grep -r junction_user_property src` only matches property and user delete, and the full test suite passes
+- [x] 6.1 Replace the Tenants tab on the property edit page with a Leases tab listing leases newest first with status, dates, rent, tenant names and emails, plus the empty state; remove `TenantPicker.svelte`, `MonthPicker.svelte`, `monthPicker.ts` and `tests/unit/monthPicker.test.ts`; verify with `npm run check` and an e2e spec for the list and empty state
+- [x] 6.2 Build `LeaseForm.svelte` and the `leases/new` and `leases/[leaseId]` pages (rent prefilled from the property, email rows, PDF field with client-side size check, overlap confirmation with "Save anyway", per-email errors and email-failure notice, delete with confirmation); verify with e2e specs for create with an existing and a new email, a conflict, an overlap confirmed, an edit, and a delete refused for a lease with payments
+- [x] 6.3 Remove `/api/property/[propertyId]/tenants`, `/api/user/[userId]/assoc`, `tests/handlers/tenant-assignment.test.ts` and `tests/e2e/specs/tenant-assignment.spec.ts`; verify `grep -r junction_user_property src` only matches property and user delete, and the full test suite passes
 
 ## 7. Tenant side and payments
 
 - [x] 7.1 Change the authenticated layout to load the tenant's leases, expose `userLeases` and `userProperty` from the current lease, and pick the latest start date (with a log) for several current leases; verify with `access-control` handler tests for one, none and several current leases
 - [x] 7.2 Add `startMonth`/`endMonth` to `monthsOwed`, `computeBalance` and `allocatePayment`, and make `loadHistories` take a parent document reference; verify with `tests/unit/payments.test.ts` cases for an ended lease, an upcoming lease and carry-over across a year boundary
-- [ ] 7.3 Rework `/payment` to list each current lease or lease with money owed, with its balance and a pay form that sends `leaseId`; verify with handler tests and update `tests/e2e/specs/payment.spec.ts`
+- [x] 7.3 Rework `/payment` to list each current lease or lease with money owed, with its balance and a pay form that sends `leaseId`; verify with handler tests and update `tests/e2e/specs/payment.spec.ts`
 - [x] 7.4 Make checkout require a `leaseId` the tenant is on, cap at that lease's balance and add `leaseID` to the invoice metadata; verify with `rent-payments` handler tests for a valid lease, someone else's lease and an amount above the balance
 - [x] 7.5 Make the webhook record against `leases/{id}` (history and recorded invoices), with the legacy fallback by Stripe customer and property for invoices without `leaseID`; verify with handler tests for each Record payments scenario, including the fallback and a redelivery
-- [ ] 7.6 Add the lease cards to the tenant dashboard (address, dates or month to month, rent, other tenants' names, document link, "no lease on file"); verify with an e2e spec
+- [x] 7.6 Add the lease cards to the tenant dashboard (address, dates or month to month, rent, other tenants' names, document link, "no lease on file"); verify with an e2e spec
 - [x] 7.7 Make `/maintenance` use the current lease's property and redirect without one; verify with `maintenance-requests` handler tests for a current and an ended lease
 
 ## 8. Cascades

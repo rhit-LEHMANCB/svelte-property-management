@@ -97,10 +97,9 @@
 					{#if lease.balanceCents <= 0 || !dueDate}
 						<p>You have nothing to pay</p>
 					{:else}
-						<p>
-							You have a balance of <strong>{currency.format(lease.balanceCents / 100)}</strong> due
-							on {dueDate.toLocaleString('en-us', { dateStyle: 'short' })}
-						</p>
+						{@const amount = currency.format(lease.balanceCents / 100)}
+						{@const due = dueDate.toLocaleString('en-us', { dateStyle: 'short' })}
+						<p>You have a balance of <strong>{amount}</strong> due on {due}</p>
 					{/if}
 					<div class="flex flex-wrap items-center gap-2">
 						<button

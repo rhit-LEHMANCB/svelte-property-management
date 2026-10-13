@@ -34,3 +34,6 @@ export const PROPERTY = {
 	state: 'IN',
 	rent: 1000
 };
+
+/** The lease migration 0001 makes from the seeded tenant link (see global-setup.ts). */
+export const LEASE_ID = `migrated-${PROPERTY.id}`;

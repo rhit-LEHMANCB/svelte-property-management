@@ -76,6 +76,8 @@ const appEnv = {
 	FB_CLIENT_EMAIL: `e2e@${PROJECT_ID}.iam.gserviceaccount.com`,
 	FB_PRIVATE_KEY: JSON.stringify({ privateKey }),
 	RESEND_API_KEY: 're_e2e',
+	// The Resend SDK reads this; the fake Stripe server also answers Resend's /emails.
+	RESEND_BASE_URL: FAKE_STRIPE_URL,
 	STRIPE_API_KEY: 'sk_test_e2e',
 	STRIPE_ENDPOINT_SECRET: 'whsec_e2e',
 	STRIPE_API_BASE_URL: FAKE_STRIPE_URL,

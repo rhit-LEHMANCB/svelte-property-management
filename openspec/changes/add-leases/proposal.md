@@ -28,6 +28,7 @@ Today a tenant is linked to a property one at a time with a move-in month, and t
 - `property-management`: Deleting a property removes its leases, their payment history and their documents, instead of junction rows and property payment history.
 - `user-management`: Deleting a user removes them from their leases.
 - `firebase-configuration`: Storage objects are public only under `properties/` and `users/`; lease documents are private.
+- `app-platform` and `ui-accessibility`: the autocomplete and combobox requirements drop their tenant-picker examples; the tenant picker was the last combobox.
 - `maintenance-requests`: A tenant can file requests only for the property of their current lease.
 
 ## Impact
