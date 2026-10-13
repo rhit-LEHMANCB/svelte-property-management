@@ -130,6 +130,11 @@ export function isIsoDate(value: string) {
 
 export const NO_TENANTS_MESSAGE = 'A lease needs at least one tenant.';
 
+// Billing only understands years 2000-2099, so a typo such as 1026 is refused here instead of being
+// silently billed as if the lease had no start or end.
+const inBillingYears = (date: string) => /^20\d{2}-/.test(date);
+const YEAR_MESSAGE = 'Please enter a year from 2000 to 2099';
+
 export const leaseSchema = z
 	.object({
 		rent: z
@@ -144,11 +149,13 @@ export const leaseSchema = z
 		startDate: z
 			.string()
 			.min(1, 'Please select a start date')
-			.refine(isIsoDate, 'Please enter a date in the correct format'),
+			.refine(isIsoDate, 'Please enter a date in the correct format')
+			.refine(inBillingYears, YEAR_MESSAGE),
 		// Empty means month to month.
 		endDate: z
 			.string()
-			.refine((v) => v === '' || isIsoDate(v), 'Please enter a date in the correct format'),
+			.refine((v) => v === '' || isIsoDate(v), 'Please enter a date in the correct format')
+			.refine((v) => v === '' || inBillingYears(v), YEAR_MESSAGE),
 		// One row per tenant; blank rows are ignored.
 		emails: z.array(z.string().max(320, 'Email is too long')).superRefine((emails, ctx) => {
 			const filled = emails.map((e) => e.trim()).filter((e) => e !== '');

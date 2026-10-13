@@ -39,6 +39,16 @@ describe('leases: Lease record', () => {
 		);
 	});
 
+	it('Invalid fields: a year outside 2000-2099 is refused, so billing never ignores a date', () => {
+		expect(issues({ startDate: '1026-11-01' })).toEqual([
+			{ path: ['startDate'], message: 'Please enter a year from 2000 to 2099' }
+		]);
+		expect(issues({ endDate: '2126-11-01' })[0]).toEqual({
+			path: ['endDate'],
+			message: 'Please enter a year from 2000 to 2099'
+		});
+	});
+
 	it('Scenario: Invalid fields: end date not after the start date', () => {
 		expect(issues({ endDate: '2026-11-01' })).toEqual([
 			{ path: ['endDate'], message: 'End date must be after start date' }

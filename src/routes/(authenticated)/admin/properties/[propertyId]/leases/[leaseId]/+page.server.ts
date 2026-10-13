@@ -19,7 +19,10 @@ export const load = (async ({ locals, params }) => {
 	if (!property) throw error(404, 'Property not found');
 	if (!lease || lease.propertyId !== params.propertyId) throw error(404, 'Lease not found');
 
-	const summary = await summarizeLease(leaseSnap.id, lease);
+	const [summary, history] = await Promise.all([
+		summarizeLease(leaseSnap.id, lease),
+		leaseSnap.ref.collection('payment_history').limit(1).get()
+	]);
 	return {
 		form: await emptyLeaseForm({
 			rent: lease.rent,
@@ -31,6 +34,7 @@ export const load = (async ({ locals, params }) => {
 		lease: {
 			...summary,
 			documentName: lease.document?.fileName ?? null,
+			hasPayments: !history.empty,
 			// Ids with no user document cannot be shown as emails, so saving drops them.
 			missingTenants: lease.tenantIds.length - summary.tenants.length
 		}

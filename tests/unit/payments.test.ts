@@ -111,6 +111,18 @@ describe('computeBalance', () => {
 		).toEqual({ balanceCents: 200000, dueDate: '2025-12-01' });
 	});
 
+	it('moving a lease start later drops the earlier months, paid or not, from the balance', () => {
+		const histories = {
+			'2026': { January: { remainingBalance: 0 }, February: { remainingBalance: 300 } }
+		};
+		expect(computeBalance({ rent: 1000, startMonth: '2026-01', histories, now }).balanceCents).toBe(
+			130000
+		);
+		expect(computeBalance({ rent: 1000, startMonth: '2026-03', histories, now }).balanceCents).toBe(
+			100000
+		);
+	});
+
 	it('an end month after this month does not extend the balance past this month', () => {
 		expect(
 			computeBalance({ rent: 1000, startMonth: '2026-03', endMonth: '2027-02', histories: {}, now })

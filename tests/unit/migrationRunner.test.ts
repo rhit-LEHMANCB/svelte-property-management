@@ -69,6 +69,17 @@ describe('data-migrations: Applied once', () => {
 		});
 	});
 
+	it('Scenario: Nothing pending: the backup check is not even made, so a deploy cannot fail on it', async () => {
+		fake.seed('_migrations/0001-a', { status: 'applied' });
+		const findRestorePoint = vi.fn(async () => {
+			throw new Error('backups API down');
+		});
+		const result = await run([migration('0001-a')], { findRestorePoint });
+		expect(result).toEqual({ applied: [], skipped: ['0001-a'] });
+		expect(findRestorePoint).not.toHaveBeenCalled();
+		expect(fake.peek('_migrations/_lock')).toBeUndefined();
+	});
+
 	it('Scenario: Already applied migrations are not run again', async () => {
 		fake.seed('_migrations/0001-a', { status: 'applied' });
 		const up = vi.fn(async () => ({}));

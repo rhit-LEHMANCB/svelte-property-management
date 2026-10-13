@@ -1,9 +1,9 @@
 # Lifecycle: add-leases
 
 - Branch: `claude/add-leases`
-- Stage: 4 Review
+- Stage: 5 Ship to develop
 - GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
-- Review round: 2 of 5
+- Review round: 3 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-13
 
@@ -108,6 +108,14 @@ Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
   - Fixed: minor, migration 0001 warns about tenants linked to several properties and lists them in its summary (test added).
   - Fixed: nit, removed the unused `currentLeaseId` from the layout.
   - Not fixed: minor, /payment loading a balance for every lease, including ended ones. An ended lease can still owe rent, so it must be read to know. The count is small.
+- Round 3 (2026-10-13): 0 blockers, 0 majors, 5 minors, 1 nit. **Exit condition met.**
+  - Fixed: minor, lease dates must be in years 2000-2099, the range billing understands (test added).
+  - Fixed: minor, a Storage failure after deleting a lease is logged rather than answered 500, and a repeat delete removes leftover files (tests added).
+  - Fixed: minor, the edit page warns that changing dates on a lease with payments changes which months are billed; a unit test pins that behavior.
+  - Fixed: minor, the deploy step checks backups only when a migration is pending, so a backups-API problem cannot block a deploy with nothing to migrate (test added).
+  - Fixed: nit, the misplaced LeaseForm comment.
+  - Not fixed: minor, the users page reading every lease (same reason as round 1).
+- After round 3: lint, check, 489 unit/handler tests, build, check:server and 111 e2e tests pass.
 
 ## Out-of-scope observations
 (none yet)

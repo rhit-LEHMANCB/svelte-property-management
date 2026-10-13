@@ -51,6 +51,12 @@
 			>
 		{/if}
 	</div>
+	{#if data.lease.hasPayments}
+		<div class="card preset-tonal-warning p-4" role="status">
+			This lease has recorded payments. Changing its dates changes which months are billed: months
+			before the start date or after the end date are no longer owed.
+		</div>
+	{/if}
 	{#if data.lease.missingTenants > 0}
 		<div class="card preset-tonal-warning p-4" role="status">
 			{data.lease.missingTenants === 1

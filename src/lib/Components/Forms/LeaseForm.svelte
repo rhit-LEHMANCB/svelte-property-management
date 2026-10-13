@@ -21,8 +21,8 @@
 	// svelte-ignore state_referenced_locally
 	const { form, errors, message, enhance, submitting } = superForm(data, {
 		validators: zodClient(leaseSchema),
+		// Plain form posts: the email rows go as repeated `emails` fields, next to the PDF file.
 		dataType: 'form',
-		// Arrays of rows are posted as repeated `emails` fields.
 		taintedMessage: false
 	});
 

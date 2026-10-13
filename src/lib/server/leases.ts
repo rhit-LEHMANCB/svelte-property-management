@@ -423,8 +423,16 @@ export async function deleteLease(
 		tx.delete(leaseRef);
 		return 'deleted' as const;
 	});
-	if (outcome === 'deleted') {
-		await bucket().deleteFiles({ prefix: `leases/${leaseId}/` });
+	// The lease is gone either way; a file left by a failed cleanup is removed on the next delete.
+	if (outcome !== 'has-payments') {
+		await bucket()
+			.deleteFiles({ prefix: `leases/${leaseId}/` })
+			.catch((err) =>
+				console.error(
+					`Could not delete the files of lease ${leaseId}; deleting it again retries.`,
+					err instanceof Error ? err.message : err
+				)
+			);
 	}
 	return outcome;
 }

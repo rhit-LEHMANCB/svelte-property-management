@@ -75,6 +75,20 @@ export async function runMigrations(options: RunOptions): Promise<RunResult> {
 	if (problems.length > 0) throw new Error(`Invalid migrations:\n${problems.join('\n')}`);
 	const migrations = [...options.migrations].sort((a, b) => a.name.localeCompare(b.name));
 
+	// The backup check only matters when something will run, so a deploy with nothing pending never
+	// fails on it.
+	const pending: Migration[] = [];
+	const skipped: string[] = [];
+	for (const migration of migrations) {
+		const record = await db.collection(MIGRATIONS_COLLECTION).doc(migration.name).get();
+		if (record.data()?.status === 'applied') skipped.push(migration.name);
+		else pending.push(migration);
+	}
+	if (pending.length === 0) {
+		log('Nothing to migrate.');
+		return { applied: [], skipped };
+	}
+
 	const found = await options.findRestorePoint();
 	const restorePoint = found ?? null;
 	if (found === undefined) {
@@ -88,12 +102,13 @@ export async function runMigrations(options: RunOptions): Promise<RunResult> {
 	}
 
 	const lockRef = dryRun ? undefined : await takeLock(db, clock());
-	const result: RunResult = { applied: [], skipped: [] };
+	const result: RunResult = { applied: [], skipped };
 	try {
-		for (const migration of migrations) {
+		for (const migration of pending) {
 			const recordRef = db
 				.collection(MIGRATIONS_COLLECTION)
 				.doc(migration.name) as DocumentReference;
+			// Another run may have applied it between the first read and taking the lock.
 			if ((await recordRef.get()).data()?.status === 'applied') {
 				result.skipped.push(migration.name);
 				continue;
@@ -145,6 +160,5 @@ export async function runMigrations(options: RunOptions): Promise<RunResult> {
 	} finally {
 		if (lockRef) await lockRef.delete();
 	}
-	if (result.applied.length === 0) log('Nothing to migrate.');
 	return result;
 }

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
 import { actions as newActions } from '../../src/routes/(authenticated)/admin/properties/[propertyId]/leases/new/+page.server';
 import {
@@ -567,6 +567,16 @@ describe('leases: saving races and stale records (review round 1)', () => {
 		expect(db.peek('leases/lease-1')).toMatchObject({ rent: 1300, document: attached });
 	});
 
+	it('the edit page says whether the lease has recorded payments', async () => {
+		setup();
+		seedLease('lease-1', { tenantIds: ['tenant-1'], startDate: '2026-01-01' });
+		const load = () =>
+			call(editLoad, { userID: 'admin-1', params: { propertyId: 'prop-1', leaseId: 'lease-1' } });
+		expect((await load()).data.lease.hasPayments).toBe(false);
+		db.seed('leases/lease-1/payment_history/2026', { January: { remainingBalance: 0 } });
+		expect((await load()).data.lease.hasPayments).toBe(true);
+	});
+
 	it('the edit page counts tenants whose account no longer exists', async () => {
 		setup();
 		seedLease('lease-1', { tenantIds: ['tenant-1', 'gone-user'], startDate: '2026-01-01' });
@@ -697,9 +707,29 @@ describe('leases: Delete a lease (DELETE /api/lease/{id})', () => {
 		expect(db.peek('leases/lease-1')).toBeDefined();
 	});
 
-	it('an unknown lease answers 404', async () => {
+	it('an unknown lease answers 404, and a repeat delete removes files a failed cleanup left', async () => {
 		setup();
+		services.storage.log.files.set('leases/nope/1.pdf', PDF);
 		expect((await remove('admin-1', 'nope')).status).toBe(404);
+		expect(services.storage.log.files.size).toBe(0);
+	});
+
+	it('a Storage failure after the lease is deleted is logged, not answered 500', async () => {
+		setup();
+		seedLease('lease-1', { tenantIds: ['tenant-1'], startDate: '2026-01-01' });
+		services.storage.bucket.mockReturnValueOnce({
+			deleteFiles: async () => {
+				throw new Error('storage unavailable');
+			}
+		});
+		const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		try {
+			expect((await remove('admin-1')).status).toBe(200);
+			expect(errors).toHaveBeenCalled();
+		} finally {
+			errors.mockRestore();
+		}
+		expect(db.peek('leases/lease-1')).toBeUndefined();
 	});
 });
 
