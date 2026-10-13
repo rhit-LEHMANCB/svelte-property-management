@@ -19,7 +19,7 @@ test.describe('user-profile: request password reset', () => {
 
 		await page.getByRole('button', { name: 'Reset', exact: true }).click();
 
-		await expect(page.getByText('Reset email successfully sent.')).toBeVisible();
+		await expect(page.getByText('Reset email requested. Check your inbox.')).toBeVisible();
 		expect(sent).toEqual({ method: 'PUT', body: { email: TENANT.email } });
 	});
 

@@ -108,7 +108,7 @@ function reset() {
 	verifyPassword
 		.mockReset()
 		.mockImplementation(async (_email: string, password: string) =>
-			password === VALID_PASSWORD ? 'fresh-id-token' : null
+			password === VALID_PASSWORD ? { idToken: 'fresh-id-token' } : { error: 'credentials' }
 		);
 }
 

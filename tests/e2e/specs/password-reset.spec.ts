@@ -71,13 +71,48 @@ test.describe('authentication: password reset completion', () => {
 		expect(await signInStatus(email, 'Old-Passw0rd1')).toBe(200);
 	});
 
-	test('Scenario: Wrong mode shows an "Invalid action" error and no reset form', async ({
+	test('Scenario: Wrong mode responds 400 "Invalid action" and shows no reset form', async ({
 		page
 	}) => {
-		// The response status is deliberately not asserted: it is a Known Gap (500 where 400 is intended).
-		await page.goto('/reset?mode=verifyEmail&oobCode=abc');
+		const response = await page.goto('/reset?mode=verifyEmail&oobCode=abc');
 
+		expect(response?.status()).toBe(400);
 		await expect(page.getByText('Invalid action')).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Change Password' })).toHaveCount(0);
+	});
+
+	test('Scenario: Missing code responds 400 "Invalid action"', async ({ page }) => {
+		const response = await page.goto('/reset?mode=resetPassword');
+
+		expect(response?.status()).toBe(400);
+		await expect(page.getByRole('button', { name: 'Change Password' })).toHaveCount(0);
+	});
+
+	test('Scenario: Continue after a reset goes to /signin with the notice, no "Leave site?" prompt, whatever continueUrl says', async ({
+		page
+	}) => {
+		const unique = `${Date.now()}-${test.info().retry}`;
+		const email = `reset-continue-${unique}@e2e.test`;
+		const link = await resetLink(email, 'Old-Passw0rd1', `e2e-reset-continue-${unique}`);
+		const foreign = link.replace(
+			/continueUrl=[^&]*/,
+			`continueUrl=${encodeURIComponent('https://example.com/elsewhere')}`
+		);
+		const dialogs: string[] = [];
+		page.on('dialog', async (dialog) => {
+			dialogs.push(dialog.type());
+			await dialog.dismiss();
+		});
+
+		await page.goto(foreign);
+		await page.waitForLoadState('networkidle');
+		await page.getByTitle('New Password').fill('New-Passw0rd2');
+		await page.getByTitle('Verify Password').fill('New-Passw0rd2');
+		await page.getByRole('button', { name: 'Change Password' }).click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Continue' }).click();
+
+		await expect(page).toHaveURL(`${APP_URL}/signin?reset=success`);
+		await expect(page.getByText('Your password was changed. Please sign in.')).toBeVisible();
+		expect(dialogs).toEqual([]);
 	});
 });
