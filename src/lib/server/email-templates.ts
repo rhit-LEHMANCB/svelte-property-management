@@ -52,19 +52,48 @@ ${link}
 Lehman Family LLC`
 });
 
-export const renderWelcomeEmail = (link: string): EmailContent => ({
-	subject: 'Welcome to Lehman Family LLC',
-	html: layout(
-		'Welcome to Lehman Family LLC',
-		'An account has been created for you. Use the button below to set your password and sign in.',
-		'Set your password',
-		link
-	),
-	text: `Welcome to Lehman Family LLC
+/** The lease a new tenant was created for, named in their welcome email. */
+export type WelcomeLease = { address: string; startDate: string };
 
-An account has been created for you. Open the link below to set your password and sign in.
+const MONTHS = [
+	'January',
+	'February',
+	'March',
+	'April',
+	'May',
+	'June',
+	'July',
+	'August',
+	'September',
+	'October',
+	'November',
+	'December'
+];
+
+/** `2026-11-01` -> `November 1, 2026`, without passing through a time zone. */
+const longDate = (isoDate: string) => {
+	const [year, month, day] = isoDate.split('-').map(Number);
+	return `${MONTHS[month - 1]} ${day}, ${year}`;
+};
+
+export const renderWelcomeEmail = (link: string, lease?: WelcomeLease): EmailContent => {
+	const leaseLine = lease
+		? ` Your lease at ${lease.address} starts on ${longDate(lease.startDate)}.`
+		: '';
+	return {
+		subject: 'Welcome to Lehman Family LLC',
+		html: layout(
+			'Welcome to Lehman Family LLC',
+			`An account has been created for you.${leaseLine} Use the button below to set your password and sign in.`,
+			'Set your password',
+			link
+		),
+		text: `Welcome to Lehman Family LLC
+
+An account has been created for you.${leaseLine} Open the link below to set your password and sign in.
 
 ${link}
 
 Lehman Family LLC`
-});
+	};
+};

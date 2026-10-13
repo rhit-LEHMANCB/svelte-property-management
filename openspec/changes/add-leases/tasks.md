@@ -23,8 +23,8 @@
 
 ## 4. Accounts and email
 
-- [ ] 4.1 Move account creation from `/api/user/add` into `createTenantAccount(email, { sendWelcome })` in `src/lib/server/users.ts`, returning `{ uid, undo }`; verify the existing `user-management` handler tests still pass unchanged
-- [ ] 4.2 Extend `renderWelcomeEmail` with an optional `{ address, startDate }` sentence, using "Lehman Family LLC" in all copy; verify with `tests/unit/emailTemplates.test.ts` cases with and without a lease, including HTML escaping
+- [x] 4.1 Move account creation from `/api/user/add` into `createTenantAccount(email, { sendWelcome })` in `src/lib/server/users.ts`, returning `{ uid, undo }`; verify the existing `user-management` handler tests still pass unchanged
+- [x] 4.2 Extend `renderWelcomeEmail` with an optional `{ address, startDate }` sentence, using "Lehman Family LLC" in all copy; verify with `tests/unit/emailTemplates.test.ts` cases with and without a lease, including HTML escaping
 
 ## 5. Saving and deleting leases
 
