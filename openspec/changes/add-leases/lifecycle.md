@@ -1,7 +1,7 @@
 # Lifecycle: add-leases
 
 - Branch: `claude/add-leases`
-- Stage: 5 Ship to develop (PR #145 open; waiting on the `tests` and `build_and_preview` checks, then merge)
+- Stage: **HALTED** at 6 QA on the dev site (dev deploy failed at the migrate step)
 - GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
 - QA cycle: 0 of 3
@@ -127,4 +127,16 @@ Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
 (filled in stage 7)
 
 ## Halted
-(only if the run halted)
+- **Stage:** 6, before QA. PR #145 merged into develop on 2026-10-13 (merge commit ab685c6).
+- **Reason:** the dev deploy (run 38354071341, https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/38354071341) failed in the new "Apply data migrations" step. The deploy service account has no permission to list Firestore backup schedules:
+  `Could not read projects/lehman-realty-dev/databases/(default)/backupSchedules (HTTP 403) ... "The caller does not have permission", "status": "PERMISSION_DENIED"`.
+  This is an environment permission, not a code fault, so a re-run cannot fix it. It is the gap the preflight could not verify.
+- **State of dev:**
+  - Rules and indexes were deployed (the new Storage rules only narrow public reads; the new `leases` index).
+  - Migration 0001 did **not** run, so no data changed.
+  - Hosting was **not** deployed; the dev site still runs the previous version.
+- **Next step for a human:**
+  1. In Google Cloud IAM for `lehman-realty-dev`, find the service account whose key is in the GitHub `develop` environment secret `FIREBASE_SERVICE_ACCOUNT_LEHMAN_REALTY`. Grant it a role that includes `datastore.backupSchedules.list` and `datastore.backups.list`, for example **Cloud Datastore Viewer** (`roles/datastore.viewer`).
+  2. Make sure the two backup schedules exist on the `(default)` database: daily with 2-day retention, weekly with 8-day retention (Firestore, Disaster recovery).
+  3. Re-run the failed job of that run (Actions, the run, "Re-run failed jobs"), or tell Claude to, and the lifecycle continues at stage 6 (QA).
+  4. Do the same for the production project's service account before Gate B.
