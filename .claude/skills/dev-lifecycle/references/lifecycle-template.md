@@ -2,7 +2,7 @@
 
 - Branch: `<branch>`
 - Stage: 0 Intake
-- Review round: 0 of 3
+- Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: <date>
 
@@ -17,10 +17,10 @@ Accepted preflight gaps: none
 (table of checks and results, from stage 2)
 
 ## Review rounds
-(none yet; one line per round: blockers, majors, fixed, rejected with reason)
+(none yet; one line per round: blockers, majors, minors, nits, fixed, rejected with reason)
 
-## Deferred findings
-(minors, nits and known gaps to turn into issues at wrap-up)
+## Out-of-scope observations
+(only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)
 
 ## QA report
 (filled in stage 6; link to the QA evidence branch)
