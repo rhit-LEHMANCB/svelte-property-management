@@ -1,7 +1,7 @@
 # Lifecycle: add-leases
 
 - Branch: `claude/add-leases`
-- Stage: **HALTED** at 6 QA on the dev site (the deploy account cannot read or write Firestore data)
+- Stage: 6 QA on the dev site
 - GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
 - QA cycle: 0 of 3
@@ -147,3 +147,14 @@ Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
   - No data changed, and hosting was not deployed.
   - **Next step for a human:** grant the same deploy service account **Cloud Datastore User** (`roles/datastore.user`) on `lehman-realty-dev`, and on the production project before Gate B. Then re-run the failed job.
   - The README section "Data migrations" and design.md must also name this role; that goes into the record PR at stage 7.
+- **Resolved 2026-10-13 20:18:** the user granted Cloud Datastore User on dev and prod. Attempt 3 of run 38354071341 succeeded: rules, migrations and hosting deployed.
+
+## Dev deploy and migration (2026-10-13, run 38354071341 attempt 3)
+- **Restore point:** `projects/lehman-realty-dev/locations/nam5/backups/a6e92c76-cbe3-4018-94b0-5a0d61e293f4`, snapshot 2026-10-13T12:06:54Z.
+- **Migration 0001** started 2026-10-13T20:13:26Z.
+  - **Created** `migrated-wrIhk0hPRVK1hDCaId8y`: 1 tenant, 0 history and 0 invoice documents. Tenant `ps5f8IRn…` owes $2000.00 before and after.
+  - **Skipped:**
+    - 5 junctions whose properties no longer exist: `62WeqsJTofz9uJFHC6mn`, `c1QSys9UFwvMVVFWlneo`, `dnJqCXQu8DtQqMXHVZhx`, `HFBVyK7XZFmW5wP0G4Xs`, `whfdvzJddthVUXxREVo2`.
+    - 1 junction for a tenant that no longer exists (`eVO0c9os…` on `wrIhk0hPRVK1hDCaId8y`).
+  - No balance changes, and no tenants on several properties.
+- **Hosting:** version `09d5393511f7d8e2` on https://lehman-realty-dev.web.app.
