@@ -12,7 +12,7 @@ Today a tenant is linked to a property one at a time with a move-in month, and t
 - **BREAKING** The lease replaces tenant assignment. A tenant's property is the property of their current lease. The "add tenant" picker, move-in month and `/api/property/{id}/tenants` and `/api/user/{id}/assoc` endpoints are removed, and `junction_user_property` is no longer read or written.
 - **BREAKING** Rent is owed and paid per lease. The balance runs from the lease's start month through the earlier of this month and its end month, at the lease's rent. Payment history moves to `leases/{id}/payment_history`, and checkout and the webhook carry the lease id. After a lease ends no new rent accrues, but its unpaid balance stays payable.
 - Tenants see a read-only lease card on their dashboard and can open their lease PDF.
-- New data-migration mechanism: numbered migrations, tracked in Firestore, applied automatically during deploy before hosting, with a dry run, a recorded start time to restore to, and a check that point-in-time recovery is on.
+- New data-migration mechanism: numbered migrations, tracked in Firestore, applied automatically during deploy before hosting, with a dry run, a check that the database has a backup schedule, and the newest finished backup recorded as the restore point.
 - First migration turns each property's assigned tenants into one lease and copies the property's payment history to it, so balances carry over.
 
 ## Capabilities
@@ -35,5 +35,5 @@ Today a tenant is linked to a property one at a time with a move-in month, and t
 - **Code:** the authenticated layout, dashboard, payment page, maintenance page, property edit page; new lease pages and API routes; checkout and webhook; user and property delete; `/api/user/add` (shared creation helper); email templates; `src/lib/server/payments.ts` and `balance.ts` (end month).
 - **Removed:** `TenantPicker.svelte`, `MonthPicker.svelte`, `/api/property/{id}/tenants`, `/api/user/{id}/assoc`, and the tests that cover them.
 - **Data:** new `leases`, `leases/{id}/payment_history`, `leases/{id}/recorded_invoices`, `_migrations`; new Firestore indexes; lease PDFs at `leases/{id}/document.pdf` with Storage rules that deny direct reads.
-- **Deploy:** `firebase-hosting-merge.yml` gains a migrate step between the rules deploy and hosting. PITR must be turned on for both Firebase projects before the first such deploy.
+- **Deploy:** `firebase-hosting-merge.yml` gains a migrate step between the rules deploy and hosting. A daily backup schedule (2-day retention) and a weekly one (8-day retention) must exist on the `(default)` database of both Firebase projects before the first such deploy.
 - **Tooling:** `migrations/` folder, `npm run migrate`, and `tsx` to run TypeScript migrations in CI (if not already available).

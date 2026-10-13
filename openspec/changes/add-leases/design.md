@@ -73,9 +73,9 @@ The authenticated layout loads the tenant's leases once (`tenantIds array-contai
 ### Migration framework
 - `migrations/NNNN-name.ts` each export `{ name, description, undo, up(ctx) }`. `ctx` is `{ db, dryRun, log, now }`. In a dry run, writes go through a `ctx.write` wrapper that logs instead of writing, so a migration cannot forget to honor the flag.
 - `scripts/migrate.ts`, run with `tsx` (added as a dev dependency), uses `firebase-admin` directly with Application Default Credentials and `FB_PROJECT_ID`. It does not use `$lib/server/admin`, which depends on SvelteKit's `$env`. It follows these steps:
-  1. Check PITR through the Firestore Admin REST API (`GET projects/{p}/databases/(default)`, `pointInTimeRecoveryEnablement`), with a token from `google-auth-library` (already a dependency of `firebase-admin`). The check is skipped against the emulator.
+  1. Check backups through the Firestore Admin REST API, with a token from `google-auth-library` (already a dependency of `firebase-admin`). List `projects/{p}/databases/(default)/backupSchedules` and refuse if there are none. Then list `projects/{p}/locations/-/backups`, keep the `READY` ones for `(default)`, and take the newest by `snapshotTime` as the restore point. If there are none, warn and record none. Both checks are skipped against the emulator.
   2. Take the lock: create `_migrations/_lock` in a transaction, or take over a lock older than 30 minutes.
-  3. For each pending migration: log and write `startedAt` (the restore point), run `up`, then write `status: 'applied'`, `finishedAt` and the summary. On an error, write `status: 'failed'` with the error and exit non-zero.
+  3. For each pending migration: log and write `startedAt` and `restorePoint` (`{ backup, snapshotTime }` or null), run `up`, then write `status: 'applied'`, `finishedAt` and the summary. On an error, write `status: 'failed'` with the error and exit non-zero.
   4. Release the lock.
 - `npm run migrate` runs it, and `-- --dry-run` passes the flag through.
 - In `firebase-hosting-merge.yml`, a new step between the rules deploy and the hosting deploy writes the service account to a temp file the same way the rules step does and runs `npm run migrate`. A failure stops the job before hosting.
@@ -90,7 +90,8 @@ For each property with junction rows: the lease id is `migrated-{propertyId}`, s
 
 - [Payments recorded by the old code between the migration and the hosting deploy land in property history and are not copied] → The window is the minute between the two deploy steps. The Gate B checklist includes comparing `recorded_invoices` counts under each migrated property and its lease. The migration can be re-run by deleting its `_migrations` record, since it overwrites with the property's data.
 - [A tenant with a later move-in month than their housemate now owes from the earlier month] → The dry run prints each tenant's balance before and after. On dev, review it before merging. On production, the Gate B checklist asks for a spot check. Fix by editing the lease's start date.
-- [The deploy service account may lack permission to read database metadata for the PITR check] → The run fails with a clear message, not silently. Grant `roles/datastore.viewer`, or confirm the account's existing role covers it.
+- [The deploy service account may lack permission to list backup schedules and backups] → The run fails with a clear message, not silently. Grant a role that includes `datastore.backupSchedules.list` and `datastore.backups.list` (for example `roles/datastore.viewer`), or confirm the account's existing role covers them.
+- [Scheduled backups are at most daily, so the restore point can be up to about 24 hours older than the migration, and changes in between are not in it] → Acceptable while the app has no real data, and PITR stays off to avoid its cost. Turn PITR on once real data exists. Each migration's undo steps remain the first way back.
 - [The 10 MB uploads pass through the SSR function] → Cloud Functions accept 32 MB requests. The form checks the size on the client before sending.
 - [Removing the public catch-all storage rule could hide files under a prefix nobody listed] → The code only writes `properties/` and `users/` today (checked with grep). The rules tests in `tests/e2e/specs/rules.spec.ts` cover both, plus a denied read of `leases/`.
 - [`array-contains` is not in the test fake] → Add it to `fakeFirestore.ts` with a unit test.
@@ -98,13 +99,13 @@ For each property with junction rows: the lease id is `migrated-{propertyId}`, s
 
 ## Migration Plan
 
-1. **Before merging to develop:** turn on PITR for `lehman-realty-dev`, if it is not on already.
+1. **Before merging to develop:** create the daily (2-day retention) and weekly (8-day retention) backup schedules on `lehman-realty-dev` in the console (Firestore → Disaster recovery).
 2. **Merging to develop** deploys rules and indexes, runs `0001` against dev, then deploys hosting. QA checks migrated tenants' balances.
-3. **Before Gate B:** a human turns on PITR for the production project. The production PR checklist says so first.
-4. **At the production deploy**, the same steps run. The workflow log shows the restore time.
+3. **Before Gate B:** a human creates the same two backup schedules on the production project. The production PR checklist says so first.
+4. **At the production deploy**, the same steps run. The workflow log shows the start time and the restore-point backup.
 
 **Rollback:**
 - Code: revert the merge on `production`. The junction rows and property history are untouched, so the old code works as before.
 - Data: delete the `migrated-*` leases and the `_migrations/0001-leases-from-tenant-links` record.
 - Payments recorded on leases after the deploy must be copied back to the property history by hand, since they exist only on the lease.
-- PITR restore is the last resort: export at the recorded start time and import.
+- A backup restore is the last resort. Backups restore into a new database, never in place: `gcloud firestore databases restore --source-backup=<recorded backup> --destination-database=<new name>`, then copy back the documents that are needed. Changes made after the backup's snapshot time are not in it.

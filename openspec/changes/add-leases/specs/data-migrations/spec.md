@@ -36,21 +36,25 @@ Every migration SHALL be safe to run again on data it has already changed, so th
 - **THEN** it finishes the work without duplicating what the first run did
 
 ### Requirement: Restore point
-The system SHALL record, before applying any migration, the time it is about to start, in the migration's record and in the run's output, so the database can be restored to the minute before.
+The system SHALL record, before applying any migration, the time it is about to start and the name and snapshot time of the database's newest finished backup, in the migration's record and in the run's output.
 
-#### Scenario: Start time
-- **WHEN** a deploy applies a migration
-- **THEN** the workflow log and `_migrations/{name}` show the start time in UTC before any data is changed
+#### Scenario: Start time and backup
+- **WHEN** a deploy applies a migration and the database has finished backups
+- **THEN** the workflow log and `_migrations/{name}` show the start time in UTC and the newest finished backup's name and snapshot time, before any data is changed
 
-### Requirement: Point-in-time recovery required
-The system SHALL refuse to apply migrations to a database that does not have point-in-time recovery turned on, and SHALL fail the run with a message saying how to turn it on.
+#### Scenario: No backup yet
+- **WHEN** the database has a backup schedule but no backup has finished yet
+- **THEN** the run logs a warning, records the restore point as none, and continues
 
-#### Scenario: PITR off
-- **WHEN** the runner targets a database with point-in-time recovery turned off
+### Requirement: Backup schedule required
+The system SHALL refuse to apply migrations to a database that has no backup schedule, and SHALL fail the run with a message saying how to create one. The check is skipped against the Firestore emulator.
+
+#### Scenario: No schedule
+- **WHEN** the runner targets a database with no backup schedule
 - **THEN** no migration is applied and the run fails with that message
 
-#### Scenario: PITR on
-- **WHEN** point-in-time recovery is on
+#### Scenario: Schedule present
+- **WHEN** the database has at least one backup schedule
 - **THEN** pending migrations are applied
 
 ### Requirement: Failure stops the deploy
