@@ -83,6 +83,25 @@
 				}
 			],
 			"density": "SPARSE_ALL"
+		},
+		{
+			"collectionGroup": "leases",
+			"queryScope": "COLLECTION",
+			"fields": [
+				{
+					"fieldPath": "propertyId",
+					"order": "ASCENDING"
+				},
+				{
+					"fieldPath": "startDate",
+					"order": "DESCENDING"
+				},
+				{
+					"fieldPath": "__name__",
+					"order": "DESCENDING"
+				}
+			],
+			"density": "SPARSE_ALL"
 		}
 	],
 	"fieldOverrides": []

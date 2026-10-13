@@ -7,6 +7,7 @@ import { adminDB } from '$lib/server/admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import type { MaintenanceRequest } from '../../../app';
 import { getUserIdOrError } from '$lib/server/authHelpers';
+import { currentTenancy, loadTenantLeases } from '$lib/server/leases';
 
 export const load = (async (event) => {
 	getUserIdOrError(event.locals.userID);
@@ -74,28 +75,13 @@ export const actions = {
 			return message(form, 'Invalid form');
 		}
 
-		const userJunctionsQuery = await adminDB
-			.collection('junction_user_property')
-			.where('tenantId', '==', userId)
-			.get();
-
-		if (userJunctionsQuery.size !== 1) {
-			throw error(
-				500,
-				`User is associated with wrong number of properties: ${userJunctionsQuery.size}`
-			);
+		// Requests are only for the property of the tenant's current lease.
+		const tenancy = currentTenancy(await loadTenantLeases(userId));
+		if (!tenancy) {
+			throw redirect(303, '/');
 		}
-
-		const property = await adminDB
-			.collection('properties')
-			.doc(userJunctionsQuery.docs[0].data().propertyId)
-			.get();
-
-		const propertyId = property.id;
-		const propertyData = property.data();
-		if (!propertyData) {
-			throw error(500, 'Failed to get property details');
-		}
+		const propertyId = tenancy.lease.propertyId;
+		const propertyData = tenancy.property;
 		const propertyAddress = `${propertyData.streetAddress}, ${propertyData.city}, ${propertyData.state}`;
 
 		const submitter = (await adminDB.collection('users').doc(userId).get()).data();

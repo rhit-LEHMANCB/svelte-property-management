@@ -1,3 +1,6 @@
+import { fileURLToPath } from 'node:url';
+import { loadMigrations } from '../../../scripts/migrate/load';
+import { runMigrations } from '../../../scripts/migrate/runner';
 import { adminAuth, adminDb } from './admin';
 import {
 	ADMIN,
@@ -10,7 +13,9 @@ import {
 
 /**
  * Runs once before the e2e specs: empties the Auth and Firestore emulators, then seeds one admin,
- * one tenant, one property and the tenant's link to it. Every run starts from the same data.
+ * one tenant, one property and the tenant's link to it, as data looked before leases. It then runs
+ * the data migrations the way a deploy does, so the specs run against migrated data: the tenant is
+ * on lease LEASE_ID. Every run starts from the same data.
  */
 export default async function globalSetup() {
 	if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST) {
@@ -70,4 +75,15 @@ export default async function globalSetup() {
 	await db
 		.doc(`junction_user_property/${TENANT.uid}_${PROPERTY.id}`)
 		.set({ tenantId: TENANT.uid, propertyId: PROPERTY.id });
+
+	// The emulator has no backups, so there is no restore point to look up.
+	await runMigrations({
+		db,
+		migrations: await loadMigrations(
+			fileURLToPath(new URL('../../../migrations', import.meta.url))
+		),
+		dryRun: false,
+		findRestorePoint: async () => undefined,
+		log: () => undefined
+	});
 }

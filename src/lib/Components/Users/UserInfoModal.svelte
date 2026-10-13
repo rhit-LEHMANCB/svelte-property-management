@@ -10,7 +10,6 @@
 	} from '@tabler/icons-svelte';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { refresh } from '$lib/Hooks/refresh';
-	import { onMount } from 'svelte';
 	import UserAvatar from './UserAvatar.svelte';
 
 	// Rendered inside the modal host's Dialog, so Dialog.Title names the dialog.
@@ -45,29 +44,6 @@
 			errorToast('Error removing user.', toastStore);
 		}
 	}
-
-	async function getUserAssocProperty(id: string) {
-		const response = await fetch(`/api/user/${id}/assoc`, {
-			method: 'GET'
-		});
-		if (response.ok) {
-			return (await response.json()) as DocumentWithId;
-		} else {
-			errorToast('Error getting user assoc.', toastStore);
-		}
-	}
-
-	let userProperty = $state<DocumentWithId | undefined | false>(false);
-
-	onMount(async () => {
-		userProperty = await getUserAssocProperty(user.id);
-	});
-
-	const formattedAddress = $derived(
-		userProperty && userProperty.data
-			? `${userProperty.data.streetAddress}, ${userProperty.data.city}, ${userProperty.data.state}`
-			: ''
-	);
 
 	let tab = $state('info');
 </script>
@@ -105,19 +81,15 @@
 					<dd>{user.data.phoneNumber}</dd>
 					<dt class="opacity-70">Property</dt>
 					<dd>
-						{#if userProperty === false}
-							<span class="placeholder inline-block w-32 animate-pulse" role="status"
-								><span class="sr-only">Loading</span></span
-							>
-						{:else if !userProperty?.data || !userProperty?.id}
+						{#if !user.property}
 							<strong>Not renting a property</strong>
 						{:else}
 							<a
 								onclick={() => modalStore.close()}
 								class="anchor"
-								href={`/admin/properties/${userProperty.id}/edit`}
+								href={`/admin/properties/${user.property.id}/edit`}
 							>
-								{formattedAddress}
+								{user.property.address}
 							</a>
 						{/if}
 					</dd>

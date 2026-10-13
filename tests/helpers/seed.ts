@@ -49,3 +49,26 @@ export function seedProperty(id = 'prop-1', extra: Record<string, unknown> = {})
 export function linkTenant(tenantId: string, propertyId: string) {
 	db.seed(`junction_user_property/${tenantId}_${propertyId}`, { tenantId, propertyId });
 }
+
+export function seedLease(
+	id: string,
+	lease: {
+		propertyId?: string;
+		tenantIds: string[];
+		rent?: number;
+		startDate: string;
+		endDate?: string | null;
+		document?: Record<string, unknown> | null;
+	}
+) {
+	db.seed(`leases/${id}`, {
+		propertyId: 'prop-1',
+		rent: 1200,
+		endDate: null,
+		document: null,
+		createdAt: '2026-01-01T00:00:00.000Z',
+		updatedAt: '2026-01-01T00:00:00.000Z',
+		...lease
+	});
+	return id;
+}

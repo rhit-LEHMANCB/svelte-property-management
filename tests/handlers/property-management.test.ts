@@ -13,7 +13,7 @@ import {
 import { load as listLoad } from '../../src/routes/(authenticated)/admin/properties/+page.server';
 import { call } from '../helpers/callHandler';
 import { services } from '../helpers/services';
-import { db, linkTenant, seedAdmin, seedProperty, seedTenant } from '../helpers/seed';
+import { db, linkTenant, seedAdmin, seedLease, seedProperty, seedTenant } from '../helpers/seed';
 
 const validForm = {
 	title: 'Maple Court',
@@ -293,6 +293,55 @@ describe('property-management: delete property (DELETE /api/property/{id})', () 
 		// Other properties keep their links and history.
 		expect(db.peek('junction_user_property/tenant-2_prop-2')).toBeDefined();
 		expect(db.peek('properties/prop-2/payment_history/2026')).toBeDefined();
+	});
+
+	it("Scenario: Cascade removes the property's leases with their history, invoices and documents", async () => {
+		seedAdmin('admin-1');
+		seedTenant('tenant-1');
+		seedProperty('prop-1');
+		seedProperty('prop-2');
+		seedLease('l1', { propertyId: 'prop-1', tenantIds: ['tenant-1'], startDate: '2026-01-01' });
+		seedLease('l2', { propertyId: 'prop-2', tenantIds: ['tenant-1'], startDate: '2025-01-01' });
+		db.seed('leases/l1/payment_history/2026', { January: { remainingBalance: 0 } });
+		db.seed('leases/l1/recorded_invoices/in_1', { recordedAt: 'x' });
+		db.seed('properties/prop-1/recorded_invoices/in_0', { recordedAt: 'x' });
+
+		const result = await call(deleteProperty, {
+			method: 'DELETE',
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' }
+		});
+
+		expect(result.status).toBe(200);
+		expect(db.peek('leases/l1')).toBeUndefined();
+		expect(db.peek('leases/l1/payment_history/2026')).toBeUndefined();
+		expect(db.peek('leases/l1/recorded_invoices/in_1')).toBeUndefined();
+		expect(db.peek('properties/prop-1/recorded_invoices/in_0')).toBeUndefined();
+		expect(services.storage.log.deletedPrefixes).toContain('leases/l1/');
+		// Other properties keep their leases.
+		expect(db.peek('leases/l2')).toBeDefined();
+		expect(services.storage.log.deletedPrefixes).not.toContain('leases/l2/');
+	});
+
+	it('Scenario: Large property with more than 500 lease history documents removes them all', async () => {
+		seedAdmin('admin-1');
+		seedProperty('prop-1');
+		for (let i = 0; i < 3; i++) {
+			seedLease(`l${i}`, { propertyId: 'prop-1', tenantIds: [], startDate: '2020-01-01' });
+			for (let j = 0; j < 200; j++) {
+				db.seed(`leases/l${i}/recorded_invoices/in_${j}`, { recordedAt: 'x' });
+			}
+		}
+
+		const result = await call(deleteProperty, {
+			method: 'DELETE',
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' }
+		});
+
+		expect(result.status).toBe(200);
+		expect((await db.collection('leases').get()).size).toBe(0);
+		expect((await db.collection('leases/l2/recorded_invoices').get()).size).toBe(0);
 	});
 
 	it('Scenario: Large property removes more than 500 documents', async () => {

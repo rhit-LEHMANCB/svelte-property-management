@@ -4,20 +4,30 @@
 	import { type ZodError, z } from 'zod';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
 
-	export let data: { balanceCents: number; dueDate: string | null };
+	type LeaseBalance = {
+		id: string;
+		address: string;
+		status: string;
+		startDate: string;
+		endDate: string | null;
+		balanceCents: number;
+		dueDate: string | null;
+	};
+	export let data: { leases: LeaseBalance[] };
 
-	$: balance = data.balanceCents / 100;
 	// The due date is a calendar day (YYYY-MM-DD); parse it as local so it is not shifted a day.
-	$: balanceDueDate = data.dueDate ? new Date(`${data.dueDate}T00:00:00`) : null;
+	const dueDateOf = (lease: LeaseBalance) =>
+		lease.dueDate ? new Date(`${lease.dueDate}T00:00:00`) : null;
 	const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
 	const toastStore = getToastStore();
 	const modalStore = getModalStore();
 
-	async function startCheckout(response: string) {
-		if (!response || data.balanceCents <= 0) {
+	async function startCheckout(lease: LeaseBalance, response: string) {
+		if (!response || lease.balanceCents <= 0) {
 			return;
 		}
+		const balance = lease.balanceCents / 100;
 		const amount = parseFloat(response);
 		try {
 			const balanceSchema = z
@@ -35,7 +45,7 @@
 			headers: {
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify({ amount })
+			body: JSON.stringify({ amount, leaseId: lease.id })
 		});
 		if (fetchResponse.ok) {
 			const body = await fetchResponse.json();
@@ -57,19 +67,15 @@
 		}
 	}
 
-	// Provide the modal settings
-	const paymentModal: ModalSettings = {
-		type: 'prompt',
-		// Data
-		title: 'Enter Payment Amount',
-		body: 'Provide the amount you would like to pay.\nNote: One-time payments are subject to a transaction fee. Please set up auto-pay to waive this fee.',
-		// Populates the input value and attributes
-		valueAttr: { type: 'number', required: true, step: '0.01' },
-		// Returns the updated response value
-		response: startCheckout
-	};
-
-	function viewPaymentClicked() {
+	function viewPaymentClicked(lease: LeaseBalance) {
+		const paymentModal: ModalSettings = {
+			type: 'prompt',
+			title: 'Enter Payment Amount',
+			body: 'Provide the amount you would like to pay.\nNote: One-time payments are subject to a transaction fee. Please set up auto-pay to waive this fee.',
+			// Populates the input value and attributes
+			valueAttr: { type: 'number', required: true, step: '0.01' },
+			response: (response: string) => startCheckout(lease, response)
+		};
 		modalStore.trigger(paymentModal);
 	}
 </script>
@@ -79,29 +85,42 @@
 	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 		<section class="card bg-surface-100-900 flex flex-col gap-4 p-4 sm:p-6">
 			<h2 class="h4">Your current balance</h2>
-			{#if data.balanceCents <= 0 || !balanceDueDate}
-				<p>You have nothing to pay</p>
-			{:else}
-				<p>
-					You have a balance of <strong>{currency.format(balance)}</strong> due on {balanceDueDate.toLocaleString(
-						'en-us',
-						{
-							dateStyle: 'short'
-						}
-					)}
-				</p>
-			{/if}
-			<div class="flex flex-wrap items-center gap-2">
-				<button
-					data-needs-hydration
-					class="btn preset-filled-primary-500"
-					disabled={data.balanceCents <= 0}
-					on:click={viewPaymentClicked}>Make a Payment</button
-				>
-				<button data-needs-hydration class="btn preset-tonal" on:click={viewPaymentClicked}
-					>Set up auto pay</button
-				>
-			</div>
+			{#each data.leases as lease (lease.id)}
+				{@const dueDate = dueDateOf(lease)}
+				<div class="flex flex-col gap-3" data-lease={lease.id}>
+					{#if data.leases.length > 1}
+						<h3 class="font-semibold">
+							{lease.address}
+							<span class="badge preset-tonal ml-1 capitalize">{lease.status}</span>
+						</h3>
+					{/if}
+					{#if lease.balanceCents <= 0 || !dueDate}
+						<p>You have nothing to pay</p>
+					{:else}
+						{@const amount = currency.format(lease.balanceCents / 100)}
+						{@const due = dueDate.toLocaleString('en-us', { dateStyle: 'short' })}
+						<p>You have a balance of <strong>{amount}</strong> due on {due}</p>
+					{/if}
+					<div class="flex flex-wrap items-center gap-2">
+						<button
+							data-needs-hydration
+							class="btn preset-filled-primary-500"
+							disabled={lease.balanceCents <= 0}
+							aria-label={data.leases.length > 1
+								? `Make a Payment for ${lease.address}`
+								: undefined}
+							on:click={() => viewPaymentClicked(lease)}>Make a Payment</button
+						>
+						{#if lease.status === 'current'}
+							<button
+								data-needs-hydration
+								class="btn preset-tonal"
+								on:click={() => viewPaymentClicked(lease)}>Set up auto pay</button
+							>
+						{/if}
+					</div>
+				</div>
+			{/each}
 		</section>
 		<section class="card bg-surface-100-900 flex flex-col gap-4 p-4 sm:p-6">
 			<h2 class="h4">Transaction History</h2>

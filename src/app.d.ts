@@ -14,6 +14,8 @@ declare global {
 export interface DocumentWithId {
 	id: string;
 	data: FirebaseFirestore.DocumentData;
+	/** On the admin users list: the property of the user's current lease, if any. */
+	property?: { id: string; address: string } | null;
 }
 
 export interface PhotoItem {
