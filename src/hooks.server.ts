@@ -18,6 +18,8 @@ export const handle = (async ({ event, resolve }) => {
 	return resolve(event);
 }) satisfies Handle;
 
+const PUBLIC_PAGES = new Set(['/signin', '/forgot', '/reset']);
+
 function isAuthenticationRequired(pathname: string) {
-	return pathname !== '/signin' && pathname !== '/reset' && !pathname.startsWith('/api');
+	return !PUBLIC_PAGES.has(pathname) && !pathname.startsWith('/api');
 }

@@ -12,13 +12,13 @@ const db = new FakeFirestore();
 
 const auth = {
 	createUser: vi.fn(),
-	getUserByEmail: vi.fn(),
 	deleteUser: vi.fn(),
 	updateUser: vi.fn(),
 	verifyIdToken: vi.fn(),
 	createSessionCookie: vi.fn(),
 	verifySessionCookie: vi.fn(),
-	generatePasswordResetLink: vi.fn()
+	generatePasswordResetLink: vi.fn(),
+	getUserByEmail: vi.fn()
 };
 
 const storageLog = {
@@ -58,19 +58,6 @@ function reset() {
 		created += 1;
 		return { uid: created === 1 ? 'new-user-uid' : `new-user-uid-${created}`, email };
 	});
-	// Like Firebase Auth, an account exists for an email when a user document has it, in any case.
-	auth.getUserByEmail.mockReset().mockImplementation(async (email: string) => {
-		const users = await db.collection('users').get();
-		const match = users.docs.find(
-			(doc) => String(doc.data()?.email ?? '').toLowerCase() === email.toLowerCase()
-		);
-		if (!match) {
-			throw Object.assign(new Error('There is no user record for this email.'), {
-				code: 'auth/user-not-found'
-			});
-		}
-		return { uid: match.id, email };
-	});
 	auth.deleteUser.mockReset().mockResolvedValue(undefined);
 	auth.updateUser.mockReset().mockImplementation(async (uid: string) => ({ uid }));
 	auth.verifyIdToken.mockReset().mockImplementation(async () => ({
@@ -79,6 +66,9 @@ function reset() {
 	}));
 	auth.createSessionCookie.mockReset().mockResolvedValue('session-cookie-value');
 	auth.verifySessionCookie.mockReset().mockResolvedValue({ uid: 'user-1' });
+	auth.getUserByEmail
+		.mockReset()
+		.mockImplementation(async (email: string) => ({ uid: 'user-by-email', email }));
 	auth.generatePasswordResetLink
 		.mockReset()
 		.mockImplementation(async (email: string) => `https://reset.test/?email=${email}`);
@@ -142,11 +132,29 @@ function reset() {
 	verifyPassword
 		.mockReset()
 		.mockImplementation(async (_email: string, password: string) =>
-			password === VALID_PASSWORD ? 'fresh-id-token' : null
+			password === VALID_PASSWORD ? { idToken: 'fresh-id-token' } : { error: 'credentials' }
 		);
 }
 
 reset();
+
+/**
+ * A `getUserByEmail` that behaves like Firebase Auth over the seeded data: an account exists for an
+ * email when a user document has it, in any case. Tests that need real lookups install it with
+ * `services.auth.getUserByEmail.mockImplementation(lookUpSeededUserByEmail)`.
+ */
+export async function lookUpSeededUserByEmail(email: string) {
+	const users = await db.collection('users').get();
+	const match = users.docs.find(
+		(doc) => String(doc.data()?.email ?? '').toLowerCase() === email.toLowerCase()
+	);
+	if (!match) {
+		throw Object.assign(new Error('There is no user record for this email.'), {
+			code: 'auth/user-not-found'
+		});
+	}
+	return { uid: match.id, email };
+}
 
 export const services = {
 	db,

@@ -65,6 +65,22 @@ describe('user-profile: edit contact information (profile contact action)', () =
 		expect(services.stripe.customers.update).not.toHaveBeenCalled();
 	});
 
+	it.each(['disabled', 'throttled'])(
+		'Scenario: Email change when the password check reports %s writes nothing and asks to retry',
+		async (failure) => {
+			seedTenant('t1', { firstName: 'Tom', stripeID: 'cus_t1' });
+			services.verifyPassword.mockResolvedValue({ error: failure });
+
+			const result = await call(actions.contact, { userID: 't1', form: withPassword });
+
+			expect(result.status).toBe(500);
+			expect(result.data.form.message).toBe('Could not verify your password. Please try again.');
+			expect(db.peek('users/t1')?.firstName).toBe('Tom');
+			expect(services.auth.updateUser).not.toHaveBeenCalled();
+			expect(services.stripe.customers.update).not.toHaveBeenCalled();
+		}
+	);
+
 	it('Scenario: Email unchanged needs no password and leaves Auth alone', async () => {
 		seedTenant('t1', { stripeID: 'cus_t1' });
 

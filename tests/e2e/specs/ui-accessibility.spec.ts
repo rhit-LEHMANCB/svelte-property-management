@@ -220,7 +220,9 @@ test.describe('ui-accessibility: notifications use the right live-region roles',
 		const reset = page.getByRole('button', { name: 'Reset', exact: true });
 		await reset.click();
 
-		const toast = page.getByRole('status').filter({ hasText: 'Reset email successfully sent.' });
+		const toast = page
+			.getByRole('status')
+			.filter({ hasText: 'Reset email requested. Check your inbox.' });
 		await expect(toast).toBeVisible();
 		await expect(reset).toBeFocused();
 		await expect(page.getByRole('region', { name: 'Notifications' })).toHaveAttribute(

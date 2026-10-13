@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
 import { actions as newActions } from '../../src/routes/(authenticated)/admin/properties/[propertyId]/leases/new/+page.server';
 import {
@@ -10,10 +10,15 @@ import { load as propertyEditLoad } from '../../src/routes/(authenticated)/admin
 import { DELETE as deleteLease } from '../../src/routes/api/lease/[leaseId]/+server';
 import { GET as getDocument } from '../../src/routes/api/lease/[leaseId]/document/+server';
 import { call } from '../helpers/callHandler';
-import { services } from '../helpers/services';
+import { lookUpSeededUserByEmail, services } from '../helpers/services';
 import { db, seedAdmin, seedLease, seedProperty, seedTenant } from '../helpers/seed';
 
 // leases: creating, editing and deleting leases, and their documents.
+
+// Email lookups answer from the seeded users, so unknown emails are new accounts.
+beforeEach(() => {
+	services.auth.getUserByEmail.mockImplementation(lookUpSeededUserByEmail);
+});
 const PDF = new TextEncoder().encode('%PDF-1.7\n% a tiny test document\n');
 
 function leaseForm(fields: {

@@ -16,7 +16,9 @@ describe('verifyPassword', () => {
 		const fetchMock = respond(200, { idToken: 'fresh-token' });
 		vi.stubGlobal('fetch', fetchMock);
 
-		await expect(verifyPassword('a@example.com', 'pw')).resolves.toBe('fresh-token');
+		await expect(verifyPassword('a@example.com', 'pw')).resolves.toEqual({
+			idToken: 'fresh-token'
+		});
 
 		const [url, init] = fetchMock.mock.calls[0];
 		expect(url).toBe(
@@ -29,14 +31,37 @@ describe('verifyPassword', () => {
 		});
 	});
 
-	it.each(['INVALID_PASSWORD', 'EMAIL_NOT_FOUND', 'INVALID_LOGIN_CREDENTIALS'])(
-		'returns null for %s',
+	it.each(['INVALID_PASSWORD', 'EMAIL_NOT_FOUND', 'INVALID_LOGIN_CREDENTIALS', 'INVALID_EMAIL'])(
+		'reports wrong credentials for %s',
 		async (code) => {
 			vi.stubGlobal('fetch', respond(400, { error: { message: code } }));
 
-			await expect(verifyPassword('a@example.com', 'wrong')).resolves.toBeNull();
+			await expect(verifyPassword('a@example.com', 'wrong')).resolves.toEqual({
+				error: 'credentials'
+			});
 		}
 	);
+
+	it('reports a disabled account for USER_DISABLED', async () => {
+		vi.stubGlobal('fetch', respond(400, { error: { message: 'USER_DISABLED' } }));
+
+		await expect(verifyPassword('a@example.com', 'pw')).resolves.toEqual({ error: 'disabled' });
+	});
+
+	it('reports throttling for TOO_MANY_ATTEMPTS_TRY_LATER with detail', async () => {
+		vi.stubGlobal(
+			'fetch',
+			respond(400, { error: { message: 'TOO_MANY_ATTEMPTS_TRY_LATER : Try again later.' } })
+		);
+
+		await expect(verifyPassword('a@example.com', 'pw')).resolves.toEqual({ error: 'throttled' });
+	});
+
+	it('throws when the network fails', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed')));
+
+		await expect(verifyPassword('a@example.com', 'pw')).rejects.toThrow('fetch failed');
+	});
 
 	it('throws on other failures without echoing the password', async () => {
 		vi.stubGlobal('fetch', respond(500, { error: { message: 'BACKEND_ERROR' } }));

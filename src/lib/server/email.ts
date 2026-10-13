@@ -2,6 +2,7 @@ import { RESEND_API_KEY } from '$env/static/private';
 import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 import { Resend } from 'resend';
 import { adminAuth } from './admin';
+import { isUnknownAccountError } from '$lib/authErrors';
 import {
 	renderPasswordResetEmail,
 	renderWelcomeEmail,
@@ -41,7 +42,10 @@ export const sendPasswordResetEmail = async (
 	try {
 		link = await adminAuth.generatePasswordResetLink(email, actionCodeSettings);
 	} catch (error) {
-		console.error('Problem generating password reset link', error);
+		// An unknown address is an expected answer to a reset request, not a fault worth logging.
+		if (!isUnknownAccountError(error)) {
+			console.error('Problem generating password reset link', error);
+		}
 		throw error;
 	}
 
