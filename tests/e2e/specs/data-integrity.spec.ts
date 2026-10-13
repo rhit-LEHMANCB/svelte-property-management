@@ -45,7 +45,6 @@ test.describe('tenant-assignment: one property per tenant', () => {
 	test('Scenario: Second assignment is rejected with 409 and the dropdown does not offer the tenant', async ({
 		page
 	}) => {
-		await page.route('**/maps.googleapis.com/**', (route) => route.abort());
 		await signIn(page, ADMIN);
 
 		// The assignable list on the other property does not include the assigned tenant or admins.

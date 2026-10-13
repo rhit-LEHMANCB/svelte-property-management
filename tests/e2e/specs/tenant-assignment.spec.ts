@@ -38,7 +38,6 @@ test.beforeEach(async () => {
 });
 
 async function openTenants(page: Page) {
-	await page.route('**/maps.googleapis.com/**', (route) => route.abort());
 	await signIn(page, ADMIN);
 	await page.goto(`/admin/properties/${PROPERTY_ID}/edit`);
 	await page.waitForLoadState('networkidle');

@@ -29,8 +29,6 @@ const findProperty = async (title: string) => {
 
 test.describe('property-management', () => {
 	test('Scenario: an admin creates a property and finds it in the list', async ({ page }) => {
-		// The form loads Google Maps for address lookup; nothing in e2e may reach the network.
-		await page.route('**/maps.googleapis.com/**', (route) => route.abort());
 		const title = `Birch Lane ${Date.now()}`;
 
 		await signIn(page, ADMIN);
@@ -68,7 +66,6 @@ test.describe('property-management', () => {
 	});
 
 	test('Scenario: Invalid property (bad zip code) is not created', async ({ page }) => {
-		await page.route('**/maps.googleapis.com/**', (route) => route.abort());
 		const title = `Bad Zip ${Date.now()}`;
 
 		await signIn(page, ADMIN);
@@ -95,6 +92,39 @@ test.describe('property-management', () => {
 		await expect(page).toHaveURL(/\/admin\/properties\/add$/);
 		await expect(page.getByText('Successfully created property')).toHaveCount(0);
 		expect(await findProperty(title)).toBeUndefined();
+	});
+
+	test('Scenario: the property form has no address lookup and makes no Google Maps requests', async ({
+		page
+	}) => {
+		await adminDb().doc('properties/e2e-manual-address').set({
+			title: 'E2E Manual Address',
+			description: 'Address typed by hand',
+			bedrooms: 2,
+			bathrooms: 1,
+			squareFeet: 800,
+			rent: 900,
+			streetAddress: '5 Oak St',
+			city: 'Terre Haute',
+			state: 'IN',
+			zip: '47803'
+		});
+		const mapsRequests: string[] = [];
+		page.on('request', (request) => {
+			if (new URL(request.url()).hostname === 'maps.googleapis.com')
+				mapsRequests.push(request.url());
+		});
+
+		await signIn(page, ADMIN);
+		for (const path of ['/admin/properties/add', '/admin/properties/e2e-manual-address/edit']) {
+			await page.goto(path);
+			await page.waitForLoadState('networkidle');
+			await expect(page.getByTitle('Address Lookup')).toHaveCount(0);
+			for (const field of ['Street Address', 'Apartment Info', 'City', 'State', 'Zip Code']) {
+				await expect(page.getByTitle(field, { exact: true })).toBeVisible();
+			}
+		}
+		expect(mapsRequests).toEqual([]);
 	});
 
 	test('Scenario: a property whose photos were all deleted still appears in the list', async ({

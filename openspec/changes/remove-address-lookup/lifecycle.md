@@ -1,7 +1,7 @@
 # Lifecycle: remove-address-lookup
 
 - Branch: `remove-address-lookup`
-- Stage: 3 Implement
+- Stage: 4 Review
 - Renamed from `fix-maps-address-autocomplete` on 2026-10-13 when the scope changed (see interview summary)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
