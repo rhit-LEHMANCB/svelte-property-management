@@ -1,7 +1,7 @@
 # Lifecycle: add-leases
 
 - Branch: `claude/add-leases`
-- Stage: 5 Ship to develop
+- Stage: 5 Ship to develop (PR #145 open; waiting on the `tests` and `build_and_preview` checks, then merge)
 - GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
 - QA cycle: 0 of 3
