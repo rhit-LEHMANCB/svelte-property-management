@@ -1,7 +1,7 @@
 # Lifecycle: remove-address-lookup
 
 - Branch: `remove-address-lookup`
-- Stage: 5 Ship to develop
+- Stage: 5 Ship to develop (PR #136 open; waiting on `tests` and `build_and_preview` checks for head 907a481)
 - Renamed from `fix-maps-address-autocomplete` on 2026-10-13 when the scope changed (see interview summary)
 - Review round: 1 of 3
 - QA cycle: 0 of 3
