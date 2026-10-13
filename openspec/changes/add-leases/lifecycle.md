@@ -79,6 +79,12 @@ Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
 | Backup schedules on `lehman-realty-dev` | **Not verified**: `gcloud` is not signed in and the Firebase connector has no access to the project. If there is no schedule at merge, the new migrate step fails the dev deploy (by design) and the run halts in stage 6 |
 | Deploy service account can list backup schedules and backups | **Not verified**: same reason; the first dev deploy will show it |
 
+## Implementation notes
+- Lease PDFs are stored as `leases/{id}/{timestamp}.pdf` instead of `document.pdf`, so a failed save never overwrites the document in use; design and proposal updated.
+- Unexpected failures while saving a lease come back as a form message ("could not be saved and nothing was changed") instead of an error page, to meet the spec's "the admin sees an error".
+- Backups REST calls use firebase-admin's `applicationDefault().getAccessToken()` rather than adding `google-auth-library`.
+- Pure lease date rules live in `src/lib/server/leaseDates.ts`; Firestore work in `leases.ts`.
+
 ## Review rounds
 (none yet)
 

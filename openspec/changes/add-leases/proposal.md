@@ -34,6 +34,6 @@ Today a tenant is linked to a property one at a time with a move-in month, and t
 
 - **Code:** the authenticated layout, dashboard, payment page, maintenance page, property edit page; new lease pages and API routes; checkout and webhook; user and property delete; `/api/user/add` (shared creation helper); email templates; `src/lib/server/payments.ts` and `balance.ts` (end month).
 - **Removed:** `TenantPicker.svelte`, `MonthPicker.svelte`, `/api/property/{id}/tenants`, `/api/user/{id}/assoc`, and the tests that cover them.
-- **Data:** new `leases`, `leases/{id}/payment_history`, `leases/{id}/recorded_invoices`, `_migrations`; new Firestore indexes; lease PDFs at `leases/{id}/document.pdf` with Storage rules that deny direct reads.
+- **Data:** new `leases`, `leases/{id}/payment_history`, `leases/{id}/recorded_invoices`, `_migrations`; new Firestore indexes; lease PDFs under `leases/{id}/` with Storage rules that deny direct reads.
 - **Deploy:** `firebase-hosting-merge.yml` gains a migrate step between the rules deploy and hosting. A daily backup schedule (2-day retention) and a weekly one (8-day retention) must exist on the `(default)` database of both Firebase projects before the first such deploy.
 - **Tooling:** `migrations/` folder, `npm run migrate`, and `tsx` to run TypeScript migrations in CI (if not already available).

@@ -12,6 +12,7 @@ const db = new FakeFirestore();
 
 const auth = {
 	createUser: vi.fn(),
+	getUserByEmail: vi.fn(),
 	deleteUser: vi.fn(),
 	updateUser: vi.fn(),
 	verifyIdToken: vi.fn(),
@@ -21,7 +22,9 @@ const auth = {
 };
 
 const storageLog = {
-	written: [] as { path: string; bytes: Uint8Array }[],
+	written: [] as { path: string; bytes: Uint8Array; contentType?: string }[],
+	/** What is in the bucket now, by path: written files, minus deleted ones. */
+	files: new Map<string, Uint8Array>(),
 	deleted: [] as string[],
 	deletedPrefixes: [] as string[]
 };
@@ -49,10 +52,25 @@ const verifyPassword = vi.fn();
 function reset() {
 	db.reset();
 
-	auth.createUser.mockReset().mockImplementation(async ({ email }: { email: string }) => ({
-		uid: 'new-user-uid',
-		email
-	}));
+	// The first account created is 'new-user-uid', later ones 'new-user-uid-2', 'new-user-uid-3'...
+	let created = 0;
+	auth.createUser.mockReset().mockImplementation(async ({ email }: { email: string }) => {
+		created += 1;
+		return { uid: created === 1 ? 'new-user-uid' : `new-user-uid-${created}`, email };
+	});
+	// Like Firebase Auth, an account exists for an email when a user document has it, in any case.
+	auth.getUserByEmail.mockReset().mockImplementation(async (email: string) => {
+		const users = await db.collection('users').get();
+		const match = users.docs.find(
+			(doc) => String(doc.data()?.email ?? '').toLowerCase() === email.toLowerCase()
+		);
+		if (!match) {
+			throw Object.assign(new Error('There is no user record for this email.'), {
+				code: 'auth/user-not-found'
+			});
+		}
+		return { uid: match.id, email };
+	});
 	auth.deleteUser.mockReset().mockResolvedValue(undefined);
 	auth.updateUser.mockReset().mockImplementation(async (uid: string) => ({ uid }));
 	auth.verifyIdToken.mockReset().mockImplementation(async () => ({
@@ -68,18 +86,34 @@ function reset() {
 	storageLog.written.length = 0;
 	storageLog.deleted.length = 0;
 	storageLog.deletedPrefixes.length = 0;
+	storageLog.files.clear();
 	bucket.deleteFiles.mockReset().mockImplementation(async ({ prefix }: { prefix: string }) => {
 		storageLog.deletedPrefixes.push(prefix);
+		for (const path of [...storageLog.files.keys()]) {
+			if (path.startsWith(prefix)) storageLog.files.delete(path);
+		}
 	});
 	bucket.file.mockReset().mockImplementation((path: string) => ({
 		delete: async () => {
 			storageLog.deleted.push(path);
+			storageLog.files.delete(path);
 		},
 		createWriteStream: () => ({
 			end: (bytes: Uint8Array) => {
 				storageLog.written.push({ path, bytes });
+				storageLog.files.set(path, bytes);
 			}
-		})
+		}),
+		save: async (bytes: Uint8Array, options?: { contentType?: string }) => {
+			storageLog.written.push({ path, bytes, contentType: options?.contentType });
+			storageLog.files.set(path, bytes);
+		},
+		exists: async () => [storageLog.files.has(path)],
+		download: async () => {
+			const bytes = storageLog.files.get(path);
+			if (!bytes) throw Object.assign(new Error('No such object'), { code: 404 });
+			return [Buffer.from(bytes)];
+		}
 	}));
 	storage.bucket.mockReset().mockReturnValue(bucket);
 

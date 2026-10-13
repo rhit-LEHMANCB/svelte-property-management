@@ -63,7 +63,7 @@ describe('hasSchedule', () => {
 
 describe('findRestorePoint', () => {
 	const respond = (schedules: unknown, backups: unknown, status = 200) =>
-		vi.fn(async (url: string) => {
+		vi.fn(async (url: string, _init?: RequestInit) => {
 			const body = url.endsWith('/backupSchedules') ? schedules : backups;
 			return new Response(JSON.stringify(body), { status });
 		});

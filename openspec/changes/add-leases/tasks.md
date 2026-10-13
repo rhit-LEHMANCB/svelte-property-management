@@ -28,10 +28,10 @@
 
 ## 5. Saving and deleting leases
 
-- [ ] 5.1 Implement `saveLease` (normalize emails, resolve users, conflicts, overlap with `confirmOverlap`, create accounts with undo, transactional re-check and write, emails after commit, per-email results); verify with handler tests covering every scenario of Add tenants by email, New tenant accounts from a lease, Lease conflicts, Overlap warning and Edit a lease
-- [ ] 5.2 Add PDF handling to `saveLease`: size, type and `%PDF-` checks, awaited write to `leases/{id}/document.pdf`, replacing any earlier one; verify with handler tests for a valid PDF, a non-PDF and an 11 MB file
-- [ ] 5.3 Add `GET /api/lease/[leaseId]/document` (admin or tenant on the lease, else 403); verify with handler tests for an admin, a tenant on the lease, another tenant and an unknown lease
-- [ ] 5.4 Add `DELETE /api/lease/[leaseId]` (admin only, 409 when `payment_history` has documents, removes the document file); verify with handler tests for both cases and a non-admin
+- [x] 5.1 Implement `saveLease` (normalize emails, resolve users, conflicts, overlap with `confirmOverlap`, create accounts with undo, transactional re-check and write, emails after commit, per-email results); verify with handler tests covering every scenario of Add tenants by email, New tenant accounts from a lease, Lease conflicts, Overlap warning and Edit a lease
+- [x] 5.2 Add PDF handling to `saveLease`: size, type and `%PDF-` checks, awaited write under `leases/{id}/` with a new name per upload, replacing any earlier one; verify with handler tests for a valid PDF, a non-PDF and an 11 MB file
+- [x] 5.3 Add `GET /api/lease/[leaseId]/document` (admin or tenant on the lease, else 403); verify with handler tests for an admin, a tenant on the lease, another tenant and an unknown lease
+- [x] 5.4 Add `DELETE /api/lease/[leaseId]` (admin only, 409 when `payment_history` has documents, removes the document file); verify with handler tests for both cases and a non-admin
 
 ## 6. Admin pages
 
