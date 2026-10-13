@@ -161,7 +161,7 @@
 			Someone who already has an account is added to the lease. A new email gets an account and a
 			welcome email.
 		</p>
-		{#each $form.emails as _, index}
+		{#each $form.emails, index}
 			<div class="flex items-start gap-2">
 				<label class="min-w-0 flex-auto">
 					<span class="sr-only">Tenant email {index + 1}</span>
