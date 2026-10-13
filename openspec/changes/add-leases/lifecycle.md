@@ -1,10 +1,10 @@
 # Lifecycle: add-leases
 
 - Branch: `claude/add-leases`
-- Stage: 6 QA on the dev site
+- Stage: **HALTED** at 6 QA (cycle 1 found an app bug whose cause needs the server log)
 - GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
-- QA cycle: 0 of 3
+- QA cycle: 1 of 3
 - Started: 2026-10-13
 
 ## Interview summary
@@ -121,12 +121,32 @@ Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
 (none yet)
 
 ## QA report
-(filled in stage 6)
+### Cycle 1 (2026-10-13, deployed commit ab685c6)
+**Result: FAIL**, with 1 app bug. Every other observable scenario passed: lease create and edit, validation, add by email, conflicts, overlap and Save anyway, delete with and without payments, PDF type and size limits, document access 200/403/401, private Storage reads, tenant card, per-lease balances, a Stripe test-mode payment through the webhook, admin-only checks, cascades and the regression pass. Specs: `tests/qa/add-leases/` (not committed yet). Screenshots: `openspec/changes/add-leases/qa/screenshots/`.
+
+- **App bug:** `GET /admin/properties/wrIhk0hPRVK1hDCaId8y/edit` (property "boom", the one migrated lease) answers 500 every time.
+  - Its `__data.json` shows the edit page's own load failing ("Internal Error"). The layout, and the new-lease and lease-edit loads for the same property, all succeed.
+  - The same page works for QA-created properties with three leases, so the lease query and its index work.
+  - The property's fields validate locally with `superValidate`.
+  - The cause is therefore something specific to this property's data, and it is not visible without the server error (the app has no `handleError`, and this session has no Cloud Logging access).
+- **Observations needing a person:**
+  - Welcome emails to `qa-…@example.com` all failed; the lease-save path handled this correctly.
+  - Users → Add User with such an address shows "Error creating user." Its account creation rolls back when the welcome email fails, which is existing behavior.
+  - It is unknown whether the dev email provider rejects only example.com. Human test 1 covers it.
+- **Minor:**
+  - A tenant opening an admin lease URL gets 401 (admin route) rather than 403.
+  - An oversized PDF is cleared from the field, and saving then keeps no new document.
+  - Neither breaks a spec scenario.
+- **Data:** all `qa-` data was removed. Stripe test payments remain on the QA tenant's test customer.
 
 ## Verification checklist for the human
 (filled in stage 7)
 
 ## Halted
+- **2026-10-13, stage 6, QA cycle 1:** the edit page 500 for property `wrIhk0hPRVK1hDCaId8y` needs its server error to be root-caused.
+  - **Next step for a human:** open Google Cloud Console → Logging (project `lehman-realty-dev`), filter for the SSR function's errors around a fresh visit to `/admin/properties/wrIhk0hPRVK1hDCaId8y/edit`, and paste the error and its stack.
+  - Or sign the Firebase MCP in to the dev project so this session can read the property and lease documents.
+  - Then Claude fixes it, re-runs review and QA (cycle 2).
 - **Stage:** 6, before QA. PR #145 merged into develop on 2026-10-13 (merge commit ab685c6).
 - **Reason:** the dev deploy (run 38354071341, https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/38354071341) failed in the new "Apply data migrations" step. The deploy service account has no permission to list Firestore backup schedules:
   `Could not read projects/lehman-realty-dev/databases/(default)/backupSchedules (HTTP 403) ... "The caller does not have permission", "status": "PERMISSION_DENIED"`.
