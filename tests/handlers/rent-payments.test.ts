@@ -447,13 +447,23 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 		expect(db.peek('leases/lease-1/recorded_invoices/in_1')).toBeDefined();
 	});
 
-	it('Scenario: Invoice without a lease and no matching lease is acknowledged and records nothing', async () => {
+	it('Scenario: Invoice without a lease and no matching lease is logged as an error and acknowledged', async () => {
 		seedTenant('t1', { stripeID: 'cus_t1' });
 		seedProperty('prop-1');
 		const event = invoiceEvent([{ description: 'Rent', amount: 40000 }]);
 		event.data.object.metadata = { propertyID: 'prop-1' };
+		const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
-		expect((await send(event)).status).toBe(200);
+		try {
+			expect((await send(event)).status).toBe(200);
+			expect(errors).toHaveBeenCalledWith(
+				expect.stringMatching(
+					/^UNRECORDED PAYMENT: no lease matches this invoice\. invoice=in_1 customer=cus_t1 .*rentCents=40000/
+				)
+			);
+		} finally {
+			errors.mockRestore();
+		}
 		expect((await db.collection('leases').get()).size).toBe(0);
 	});
 
@@ -581,12 +591,21 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 		expect(history()).toBeUndefined();
 	});
 
-	it('Scenario: Unknown property: an invoice for a lease that does not exist records nothing', async () => {
-		const result = await send(
-			invoiceEvent([{ description: 'Rent', amount: 100000 }], 'missing-lease')
-		);
+	it('Scenario: Unknown property: an invoice naming a missing lease is logged and answered 500', async () => {
+		const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		let result;
+		try {
+			result = await send(invoiceEvent([{ description: 'Rent', amount: 100000 }], 'missing-lease'));
+			expect(errors).toHaveBeenCalledWith(
+				expect.stringMatching(
+					/^UNRECORDED PAYMENT: the lease this invoice names does not exist\. invoice=in_1 customer=cus_t1 lease=missing-lease .*rentCents=100000/
+				)
+			);
+		} finally {
+			errors.mockRestore();
+		}
 
-		expect(result.status).toBe(200);
+		expect(result.status).toBe(500);
 		expect(db.peek('leases/missing-lease/payment_history/2026')).toBeUndefined();
 		expect(db.peek('leases/missing-lease/recorded_invoices/in_1')).toBeUndefined();
 	});

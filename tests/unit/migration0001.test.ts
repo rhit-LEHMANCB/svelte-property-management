@@ -157,8 +157,25 @@ describe('data-migrations: Leases from existing tenant links', () => {
 				'p1: tenant ghost does not exist',
 				'p1: no tenants left to put on a lease'
 			],
-			balanceChanges: []
+			balanceChanges: [],
+			onSeveralLeases: []
 		});
+	});
+});
+
+describe('data-migrations: 0001 flags data the old app refused', () => {
+	it('warns about a tenant linked to several properties and lists them in the summary', async () => {
+		fake.seed('properties/p2', { title: 'Two', rent: 900 });
+		link('t1', 'p1', '2026-03');
+		link('t1', 'p2', '2026-04');
+
+		await run();
+
+		expect(logs).toContain('  WARNING: tenant linked to several properties, t1: p1, p2');
+		expect(fake.peek('_migrations/0001-leases-from-tenant-links')?.summary).toMatchObject({
+			onSeveralLeases: ['t1: p1, p2']
+		});
+		expect((await fake.collection('leases').get()).size).toBe(2);
 	});
 });
 

@@ -53,7 +53,8 @@ The system SHALL verify the Stripe signature on `POST /api/stripe/webhook` and, 
 
 #### Scenario: Invoice without a lease
 - **WHEN** an invoice created before leases existed carries a `propertyID` but no `leaseID`
-- **THEN** it is recorded against the current lease at that property that the paying Stripe customer is on, or logged and acknowledged with 200 when there is none
+- **THEN** it is recorded against the current lease at that property that the paying Stripe customer is on
+- **AND** when there is none, it is logged as an error naming the invoice, customer and amounts, and acknowledged with 200
 
 #### Scenario: Write fails
 - **WHEN** a Firestore write fails while recording a payment
@@ -72,8 +73,8 @@ The system SHALL verify the Stripe signature on `POST /api/stripe/webhook` and, 
 - **THEN** it is logged and acknowledged with 200
 
 #### Scenario: Unknown property
-- **WHEN** the invoice's lease does not exist, or it has no `leaseID` and its property does not exist
-- **THEN** it is logged and acknowledged with 200
+- **WHEN** the invoice names a lease that does not exist
+- **THEN** it is logged as an error naming the invoice, customer and amounts, nothing is recorded, and the response is 500 so the failed delivery shows in Stripe and is retried
 
 ### Requirement: Real balance and due date
 The system SHALL show the tenant, for each of their leases with money owed, the total owed through the current month or the lease's end month, whichever is earlier, and its due date, from that lease's `payment_history`, and the server SHALL reject amounts above it.

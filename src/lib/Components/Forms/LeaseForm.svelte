@@ -104,116 +104,121 @@
 				{#each $message.emails as email}<li>{email}</li>{/each}
 			</ul>
 			<p>They can set a password with "Forgot password" on the sign-in page.</p>
+			<!-- The lease is saved, so the form is gone: saving again would make a second lease. -->
 			<a class="anchor" href="/admin/properties/{propertyId}/edit?tab=leases">Back to leases</a>
 		</div>
 	{/if}
 
-	<input type="hidden" name="confirmOverlap" value={$form.confirmOverlap ? 'true' : ''} />
+	{#if $message?.type !== 'emailFailures'}
+		<input type="hidden" name="confirmOverlap" value={$form.confirmOverlap ? 'true' : ''} />
 
-	<div class="grid gap-4 md:grid-cols-3">
-		<label class="label">
-			<span>Monthly rent</span>
-			<div class="flex items-center gap-2">
-				<IconCurrencyDollar aria-hidden="true" />
-				<input
-					name="rent"
-					bind:value={$form.rent}
-					class="input"
-					class:input-error={$errors.rent}
-					aria-invalid={$errors.rent ? 'true' : undefined}
-					type="number"
-					step="0.01"
-					min="0"
-				/>
-			</div>
-			{#if $errors.rent}<span class="text-error-600-400 text-sm">{$errors.rent[0]}</span>{/if}
-		</label>
-		<label class="label">
-			<span>Start date</span>
-			<input
-				name="startDate"
-				bind:value={$form.startDate}
-				class="input"
-				class:input-error={$errors.startDate}
-				aria-invalid={$errors.startDate ? 'true' : undefined}
-				type="date"
-			/>
-			{#if $errors.startDate}<span class="text-error-600-400 text-sm">{$errors.startDate[0]}</span
-				>{/if}
-		</label>
-		<label class="label">
-			<span>End date <span class="opacity-70">(leave empty for month to month)</span></span>
-			<input
-				name="endDate"
-				bind:value={$form.endDate}
-				class="input"
-				class:input-error={$errors.endDate}
-				aria-invalid={$errors.endDate ? 'true' : undefined}
-				type="date"
-			/>
-			{#if $errors.endDate}<span class="text-error-600-400 text-sm">{$errors.endDate[0]}</span>{/if}
-		</label>
-	</div>
-
-	<fieldset class="space-y-2">
-		<legend class="label-text">Tenant emails</legend>
-		<p class="text-sm opacity-80">
-			Someone who already has an account is added to the lease. A new email gets an account and a
-			welcome email.
-		</p>
-		{#each $form.emails, index}
-			<div class="flex items-start gap-2">
-				<label class="min-w-0 flex-auto">
-					<span class="sr-only">Tenant email {index + 1}</span>
+		<div class="grid gap-4 md:grid-cols-3">
+			<label class="label">
+				<span>Monthly rent</span>
+				<div class="flex items-center gap-2">
+					<IconCurrencyDollar aria-hidden="true" />
 					<input
-						name="emails"
-						bind:value={$form.emails[index]}
+						name="rent"
+						bind:value={$form.rent}
 						class="input"
-						class:input-error={$errors.emails?.[index]}
-						aria-invalid={$errors.emails?.[index] ? 'true' : undefined}
-						type="email"
-						autocomplete="off"
-						placeholder="tenant@example.com"
+						class:input-error={$errors.rent}
+						aria-invalid={$errors.rent ? 'true' : undefined}
+						type="number"
+						step="0.01"
+						min="0"
 					/>
-					{#if $errors.emails?.[index]}<span class="text-error-600-400 text-sm"
-							>{$errors.emails[index]?.[0]}</span
-						>{/if}
-				</label>
-				<button
-					type="button"
-					class="btn-icon preset-tonal"
-					aria-label="Remove tenant email {index + 1}"
-					onclick={() => removeEmail(index)}><IconTrash size={18} aria-hidden="true" /></button
+				</div>
+				{#if $errors.rent}<span class="text-error-600-400 text-sm">{$errors.rent[0]}</span>{/if}
+			</label>
+			<label class="label">
+				<span>Start date</span>
+				<input
+					name="startDate"
+					bind:value={$form.startDate}
+					class="input"
+					class:input-error={$errors.startDate}
+					aria-invalid={$errors.startDate ? 'true' : undefined}
+					type="date"
+				/>
+				{#if $errors.startDate}<span class="text-error-600-400 text-sm">{$errors.startDate[0]}</span
+					>{/if}
+			</label>
+			<label class="label">
+				<span>End date <span class="opacity-70">(leave empty for month to month)</span></span>
+				<input
+					name="endDate"
+					bind:value={$form.endDate}
+					class="input"
+					class:input-error={$errors.endDate}
+					aria-invalid={$errors.endDate ? 'true' : undefined}
+					type="date"
+				/>
+				{#if $errors.endDate}<span class="text-error-600-400 text-sm">{$errors.endDate[0]}</span
+					>{/if}
+			</label>
+		</div>
+
+		<fieldset class="space-y-2">
+			<legend class="label-text">Tenant emails</legend>
+			<p class="text-sm opacity-80">
+				Someone who already has an account is added to the lease. A new email gets an account and a
+				welcome email.
+			</p>
+			{#each $form.emails, index}
+				<div class="flex items-start gap-2">
+					<label class="min-w-0 flex-auto">
+						<span class="sr-only">Tenant email {index + 1}</span>
+						<input
+							name="emails"
+							bind:value={$form.emails[index]}
+							class="input"
+							class:input-error={$errors.emails?.[index]}
+							aria-invalid={$errors.emails?.[index] ? 'true' : undefined}
+							type="email"
+							autocomplete="off"
+							placeholder="tenant@example.com"
+						/>
+						{#if $errors.emails?.[index]}<span class="text-error-600-400 text-sm"
+								>{$errors.emails[index]?.[0]}</span
+							>{/if}
+					</label>
+					<button
+						type="button"
+						class="btn-icon preset-tonal"
+						aria-label="Remove tenant email {index + 1}"
+						onclick={() => removeEmail(index)}><IconTrash size={18} aria-hidden="true" /></button
+					>
+				</div>
+			{/each}
+			{#if $errors.emails?._errors}<p class="text-error-600-400 text-sm">
+					{$errors.emails._errors[0]}
+				</p>{/if}
+			<button type="button" class="btn btn-sm preset-tonal" onclick={addEmail}
+				><IconPlus size={16} aria-hidden="true" />Add tenant</button
+			>
+		</fieldset>
+
+		<label class="label">
+			<span>Lease document (PDF, up to 10 MB)</span>
+			{#if documentName}
+				<span class="text-sm opacity-80">Current: {documentName}. Choose a file to replace it.</span
 				>
-			</div>
-		{/each}
-		{#if $errors.emails?._errors}<p class="text-error-600-400 text-sm">
-				{$errors.emails._errors[0]}
-			</p>{/if}
-		<button type="button" class="btn btn-sm preset-tonal" onclick={addEmail}
-			><IconPlus size={16} aria-hidden="true" />Add tenant</button
-		>
-	</fieldset>
+			{/if}
+			<input
+				name="document"
+				class="input"
+				type="file"
+				accept="application/pdf,.pdf"
+				onchange={checkDocument}
+			/>
+			{#if documentError}<span class="text-error-600-400 text-sm">{documentError}</span>{/if}
+		</label>
 
-	<label class="label">
-		<span>Lease document (PDF, up to 10 MB)</span>
-		{#if documentName}
-			<span class="text-sm opacity-80">Current: {documentName}. Choose a file to replace it.</span>
-		{/if}
-		<input
-			name="document"
-			class="input"
-			type="file"
-			accept="application/pdf,.pdf"
-			onchange={checkDocument}
-		/>
-		{#if documentError}<span class="text-error-600-400 text-sm">{documentError}</span>{/if}
-	</label>
-
-	<div class="flex gap-3">
-		<button type="submit" class="btn preset-filled-primary-500" disabled={$submitting}
-			>Save lease</button
-		>
-		<a class="btn preset-tonal" href="/admin/properties/{propertyId}/edit?tab=leases">Cancel</a>
-	</div>
+		<div class="flex gap-3">
+			<button type="submit" class="btn preset-filled-primary-500" disabled={$submitting}
+				>Save lease</button
+			>
+			<a class="btn preset-tonal" href="/admin/properties/{propertyId}/edit?tab=leases">Cancel</a>
+		</div>
+	{/if}
 </form>

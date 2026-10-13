@@ -37,6 +37,20 @@ const migration: Migration = {
 		const created: string[] = [];
 		const skipped: string[] = [];
 		const balanceChanges: string[] = [];
+		// The old app refused these (a 500 on every page), so they come only from data written by hand.
+		// Each property still gets its lease; a human must end the wrong one.
+		const tenantProperties = new Map<string, string[]>();
+		for (const [propertyId, propertyLinks] of links) {
+			for (const { tenantId } of propertyLinks) {
+				tenantProperties.set(tenantId, [...(tenantProperties.get(tenantId) ?? []), propertyId]);
+			}
+		}
+		const onSeveralLeases = [...tenantProperties]
+			.filter(([, propertyIds]) => propertyIds.length > 1)
+			.map(([tenantId, propertyIds]) => `${tenantId}: ${propertyIds.sort().join(', ')}`)
+			.sort();
+		for (const line of onSeveralLeases)
+			log(`WARNING: tenant linked to several properties, ${line}`);
 		const currentMonth = getMonthKey(now).key;
 
 		for (const [propertyId, propertyLinks] of [...links].sort(([a], [b]) => a.localeCompare(b))) {
@@ -131,7 +145,7 @@ const migration: Migration = {
 			);
 		}
 
-		return { leases: created, skipped, balanceChanges };
+		return { leases: created, skipped, balanceChanges, onSeveralLeases };
 	}
 };
 

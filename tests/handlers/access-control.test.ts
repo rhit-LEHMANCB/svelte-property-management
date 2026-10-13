@@ -32,7 +32,6 @@ describe('access-control: tenant property context (authenticated layout)', () =>
 		expect(result.status).toBe(200);
 		expect(result.data.user).toMatchObject({ permissions: 'user', firstName: 'Tom' });
 		expect(result.data.userProperty).toMatchObject({ id: 'p1', data: { title: 'Oak House' } });
-		expect(result.data.currentLeaseId).toBe('l1');
 		expect(result.data.userLeases).toEqual([
 			{
 				id: 'l1',
@@ -102,7 +101,6 @@ describe('access-control: tenant property context (authenticated layout)', () =>
 
 		expect(result.status).toBe(200);
 		expect(result.data.userProperty).toMatchObject({ id: 'p2', data: { title: 'Newer' } });
-		expect(result.data.currentLeaseId).toBe('l2');
 	});
 
 	it('Scenario: admins need no property and get only their user data', async () => {

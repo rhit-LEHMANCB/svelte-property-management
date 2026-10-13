@@ -3,7 +3,7 @@
 - Branch: `claude/add-leases`
 - Stage: 4 Review
 - GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
-- Review round: 1 of 5
+- Review round: 2 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-13
 
@@ -100,6 +100,14 @@ Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
   - Not fixed: minor, the webhook acknowledging an unknown lease with 200. The rent-payments spec ("Unknown property") requires 200, and the race needs an admin to delete a lease with no payments while its tenant is mid-checkout.
   - Not fixed: minor (other half), the users page reading the whole leases collection. It already reads every user document, so this is the same order of cost for an admin-only page.
   - Not fixed: nit, property delete removing its leases' payment history. That is the specified cascade ("Delete property"), as before for property history.
+- Round 2 (2026-10-13): 0 blockers, 2 majors, 4 minors, 1 nit.
+  - Fixed: major, a lease delete racing a payment. The check and delete are now one transaction (test added).
+  - Fixed: major, a paid invoice whose lease is missing was acknowledged quietly. Both rounds flagged this, so it is treated as a real defect, and the rent-payments delta changed. An invoice naming a missing lease now logs `UNRECORDED PAYMENT` with invoice, customer and amounts and answers 500, so Stripe retries and shows the failing delivery. A pre-lease invoice with no matching lease logs the same error and still answers 200, since a retry cannot help. **This changes the round-1 "not fixed" decision; the human should confirm it at Gate B.**
+  - Fixed: minor, after a save whose welcome email failed, the form is hidden so it cannot be saved twice.
+  - Fixed: minor, the same-property overlap is re-checked inside the save transaction (test added).
+  - Fixed: minor, migration 0001 warns about tenants linked to several properties and lists them in its summary (test added).
+  - Fixed: nit, removed the unused `currentLeaseId` from the layout.
+  - Not fixed: minor, /payment loading a balance for every lease, including ended ones. An ended lease can still owe rent, so it must be read to know. The count is small.
 
 ## Out-of-scope observations
 (none yet)

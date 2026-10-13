@@ -43,7 +43,6 @@ export const load = (async ({ locals, route }) => {
 	return {
 		user: userData,
 		userLeases,
-		currentLeaseId: chosen.lease.id,
 		userProperty: { id: chosen.lease.propertyId, data: chosen.property }
 	};
 }) satisfies LayoutServerLoad;

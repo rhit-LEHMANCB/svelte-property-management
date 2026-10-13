@@ -164,6 +164,13 @@ const codeOf = (err: unknown) => (err as { code?: string } | undefined)?.code;
 /** Raised inside the save transaction when the lease being edited was deleted meanwhile. */
 class LeaseGoneError extends Error {}
 
+/** Raised inside the save transaction when an overlap appeared after the first check. */
+class LeaseOverlapError extends Error {
+	constructor(public overlapping: { id: string; data(): unknown }[]) {
+		super('Lease overlap');
+	}
+}
+
 /** Raised inside the save transaction when a conflict appeared after the first check. */
 class LeaseConflictError extends Error {
 	constructor(public problems: EmailProblem[]) {
@@ -266,27 +273,29 @@ export async function saveLease(options: {
 	});
 	if (problems.length > 0) return { kind: 'conflicts', problems };
 
+	const overlapsAtProperty = (docs: { id: string; data(): unknown }[]) =>
+		docs.filter((doc) => doc.id !== leaseRef.id && datesOverlap(doc.data() as LeaseDoc, dates));
+	const overlapResult = async (
+		docs: { id: string; data(): unknown }[]
+	): Promise<SaveLeaseResult> => ({
+		kind: 'overlap',
+		overlapping: await Promise.all(
+			docs.map(async (doc) => {
+				const lease = doc.data() as LeaseDoc;
+				return {
+					id: doc.id,
+					startDate: lease.startDate,
+					endDate: lease.endDate,
+					tenantNames: (await tenantSummaries(lease.tenantIds)).map((t) => t.name || t.email)
+				};
+			})
+		)
+	});
+	const atPropertyQuery = leases().where('propertyId', '==', propertyId);
+
 	if (!input.confirmOverlap) {
-		const atProperty = await leases().where('propertyId', '==', propertyId).get();
-		const overlapping = atProperty.docs.filter(
-			(doc) => doc.id !== leaseId && datesOverlap(doc.data() as LeaseDoc, dates)
-		);
-		if (overlapping.length > 0) {
-			return {
-				kind: 'overlap',
-				overlapping: await Promise.all(
-					overlapping.map(async (doc) => {
-						const lease = doc.data() as LeaseDoc;
-						return {
-							id: doc.id,
-							startDate: lease.startDate,
-							endDate: lease.endDate,
-							tenantNames: (await tenantSummaries(lease.tenantIds)).map((t) => t.name || t.email)
-						};
-					})
-				)
-			};
-		}
+		const overlapping = overlapsAtProperty((await atPropertyQuery.get()).docs);
+		if (overlapping.length > 0) return overlapResult(overlapping);
 	}
 
 	const created: (CreatedAccount & { email: string })[] = [];
@@ -343,6 +352,11 @@ export async function saveLease(options: {
 				)
 			);
 			if (raced.length > 0) throw new LeaseConflictError(raced);
+			// Another admin may have saved an overlapping lease here since the warning was checked.
+			if (!input.confirmOverlap) {
+				const overlapping = overlapsAtProperty((await tx.get(atPropertyQuery)).docs);
+				if (overlapping.length > 0) throw new LeaseOverlapError(overlapping);
+			}
 
 			const lease: LeaseDoc = {
 				propertyId,
@@ -366,6 +380,7 @@ export async function saveLease(options: {
 		for (const account of created) await account.undo();
 		if (err instanceof LeaseConflictError) return { kind: 'conflicts', problems: err.problems };
 		if (err instanceof LeaseGoneError) throw error(404, 'Lease not found');
+		if (err instanceof LeaseOverlapError) return overlapResult(err.overlapping);
 		throw err;
 	}
 
@@ -396,13 +411,20 @@ export async function deleteLease(
 	leaseId: string
 ): Promise<'deleted' | 'has-payments' | 'missing'> {
 	const leaseRef = leases().doc(leaseId);
-	if (!(await leaseRef.get()).exists) return 'missing';
-	const history = await leaseRef.collection('payment_history').limit(1).get();
-	if (!history.empty) return 'has-payments';
-
-	const invoices = await leaseRef.collection('recorded_invoices').get();
-	await Promise.all(invoices.docs.map((doc) => doc.ref.delete()));
-	await bucket().deleteFiles({ prefix: `leases/${leaseId}/` });
-	await leaseRef.delete();
-	return 'deleted';
+	// The check and the delete are one transaction, and the webhook records a payment in one
+	// transaction that reads the lease: a payment either lands first and blocks the delete, or finds
+	// the lease gone.
+	const outcome = await adminDB.runTransaction(async (tx) => {
+		if (!(await tx.get(leaseRef)).exists) return 'missing' as const;
+		const history = await tx.get(leaseRef.collection('payment_history').limit(1));
+		if (!history.empty) return 'has-payments' as const;
+		const invoices = await tx.get(leaseRef.collection('recorded_invoices'));
+		invoices.docs.forEach((doc) => tx.delete(doc.ref));
+		tx.delete(leaseRef);
+		return 'deleted' as const;
+	});
+	if (outcome === 'deleted') {
+		await bucket().deleteFiles({ prefix: `leases/${leaseId}/` });
+	}
+	return outcome;
 }

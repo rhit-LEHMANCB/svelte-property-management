@@ -90,6 +90,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 
 			const eventDate = Timestamp.fromMillis(invoice.created * 1000);
+			// Enough to find and record a payment by hand when it cannot be recorded here.
+			const unrecorded = (reason: string) =>
+				console.error(
+					`UNRECORDED PAYMENT: ${reason}. invoice=${invoice.id} customer=${
+						typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
+					} lease=${invoice.metadata?.leaseID ?? '-'} property=${invoice.metadata?.propertyID ?? '-'} rentCents=${rentCents} feeCents=${feeCents ?? '-'}`
+				);
 
 			// Any failure below responds 500 so that Stripe redelivers the event. Everything is read and
 			// written in one transaction: concurrent events cannot overwrite each other, a payment
@@ -98,7 +105,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			try {
 				const leaseId = await leaseIdOf(invoice);
 				if (!leaseId) {
-					console.log('Could not find the lease this invoice pays for');
+					// A pre-lease invoice with no lease to match; a retry cannot change that.
+					unrecorded('no lease matches this invoice');
 					break;
 				}
 				const leaseRef = adminDB.collection('leases').doc(leaseId);
@@ -157,7 +165,9 @@ export const POST: RequestHandler = async ({ request }) => {
 				});
 
 				if (outcome === 'unknown-lease') {
-					console.log('Could not find the lease this invoice pays for');
+					// The money was taken, so fail loudly: Stripe retries and flags the failing deliveries.
+					unrecorded('the lease this invoice names does not exist');
+					throw new Error('The lease for this invoice does not exist');
 				} else if (outcome === 'already-recorded') {
 					console.log('Invoice already recorded; ignoring redelivery');
 				}

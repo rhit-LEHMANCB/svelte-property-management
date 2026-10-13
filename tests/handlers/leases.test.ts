@@ -306,6 +306,27 @@ describe('leases: Overlap warning', () => {
 		expect(await leases()).toHaveLength(1);
 	});
 
+	it('an overlapping lease saved by another admin meanwhile is caught in the transaction', async () => {
+		setup();
+		seedTenant('tenant-2');
+		const realTransaction = db.runTransaction.bind(db);
+		db.runTransaction = (async (fn: Parameters<typeof db.runTransaction>[0]) => {
+			seedLease('raced', { tenantIds: ['tenant-2'], startDate: '2026-06-01' });
+			return realTransaction(fn);
+		}) as typeof db.runTransaction;
+		try {
+			const result = await create(leaseForm({ emails: ['tenant-1@example.com', 'brand@new.com'] }));
+			expect(result.status).toBe(409);
+			expect(result.data.form.message.overlapping.map((o: { id: string }) => o.id)).toEqual([
+				'raced'
+			]);
+		} finally {
+			db.runTransaction = realTransaction;
+		}
+		expect((await leases()).map((d) => d.id)).toEqual(['raced']);
+		expect(services.auth.deleteUser).toHaveBeenCalledWith('new-user-uid');
+	});
+
 	it('Scenario: Confirmed saves the lease', async () => {
 		setup();
 		seedTenant('tenant-2');
@@ -647,6 +668,26 @@ describe('leases: Delete a lease (DELETE /api/lease/{id})', () => {
 		expect(result.status).toBe(409);
 		expect(result.error).toMatch(/Set an end date instead/);
 		expect(db.peek('leases/lease-1')).toBeDefined();
+	});
+
+	it('a payment recorded while deleting blocks the delete (check and delete are one transaction)', async () => {
+		setup();
+		seedLease('lease-1', { tenantIds: ['tenant-1'], startDate: '2026-01-01' });
+		db.seed('leases/lease-1/recorded_invoices/in_1', { recordedAt: 'x' });
+		const realTransaction = db.runTransaction.bind(db);
+		db.runTransaction = (async (fn: Parameters<typeof db.runTransaction>[0]) => {
+			// The webhook commits its payment just before the delete's transaction reads.
+			db.seed('leases/lease-1/payment_history/2026', { January: { remainingBalance: 0 } });
+			return realTransaction(fn);
+		}) as typeof db.runTransaction;
+		try {
+			expect((await remove('admin-1')).status).toBe(409);
+		} finally {
+			db.runTransaction = realTransaction;
+		}
+		expect(db.peek('leases/lease-1')).toBeDefined();
+		expect(db.peek('leases/lease-1/recorded_invoices/in_1')).toBeDefined();
+		expect(services.storage.log.deletedPrefixes).toEqual([]);
 	});
 
 	it('a non-admin is rejected with 401 and nothing is removed', async () => {
