@@ -30,6 +30,9 @@
 - [The rate-limit collection grows] → One document per address ever requested, a few numbers each; acceptable. A TTL policy can be added later without code changes.
 - [Client SDK with email enumeration protection reports `auth/invalid-credential` for disabled accounts in some projects] → Then the client path shows "incorrect"; the POST path still distinguishes. Covered by unit tests on the mapping, not on Firebase's behavior.
 
+- [A known address answers more slowly than an unknown or rate-limited one, because only it waits for the email provider, so response timing can hint that an account exists] → Accepted: the answer text and status are identical, and the per-address limit caps probing to five tries an hour. Not awaiting the send would hide delivery failures, which the specs require to surface.
+- [A failed delivery would otherwise use up the address's slot and silently drop the retry] → The slot is released when delivery fails; an unknown address keeps its slot so both are counted alike.
+
 ## Migration Plan
 
 Deploy normally; no data migration. Rollback is a revert; the `passwordResetRequests` documents are inert.

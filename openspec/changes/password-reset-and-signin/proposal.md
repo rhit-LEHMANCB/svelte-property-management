@@ -30,3 +30,4 @@ A tenant who forgets their password cannot reset it without first signing in (#4
 - Profile page reset button keeps working; it gets the same generic success.
 - Tests: handler tests for the new action, load and endpoint; unit tests for the rate limit and error mapping; e2e tests for `/forgot`, reset Continue and the 400s.
 - No new environment variables, secrets or console changes.
+- With Firebase email enumeration protection on, the client SDK may report a disabled account as wrong credentials, so the hydrated sign-in path can show "incorrect" where the no-script path shows "disabled" (see design.md, Risks).

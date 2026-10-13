@@ -96,6 +96,17 @@ describe('authentication: password reset request (PUT /api/signin/reset)', () =>
 		expect(services.sendPasswordResetEmail).toHaveBeenCalledTimes(1);
 	});
 
+	it('rejects a body that is not JSON with 400', async () => {
+		const result = await call(PUT, {
+			method: 'PUT',
+			rawBody: 'not json',
+			headers: { 'content-type': 'application/json' }
+		});
+
+		expect(result.status).toBe(400);
+		expect(services.sendPasswordResetEmail).not.toHaveBeenCalled();
+	});
+
 	it('rejects a request without an email with 400', async () => {
 		const result = await call(PUT, { method: 'PUT', body: {} });
 

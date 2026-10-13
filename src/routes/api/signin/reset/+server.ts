@@ -4,7 +4,7 @@ import type { RequestHandler } from './$types';
 
 // Answers the same whether or not the address has an account or was rate limited.
 export const PUT: RequestHandler = async ({ request }) => {
-	const { email } = await request.json();
+	const { email } = await request.json().catch(() => ({}));
 
 	if (typeof email !== 'string' || !email.trim()) {
 		throw error(400, 'Email is required');

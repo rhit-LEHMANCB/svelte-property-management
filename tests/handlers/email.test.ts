@@ -82,6 +82,25 @@ describe('authentication: password reset request (real email module)', () => {
 		expect(resend.send).not.toHaveBeenCalled();
 	});
 
+	it('Scenario: Unknown email responds email_sent, sends nothing and logs no error', async () => {
+		services.auth.generatePasswordResetLink.mockRejectedValue(
+			Object.assign(new Error('There is no user record corresponding to the provided email.'), {
+				code: 'auth/email-not-found'
+			})
+		);
+		const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		const result = await call(requestReset, {
+			method: 'PUT',
+			body: { email: 'ghost@example.com' }
+		});
+
+		expect(result).toMatchObject({ status: 200, json: { status: 'email_sent' } });
+		expect(resend.send).not.toHaveBeenCalled();
+		expect(logged).not.toHaveBeenCalled();
+		logged.mockRestore();
+	});
+
 	it('Scenario: Email failure when the provider rejects the message responds 500', async () => {
 		resend.send.mockRejectedValue(new Error('network down'));
 

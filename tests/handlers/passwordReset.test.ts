@@ -82,6 +82,15 @@ describe('authentication: password reset rate limit (requestPasswordReset)', () 
 
 		await expect(requestPasswordReset('tenant@example.com')).rejects.toThrow('email provider down');
 	});
+
+	it('a failed delivery does not use up the limit, so an immediate retry sends', async () => {
+		services.sendPasswordResetEmail.mockRejectedValueOnce(new Error('email provider down'));
+		await requestPasswordReset('tenant@example.com').catch(() => undefined);
+
+		await expect(requestPasswordReset('tenant@example.com')).resolves.toBe('sent');
+		expect(services.sendPasswordResetEmail).toHaveBeenCalledTimes(2);
+		expect(services.db.peek(limitDocPath('tenant@example.com'))?.requests).toHaveLength(1);
+	});
 });
 
 /** Where the rate limit for an address is stored. */

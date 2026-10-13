@@ -31,7 +31,10 @@ export const sendPasswordResetEmail = async (email: string, isWelcomeEmail: bool
 	try {
 		link = await adminAuth.generatePasswordResetLink(email, actionCodeSettings);
 	} catch (error) {
-		console.error('Problem generating password reset link', error);
+		// An unknown address is an expected answer to a reset request, not a fault worth logging.
+		if ((error as { code?: unknown } | null)?.code !== 'auth/email-not-found') {
+			console.error('Problem generating password reset link', error);
+		}
 		throw error;
 	}
 

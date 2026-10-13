@@ -2,7 +2,7 @@
 
 - Branch: `claude/password-reset-and-signin`
 - Stage: 4 Review
-- Review round: 0 of 5
+- Review round: 1 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-13
 
@@ -66,7 +66,7 @@ GitHub backend: **GitHub MCP** (`gh` token invalid; cloud session; `get_me` = rh
 | New secrets or variables | none needed |
 
 ## Review rounds
-(none yet; one line per round: blockers, majors, minors, nits, fixed, rejected with reason)
+- Round 1: 0 blockers, 1 major, 2 minors, 2 nits. Fixed all: failed delivery now releases its rate-limit slot (+ retry test); non-JSON reset body answers 400; timing side channel and hydrated disabled-account trade-off documented in design/proposal; unknown-address link failures no longer logged as errors. None rejected.
 
 ## Out-of-scope observations
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)

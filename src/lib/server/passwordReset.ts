@@ -18,17 +18,26 @@ const limitDoc = (email: string) =>
 /**
  * Records a reset request for the address and says whether it may send: at most one per minute and
  * five per hour. Counted before the account lookup, so unknown addresses are limited the same way.
+ * Returns the recorded time, or null when the request is over the limit.
  */
-const allowResetRequest = (email: string, now = Date.now()) =>
+const recordResetRequest = (email: string, now = Date.now()) =>
 	adminDB.runTransaction(async (tx) => {
 		const ref = limitDoc(email);
 		const stored = ((await tx.get(ref)).data()?.requests ?? []) as number[];
 		const recent = stored.filter((time) => now - time < HOUR_MS);
 		if (recent.length >= MAX_PER_HOUR || recent.some((time) => now - time < MINUTE_MS)) {
-			return false;
+			return null;
 		}
 		tx.set(ref, { requests: [...recent, now] });
-		return true;
+		return now;
+	});
+
+/** Gives back a recorded request whose email was never delivered, so the user can retry at once. */
+const forgetResetRequest = (email: string, time: number) =>
+	adminDB.runTransaction(async (tx) => {
+		const ref = limitDoc(email);
+		const stored = ((await tx.get(ref)).data()?.requests ?? []) as number[];
+		tx.set(ref, { requests: stored.filter((recorded) => recorded !== time) });
 	});
 
 // The Admin SDK reports an unknown address on reset links as `auth/email-not-found`.
@@ -42,15 +51,20 @@ const isUnknownUser = (err: unknown) =>
  * Throws when the email cannot be delivered.
  */
 export const requestPasswordReset = async (email: string): Promise<ResetOutcome> => {
-	if (!(await allowResetRequest(email))) {
+	const recorded = await recordResetRequest(email);
+	if (recorded === null) {
 		return 'suppressed';
 	}
 	try {
 		await sendPasswordResetEmail(email, false);
 	} catch (err) {
+		// An unknown address keeps its slot, so it is counted exactly like a real one.
 		if (isUnknownUser(err)) {
 			return 'suppressed';
 		}
+		await forgetResetRequest(email, recorded).catch((undoError) =>
+			console.error('Problem releasing a reset rate-limit slot', undoError)
+		);
 		throw err;
 	}
 	return 'sent';
