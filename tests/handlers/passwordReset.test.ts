@@ -12,6 +12,7 @@ describe('authentication: password reset rate limit (requestPasswordReset)', () 
 	it('sends the first request for an address', async () => {
 		await expect(requestPasswordReset('tenant@example.com')).resolves.toBe('sent');
 
+		expect(services.auth.getUserByEmail).toHaveBeenCalledWith('tenant@example.com');
 		expect(services.sendPasswordResetEmail).toHaveBeenCalledTimes(1);
 		expect(services.sendPasswordResetEmail).toHaveBeenCalledWith('tenant@example.com', false);
 	});
@@ -99,6 +100,38 @@ describe('authentication: password reset rate limit (requestPasswordReset)', () 
 		await expect(requestPasswordReset('nobody@example.com')).resolves.toBe('suppressed');
 		await expect(requestPasswordReset('nobody@example.com')).resolves.toBe('suppressed');
 		expect(services.sendPasswordResetEmail).toHaveBeenCalledTimes(1);
+	});
+
+	it('Scenario: Unknown email on a project with email enumeration protection sends nothing', async () => {
+		// There, link generation for an unknown address fails with an internal error, so the
+		// account lookup is what has to recognize it.
+		services.auth.getUserByEmail.mockRejectedValue(
+			Object.assign(
+				new Error('There is no user record corresponding to the provided identifier.'),
+				{
+					code: 'auth/user-not-found'
+				}
+			)
+		);
+		services.sendPasswordResetEmail.mockRejectedValue(
+			Object.assign(new Error('INTERNAL ASSERT FAILED: Unable to create the email action link'), {
+				code: 'auth/internal-error'
+			})
+		);
+
+		await expect(requestPasswordReset('nobody@example.com')).resolves.toBe('suppressed');
+		expect(services.sendPasswordResetEmail).not.toHaveBeenCalled();
+		expect(services.db.peek(limitDocPath('nobody@example.com'))?.requests).toHaveLength(1);
+	});
+
+	it('a failing account lookup (not an unknown account) is thrown and releases the slot', async () => {
+		services.auth.getUserByEmail.mockRejectedValue(
+			Object.assign(new Error('backend down'), { code: 'auth/internal-error' })
+		);
+
+		await expect(requestPasswordReset('tenant@example.com')).rejects.toThrow('backend down');
+		expect(services.sendPasswordResetEmail).not.toHaveBeenCalled();
+		expect(services.db.peek(limitDocPath('tenant@example.com'))).toBeUndefined();
 	});
 
 	it('Scenario: Email failure is thrown to the caller', async () => {

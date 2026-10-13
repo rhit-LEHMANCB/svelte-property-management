@@ -1,9 +1,9 @@
 # Lifecycle: password-reset-and-signin
 
 - Branch: `claude/password-reset-and-signin`
-- Stage: 5 Ship to develop (waiting on PR #141 checks tests + build_and_preview, then merge with merge commit)
-- Review round: 3 of 5
-- QA cycle: 0 of 3
+- Stage: 6 QA (cycle 1 failed: app bug; fix on `claude/password-reset-unknown-account`)
+- Review round: 4 of 5
+- QA cycle: 1 of 3
 - Started: 2026-10-13
 
 ## Interview summary
@@ -69,12 +69,15 @@ GitHub backend: **GitHub MCP** (`gh` token invalid; cloud session; `get_me` = rh
 - Round 1: 0 blockers, 1 major, 2 minors, 2 nits. Fixed all: failed delivery now releases its rate-limit slot (+ retry test); non-JSON reset body answers 400; timing side channel and hydrated disabled-account trade-off documented in design/proposal; unknown-address link failures no longer logged as errors. None rejected.
 - Round 2: 0 blockers, 1 major, 3 minors, 1 nit. Fixed all: reset endpoint validates the email (400) before touching the rate limit, empty rate-limit docs are deleted, document-growth risk recorded; profile disabled/throttled branches tested; one shared unknown-account check; profile toast reworded to "Reset email requested. Check your inbox." so a rate-limited click is not called a send; expiry test asserts exact timestamps. None rejected.
 - Round 3: 0 blockers, 0 majors, 2 minors, 2 nits. Loop exits. Fixed: plus-tag and Gmail-dot variants of one mailbox share a rate limit (spec scenario + tests). Rejected with reason: (a) a provider error after acceptance can free the slot and allow one duplicate email: a duplicate is better than silently dropping the retry the user was told to make; (b) `lifecycle.md` in the change folder: it is the dev-lifecycle run state the skill requires, archived with the change; (c) `/signin?reset=success` notice can be shown by anyone: harmless text by design, no state behind it.
+- Round 4 (QA cycle 1 fix, one round): 0 blockers, 0 majors, 2 minors, 1 nit. Fixed: comment explains why the link-generation unknown-account check stays (account deleted between lookup and send); first-request test asserts the lookup runs with the typed address. Rejected with reason: the nit (unknown addresses answer without waiting on the provider) is the timing trade-off already accepted in design.md.
 
 ## Out-of-scope observations
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)
 
 ## QA report
-(filled in stage 6; link to the QA evidence branch)
+Evidence branch: `qa-evidence/password-reset-and-signin` (not merged).
+
+- **Cycle 1** (deployed `15f2795`, 2026-10-13 04:25 UTC): FAIL, one app bug. On the dev project a reset request for an unknown address answered 500 (`PUT /api/signin/reset`) and `/forgot` showed the delivery-failure message, revealing which addresses have accounts. Cause: email enumeration protection makes link generation for an unknown address fail as `auth/internal-error` instead of a not-found code; the emulator does not model it. Fix: look the account up first. 20 of 26 QA checks passed; the other failures were the same cause.
 
 ## Verification checklist for the human
 (filled in stage 7)

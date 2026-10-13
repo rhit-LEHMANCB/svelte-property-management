@@ -17,7 +17,8 @@ const auth = {
 	verifyIdToken: vi.fn(),
 	createSessionCookie: vi.fn(),
 	verifySessionCookie: vi.fn(),
-	generatePasswordResetLink: vi.fn()
+	generatePasswordResetLink: vi.fn(),
+	getUserByEmail: vi.fn()
 };
 
 const storageLog = {
@@ -61,6 +62,9 @@ function reset() {
 	}));
 	auth.createSessionCookie.mockReset().mockResolvedValue('session-cookie-value');
 	auth.verifySessionCookie.mockReset().mockResolvedValue({ uid: 'user-1' });
+	auth.getUserByEmail
+		.mockReset()
+		.mockImplementation(async (email: string) => ({ uid: 'user-by-email', email }));
 	auth.generatePasswordResetLink
 		.mockReset()
 		.mockImplementation(async (email: string) => `https://reset.test/?email=${email}`);
