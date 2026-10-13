@@ -1,6 +1,6 @@
 ---
 name: dev-lifecycle
-description: Run a feature or fix through the full development lifecycle for this repo - interview, OpenSpec proposal (human approval), then unattended implementation, independent code review (max 3 rounds), merge to develop, independent agent-run Playwright QA on the dev site, and a production PR with a QA report for a human to verify and merge. Use when the user says "dev lifecycle", "lifecycle", "ship this end to end", or asks to take a change from idea to production with review and QA.
+description: Run a feature or fix through the full development lifecycle for this repo - interview, OpenSpec proposal (human approval), then unattended implementation, independent code review (max 5 rounds, every finding fixed in the run), merge to develop, independent agent-run Playwright QA on the dev site, and a production PR with a QA report for a human to verify and merge. Use when the user says "dev lifecycle", "lifecycle", "ship this end to end", or asks to take a change from idea to production with review and QA.
 allowed-tools: Bash(openspec:*), Bash(gh:*), Bash(git:*), Bash(npm:*), Bash(npx:*), mcp__github__get_me, mcp__github__create_pull_request, mcp__github__pull_request_read, mcp__github__merge_pull_request, mcp__github__actions_list, mcp__github__actions_run_trigger, mcp__github__issue_write, mcp__github__list_issues, mcp__github__search_pull_requests, mcp__claude-code-remote__subscribe_pr_activity, mcp__claude-code-remote__unsubscribe_pr_activity, mcp__claude-code-remote__send_later
 metadata:
   version: "1.2"
@@ -14,7 +14,7 @@ Take one change from idea to production through fixed stages and gates. State li
 1 Interview ──► 2 Propose + preflight ──► GATE A (human)
                                               │
         ┌─────────────── unattended ──────────┴───────────┐
-        │ 3 Implement ► 4 Review (≤3) ► 5 Ship to develop ► 6 QA (independent) │
+        │ 3 Implement ► 4 Review (≤5) ► 5 Ship to develop ► 6 QA (independent) │
         └──────────────────────────────────────────────────┘
                                               │
                          7 Production PR + QA report ──► GATE B (human merges)
@@ -89,19 +89,19 @@ Read `references/interview.md` and follow it. Ask in rounds of at most 4 questio
 ### 3. Implement (unattended)
 Run the OpenSpec apply workflow (`openspec-apply-change`). Tests are written with each task. Before leaving this stage, `npm run lint`, `npm run check`, the test scripts that exist, and `npm run build` must pass locally. Commit in small logical commits.
 
-### 4. Review loop, max 3 rounds (unattended)
+### 4. Review loop, max 5 rounds (unattended)
 Round counter starts at 0. For each round:
 
 1. Start a **new** reviewer: Agent tool, `subagent_type: "Explore"` (read-only), `model: "sonnet"` (Sonnet 5.5). Never resume an earlier reviewer.
 2. Send only what `references/reviewer-prompt.md` lists: the diff against `origin/develop`, the change's proposal, specs and design, and the rubric. Not your reasoning, earlier findings or build notes.
 3. Parse its findings (blocker, major, minor, nit).
-4. Fix every blocker and major. If you disagree with one, record the reason in `lifecycle.md` and do not fix it; the next reviewer sees only the code, so a real defect will come back. Minors and nits go on the deferred list unless trivial.
+4. Fix every finding, minors and nits included. Nothing is deferred to a follow-up issue: small problems are fixed in this run. If you disagree with a finding, record the reason in `lifecycle.md` and do not fix it; the next reviewer sees only the code, so a real defect will come back.
 5. Re-run the local checks, commit, increment the counter.
 
-Exit when a round has no blockers or majors. If round 3 still does, **halt**.
+Exit when a round has no blockers or majors, after fixing that round's minors and nits and re-running the local checks (no further review round is needed for those fixes). If round 5 still has blockers or majors, **halt**.
 
 ### 5. Ship to develop (unattended)
-Push the branch and open a PR into `develop` (use a PR template if present; end the body with the generated-by line). Wait for the PR check; on failure, fix and retry up to 2 times, and give any behavior-changing fix one more review round (counts against the max of 3 total). `develop` is protected: the `tests` and `build_and_preview` checks are required, so wait until both are green and merge with a plain merge commit (`gh pr merge --merge`, or `merge_pull_request` with `merge_method: "merge"`), as the Gate A authorization allows. Never use `--admin` to get around a required check. If the merge is refused or blocked, **halt**.
+Push the branch and open a PR into `develop` (use a PR template if present; end the body with the generated-by line). Wait for the PR check; on failure, fix and retry up to 2 times, and give any behavior-changing fix one more review round (counts against the max of 5 total). `develop` is protected: the `tests` and `build_and_preview` checks are required, so wait until both are green and merge with a plain merge commit (`gh pr merge --merge`, or `merge_pull_request` with `merge_method: "merge"`), as the Gate A authorization allows. Never use `--admin` to get around a required check. If the merge is refused or blocked, **halt**.
 
 ### 6. QA on the dev site, independent (unattended)
 Wait for the push-to-`develop` deploy (`gh run list --workflow firebase-hosting-merge.yml --branch develop`, or the MCP equivalent in the table) to succeed. If it fails, retry once; if it still fails, **halt** as a deploy problem, not a QA failure.
@@ -124,7 +124,7 @@ At most 3 QA cycles in total. If the third still fails, **halt**.
 **Gate B (human):** the human reviews the report, performs the recommended tests, and merges. Do not merge, re-run the deploy, or delete the evidence branch.
 
 ### 8. Wrap-up (when the user returns after merging)
-Confirm the production deploy succeeded. Archiving is automatic: the `openspec-archive.yml` workflow runs on every push to `production`, archives each shipped change whose tasks are all checked, and opens and merges a PR into `develop` titled "Archive OpenSpec changes". Verify that PR was opened and merged (`gh pr list --state merged --search "Archive OpenSpec changes"`) and that the change is under `openspec/changes/archive/`. The workflow also marks the archived `lifecycle.md` complete (it replaces the `- Stage:` line and appends an `## Archive` note with the release and workflow run), so do not edit it by hand; check that the Stage line now says complete. Add any outcome notes that the workflow cannot know (issues filed, human-test results) in a docs PR into `develop` if they matter. The workflow approves the archive PR's pending checks run itself and turns on auto-merge, so the PR normally merges on its own a few minutes later; wait for it. If it is still open after that, open it: click "Approve and run workflows" if its checks never started (under the MCP backend this is a human step: say so in the wrap-up summary), or read the workflow log if they failed. If the workflow failed or skipped the change, find out why from its log and run `openspec-archive-change` with spec sync on a branch off `develop` as a fallback. Then file issues for deferred findings and QA observations, delete the `qa-evidence/<name>` branch, and mark the lifecycle complete.
+Confirm the production deploy succeeded. Archiving is automatic: the `openspec-archive.yml` workflow runs on every push to `production`, archives each shipped change whose tasks are all checked, and opens and merges a PR into `develop` titled "Archive OpenSpec changes". Verify that PR was opened and merged (`gh pr list --state merged --search "Archive OpenSpec changes"`) and that the change is under `openspec/changes/archive/`. The workflow also marks the archived `lifecycle.md` complete (it replaces the `- Stage:` line and appends an `## Archive` note with the release and workflow run), so do not edit it by hand; check that the Stage line now says complete. Add any outcome notes that the workflow cannot know (issues filed, human-test results) in a docs PR into `develop` if they matter. The workflow approves the archive PR's pending checks run itself and turns on auto-merge, so the PR normally merges on its own a few minutes later; wait for it. If it is still open after that, open it: click "Approve and run workflows" if its checks never started (under the MCP backend this is a human step: say so in the wrap-up summary), or read the workflow log if they failed. If the workflow failed or skipped the change, find out why from its log and run `openspec-archive-change` with spec sync on a branch off `develop` as a fallback. Then file issues only for QA observations that fall outside this change's scope (review findings and in-scope QA problems are fixed during the run, never filed), delete the `qa-evidence/<name>` branch, and mark the lifecycle complete.
 
 The workflow archives only changes with every task checked, so this skill must tick every task in `tasks.md` as it implements (stage 3). An unticked task means the change is skipped, not archived.
 
@@ -137,4 +137,4 @@ Use this whenever the run cannot continue. Never ask a question, never work arou
 3. Open a draft PR for the branch if none exists, or an issue titled `Lifecycle halted: <name> at stage <n>`, with the same information.
 4. Notify the user if a notification tool is available. End the run with a short summary of where it stopped and why.
 
-Halt triggers: review round 3 with open blockers or majors; PR check still failing after 2 fixes; merge refused or blocked; dev deploy failing after one retry; QA credentials, Playwright or the dev site unavailable; third failed QA cycle; any step that would need an action outside these rules.
+Halt triggers: review round 5 with open blockers or majors; PR check still failing after 2 fixes; merge refused or blocked; dev deploy failing after one retry; QA credentials, Playwright or the dev site unavailable; third failed QA cycle; any step that would need an action outside these rules.
