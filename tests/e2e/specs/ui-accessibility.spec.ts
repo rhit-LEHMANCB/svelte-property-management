@@ -144,7 +144,6 @@ test.describe('ui-accessibility: tabs, comboboxes on the property page', () => {
 	});
 
 	async function openProperty(page: Page) {
-		await page.route('**/maps.googleapis.com/**', (route) => route.abort());
 		await signIn(page, ADMIN);
 		await page.goto(`/admin/properties/${KB_PROPERTY}/edit`);
 		await page.waitForLoadState('networkidle');

@@ -102,7 +102,6 @@ test.describe('app-platform: menus, autocompletes, tabs and pagination keep work
 	});
 
 	test('Scenario: Autocomplete selection adds the chosen tenant', async ({ page }) => {
-		await page.route('**/maps.googleapis.com/**', (route) => route.abort());
 		await signIn(page, ADMIN);
 		await page.goto(`/admin/properties/${AC_PROPERTY}/edit`);
 		await page.waitForLoadState('networkidle');
@@ -134,7 +133,6 @@ test.describe('app-platform: menus, autocompletes, tabs and pagination keep work
 	});
 
 	test('Scenario: Tabs show one panel at a time', async ({ page }) => {
-		await page.route('**/maps.googleapis.com/**', (route) => route.abort());
 		await signIn(page, ADMIN);
 		await page.goto(`/admin/properties/${AC_PROPERTY}/edit`);
 		await page.waitForLoadState('networkidle');
