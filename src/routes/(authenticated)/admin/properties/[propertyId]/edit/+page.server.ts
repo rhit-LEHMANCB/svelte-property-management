@@ -6,8 +6,9 @@ import { propertySchema } from '$lib/schemas';
 import { error, fail } from '@sveltejs/kit';
 import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
 import { FieldValue } from 'firebase-admin/firestore';
-import type { DocumentWithId, PhotoItem } from '../../../../../../app';
+import type { PhotoItem } from '../../../../../../app';
 import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
+import { listPropertyLeases } from '$lib/server/leases';
 
 export const load = (async (event) => {
 	const userId = getUserIdOrError(event.locals.userID);
@@ -22,50 +23,12 @@ export const load = (async (event) => {
 		throw error(500, 'Error retrieving property');
 	}
 
-	const tenantJunctions = await adminDB
-		.collection('junction_user_property')
-		.where('propertyId', '==', event.params.propertyId)
-		.get();
-
-	// Offer non-admin users who have no property yet. Filtering here avoids Firestore's 10-value
-	// limit on not-in queries.
-	const [allJunctions, tenantUsers] = await Promise.all([
-		adminDB.collection('junction_user_property').get(),
-		adminDB.collection('users').where('permissions', '==', 'user').get()
-	]);
-	const assignedTenantIds = new Set(allJunctions.docs.map((junction) => junction.data().tenantId));
-
-	const usersOptions: { label: string; value: string }[] = tenantUsers.docs
-		.filter((doc) => !assignedTenantIds.has(doc.id))
-		.map((doc) => {
-			const { firstName, lastName, email } = doc.data();
-			// The email tells apart tenants who share a name, and can be searched for too.
-			return {
-				label: email ? `${firstName} ${lastName} (${email})` : `${firstName} ${lastName}`,
-				value: doc.id
-			};
-		});
-
-	const tenantPromises = tenantJunctions.docs.map(async (junction) => {
-		const user = await adminDB.collection('users').doc(junction.data().tenantId).get();
-		return {
-			id: user.id,
-			data: user.data(),
-			moveInMonth: junction.data().moveInMonth as string | undefined
-		};
-	});
-
-	const tenants: DocumentWithId[] = (await Promise.all(tenantPromises)).filter((tenant) => {
-		return tenant.data;
-	}) as DocumentWithId[];
-
 	const form = await superValidate(propertyData, zod(propertySchema));
 	const photos: PhotoItem[] = propertyData.photos ?? [];
 	return {
 		form,
 		photos,
-		usersOptions,
-		tenants
+		leases: await listPropertyLeases(event.params.propertyId)
 	};
 }) satisfies PageServerLoad;
 

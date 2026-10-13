@@ -3,15 +3,10 @@ import { message, superValidate, type SuperValidated } from 'sveltekit-superform
 import { zod4 as zod } from 'sveltekit-superforms/adapters';
 import { leaseSchema, type LeaseInput } from '$lib/schemas';
 import { getAdminUserDataOrError, getUserIdOrError } from './authHelpers';
-import { saveLease, type EmailProblem, type OverlapSummary } from './leases';
+import { saveLease } from './leases';
+import type { LeaseFormMessage } from '$lib/leaseTypes';
 
-/** What the lease form shows after a save that did not simply succeed. */
-export type LeaseFormMessage =
-	| { type: 'conflicts'; problems: EmailProblem[] }
-	| { type: 'overlap'; overlapping: OverlapSummary[] }
-	| { type: 'document'; text: string }
-	| { type: 'error'; text: string }
-	| { type: 'emailFailures'; emails: string[]; leaseId: string };
+export type { LeaseFormMessage };
 
 export type LeaseForm = SuperValidated<LeaseInput, LeaseFormMessage>;
 

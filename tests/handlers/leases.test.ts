@@ -6,6 +6,7 @@ import {
 	load as editLoad
 } from '../../src/routes/(authenticated)/admin/properties/[propertyId]/leases/[leaseId]/+page.server';
 import { load as newLoad } from '../../src/routes/(authenticated)/admin/properties/[propertyId]/leases/new/+page.server';
+import { load as propertyEditLoad } from '../../src/routes/(authenticated)/admin/properties/[propertyId]/edit/+page.server';
 import { DELETE as deleteLease } from '../../src/routes/api/lease/[leaseId]/+server';
 import { GET as getDocument } from '../../src/routes/api/lease/[leaseId]/document/+server';
 import { call } from '../helpers/callHandler';
@@ -33,8 +34,11 @@ function leaseForm(fields: {
 	return fd;
 }
 
-const pdfFile = (bytes: Uint8Array = PDF, name = 'lease.pdf', type = 'application/pdf') =>
-	new File([bytes], name, { type });
+const pdfFile = (
+	bytes: Uint8Array<ArrayBuffer> = PDF,
+	name = 'lease.pdf',
+	type = 'application/pdf'
+) => new File([bytes], name, { type });
 
 const create = (form: FormData, propertyId = 'prop-1') =>
 	call(newActions.default, { userID: 'admin-1', params: { propertyId }, form });
@@ -42,7 +46,12 @@ const create = (form: FormData, propertyId = 'prop-1') =>
 const edit = (leaseId: string, form: FormData, propertyId = 'prop-1') =>
 	call(editActions.default, { userID: 'admin-1', params: { propertyId, leaseId }, form });
 
-const leases = async () => (await db.collection('leases').get()).docs;
+type StoredLease = { tenantIds: string[]; document: { path: string } & Record<string, unknown> };
+const leases = async () =>
+	(await db.collection('leases').get()).docs.map((doc) => ({
+		id: doc.id,
+		data: () => doc.data() as StoredLease & Record<string, unknown>
+	}));
 
 function setup() {
 	seedAdmin('admin-1');
@@ -583,5 +592,44 @@ describe('leases: Delete a lease (DELETE /api/lease/{id})', () => {
 	it('an unknown lease answers 404', async () => {
 		setup();
 		expect((await remove('admin-1', 'nope')).status).toBe(404);
+	});
+});
+
+describe('leases: Admin lease list (property edit page)', () => {
+	it('Scenario: Property with leases lists them newest first, with status, rent and tenants', async () => {
+		setup();
+		seedLease('ended', {
+			tenantIds: ['tenant-1'],
+			startDate: '2020-01-01',
+			endDate: '2020-12-31',
+			rent: 1000
+		});
+		seedLease('current', { tenantIds: ['tenant-1'], startDate: '2021-01-01', rent: 1100 });
+		const result = await call(propertyEditLoad, {
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' }
+		});
+		expect(result.data.leases).toEqual([
+			{
+				id: 'current',
+				propertyId: 'prop-1',
+				rent: 1100,
+				startDate: '2021-01-01',
+				endDate: null,
+				status: 'current',
+				tenants: [{ id: 'tenant-1', name: 'Tom Tenant', email: 'tenant-1@example.com' }],
+				hasDocument: false
+			},
+			expect.objectContaining({ id: 'ended', status: 'ended', rent: 1000 })
+		]);
+	});
+
+	it('Scenario: Property with no leases has an empty list', async () => {
+		setup();
+		const result = await call(propertyEditLoad, {
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' }
+		});
+		expect(result.data.leases).toEqual([]);
 	});
 });

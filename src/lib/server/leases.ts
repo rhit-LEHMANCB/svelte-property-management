@@ -9,10 +9,12 @@ import {
 	datesOverlap,
 	leaseStatus,
 	type LeaseDoc,
-	type LeaseDocument,
-	type LeaseStatus
+	type LeaseDocument
 } from './leaseDates';
 import { createTenantAccount, type CreatedAccount } from './users';
+import type { EmailProblem, LeaseSummary, OverlapSummary, TenantSummary } from '$lib/leaseTypes';
+
+export type { EmailProblem, LeaseSummary, OverlapSummary, TenantSummary };
 
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
@@ -26,19 +28,6 @@ export function propertyAddress(property: DocumentData | undefined) {
 		.filter((part) => typeof part === 'string' && part.trim() !== '')
 		.join(', ');
 }
-
-export type TenantSummary = { id: string; name: string; email: string };
-
-export type LeaseSummary = {
-	id: string;
-	propertyId: string;
-	rent: number;
-	startDate: string;
-	endDate: string | null;
-	status: LeaseStatus;
-	tenants: TenantSummary[];
-	hasDocument: boolean;
-};
 
 async function tenantSummaries(tenantIds: string[]): Promise<TenantSummary[]> {
 	const docs = await Promise.all(tenantIds.map((id) => adminDB.collection('users').doc(id).get()));
@@ -88,15 +77,6 @@ export async function leasesOfTenant(uid: string): Promise<[string, LeaseDoc][]>
 	const snapshot = await leases().where('tenantIds', 'array-contains', uid).get();
 	return snapshot.docs.map((doc) => [doc.id, doc.data() as LeaseDoc]);
 }
-
-export type OverlapSummary = {
-	id: string;
-	startDate: string;
-	endDate: string | null;
-	tenantNames: string[];
-};
-
-export type EmailProblem = { email: string; message: string };
 
 export type SaveLeaseResult =
 	| { kind: 'saved'; leaseId: string; emailFailures: string[] }

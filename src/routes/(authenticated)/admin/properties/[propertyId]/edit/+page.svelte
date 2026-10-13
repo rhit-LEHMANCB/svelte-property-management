@@ -1,43 +1,43 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import PropertyForm from '$lib/Components/Forms/PropertyForm.svelte';
-	import TenantPicker, { type PickerOption } from '$lib/Components/Forms/TenantPicker.svelte';
-	import MonthPicker from '$lib/Components/Forms/MonthPicker.svelte';
-	import { monthKeyOf } from '$lib/Components/Forms/monthPicker';
 	import { enhance } from '$app/forms';
 	import SortablePhotos from '$lib/Components/SortablePhotos.svelte';
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { refresh } from '$lib/Hooks/refresh';
 	import { page } from '$app/state';
 	import { Tabs } from '@skeletonlabs/skeleton-svelte';
-	import { getToastStore, getModalStore } from '$lib/ui';
+	import { getToastStore } from '$lib/ui';
 	import {
 		IconArrowLeft,
+		IconFileText,
 		IconInfoCircle,
 		IconPhoto,
-		IconUserDollar,
-		IconLinkMinus,
-		IconUsers
+		IconPlus
 	} from '@tabler/icons-svelte';
-	import type { DocumentWithId, PhotoItem } from '../../../../../../app';
-	import UsersListView from '$lib/Components/Users/UsersListView.svelte';
+	import type { PhotoItem } from '../../../../../../app';
 	import EmptyState from '$lib/Components/DataList/EmptyState.svelte';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
 
 	let { data }: { data: PageData } = $props();
 
 	const toastStore = getToastStore();
-	const modalStore = getModalStore();
 
 	const propertyId = $derived(page.params.propertyId);
 
 	// Reordering shows the new order at once, before the server confirms it.
 	let reordered = $state<PhotoItem[] | undefined>();
 	const photos = $derived(reordered ?? data.photos);
-	let selectedTenant = $state<PickerOption | undefined>();
-	let tenantPicker = $state<ReturnType<typeof TenantPicker>>();
-	let selectedMoveInMonth = $state(monthKeyOf(new Date()));
-	let tab = $state('info');
+	// `?tab=leases` opens the Leases tab, for links back from the lease pages.
+	let tab = $state(page.url.searchParams.get('tab') === 'leases' ? 'leases' : 'info');
+
+	const statusClass = {
+		current: 'preset-filled-success-500',
+		upcoming: 'preset-filled-primary-500',
+		ended: 'preset-tonal'
+	} as const;
+	const money = (amount: number) =>
+		amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
 	async function sortList(e: CustomEvent) {
 		const newList = e.detail;
@@ -79,80 +79,6 @@
 			(ev.target as HTMLImageElement).src = item.photoUrl;
 		}
 	}
-
-	function confirmModal(user: DocumentWithId) {
-		modalStore.trigger({
-			type: 'confirm',
-			title: 'Please Confirm',
-			body: `Are you sure you wish to remove ${user.data.firstName} ${user.data.lastName} from this property?`,
-			response: (confirmed: boolean) => {
-				if (confirmed) removeJunction(user.id);
-			}
-		});
-	}
-
-	async function removeJunction(id: string) {
-		const response = await fetch(`/api/property/${propertyId}/tenants`, {
-			method: 'DELETE',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({ tenantId: id })
-		});
-		if (response.ok) {
-			successToast('User successfully removed from property.', toastStore);
-			refresh();
-		} else {
-			errorToast('Error removing user.', toastStore);
-		}
-	}
-
-	function moveInMonthOf(tenantId: string) {
-		return (data.tenants as { id: string; moveInMonth?: string }[]).find((t) => t.id === tenantId)
-			?.moveInMonth;
-	}
-
-	async function updateMoveInMonth(tenantId: string, moveInMonth: string) {
-		const response = await fetch(`/api/property/${propertyId}/tenants`, {
-			method: 'PATCH',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({ tenantId, moveInMonth })
-		});
-		if (response.ok) {
-			successToast('Move-in month updated.', toastStore);
-			await refresh();
-		} else {
-			errorToast('Error updating move-in month.', toastStore);
-			return false;
-		}
-	}
-
-	async function addTenant() {
-		if (!selectedTenant) {
-			return;
-		}
-		const response = await fetch(`/api/property/${propertyId}/tenants`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				tenantId: selectedTenant.value,
-				...(selectedMoveInMonth && { moveInMonth: selectedMoveInMonth })
-			})
-		});
-		if (response.ok) {
-			successToast('Successfully added tenant.', toastStore);
-			tenantPicker?.clear();
-			selectedMoveInMonth = monthKeyOf(new Date());
-			refresh();
-		} else {
-			const body = await response.json().catch(() => undefined);
-			errorToast(body?.message ?? 'Error adding tenant.', toastStore);
-		}
-	}
 </script>
 
 <div class="space-y-4 p-4 sm:p-6">
@@ -171,8 +97,8 @@
 			<Tabs.Trigger value="photos" class="btn hover:preset-tonal"
 				><IconPhoto class="size-5" aria-hidden="true" />Photos</Tabs.Trigger
 			>
-			<Tabs.Trigger value="tenants" class="btn hover:preset-tonal"
-				><IconUserDollar class="size-5" aria-hidden="true" />Tenants</Tabs.Trigger
+			<Tabs.Trigger value="leases" class="btn hover:preset-tonal"
+				><IconFileText class="size-5" aria-hidden="true" />Leases</Tabs.Trigger
 			>
 			<Tabs.Indicator class="bg-primary-500 h-0.5" />
 		</Tabs.List>
@@ -230,64 +156,49 @@
 				</form>
 			{/if}
 		</Tabs.Content>
-		<Tabs.Content value="tenants" class="space-y-4 pt-4">
-			{#if tab === 'tenants'}
-				<form
-					class="card bg-surface-100-900 flex flex-col gap-4 p-4 sm:p-6"
-					onsubmit={(event) => {
-						event.preventDefault();
-						addTenant();
-					}}
-				>
-					<h2 class="h4">Tenants</h2>
-					<!--
-						Two rows on wide screens, labels then controls, shared through subgrid: the labels line up
-						and the Add button stretches to the height of the fields beside it in every browser.
-					-->
-					<div class="grid gap-3 md:grid-cols-[1fr_auto_auto] md:gap-x-3 md:gap-y-2">
-						<TenantPicker
-							bind:this={tenantPicker}
-							label="Tenant"
-							options={data.usersOptions}
-							bind:selected={selectedTenant}
-							class="md:row-span-2 md:grid md:grid-rows-subgrid"
-						/>
-						<div class="flex flex-col gap-2 md:row-span-2 md:grid md:grid-rows-subgrid">
-							<span class="label-text" id="move-in-month-label">Move-in month</span>
-							<MonthPicker labelledby="move-in-month-label" bind:value={selectedMoveInMonth} />
-						</div>
-						<button
-							data-needs-hydration
-							type="submit"
-							class="btn preset-filled-primary-500 md:col-start-3 md:row-start-2">Add</button
-						>
-					</div>
-				</form>
-				<section class="space-y-3">
-					<h2 class="h4">Current</h2>
-					<UsersListView users={data.tenants} label="tenants">
-						{#snippet actions(user)}
-							<MonthPicker
-								label="Move-in month for {user.data.firstName} {user.data.lastName}"
-								value={moveInMonthOf(user.id) ?? ''}
-								onchange={(month) => updateMoveInMonth(user.id, month)}
-							/>
-							<button
-								data-needs-hydration
-								type="button"
-								onclick={() => confirmModal(user)}
-								aria-label="Remove {user.data.firstName} {user.data.lastName} from this property"
-								class="btn-icon btn-icon-sm preset-filled-error-500"
-								><IconLinkMinus size={18} /></button
-							>
-						{/snippet}
-						{#snippet empty()}
-							<EmptyState icon={IconUsers} title="No tenants">
-								Choose a tenant above to assign them to this property.
-							</EmptyState>
-						{/snippet}
-					</UsersListView>
-				</section>
+		<Tabs.Content value="leases" class="space-y-4 pt-4">
+			{#if tab === 'leases'}
+				<div class="flex flex-wrap items-center justify-between gap-3">
+					<h2 class="h4">Leases</h2>
+					<a href="/admin/properties/{propertyId}/leases/new" class="btn preset-filled-primary-500"
+						><IconPlus class="size-4" aria-hidden="true" />New lease</a
+					>
+				</div>
+				{#if data.leases.length === 0}
+					<EmptyState icon={IconFileText} title="No leases">
+						Create a lease to add tenants to this property.
+					</EmptyState>
+				{:else}
+					<ul class="space-y-3" aria-label="Leases">
+						{#each data.leases as lease (lease.id)}
+							<li class="card bg-surface-100-900 flex flex-wrap items-start gap-4 p-4">
+								<div class="min-w-0 flex-auto space-y-1">
+									<div class="flex flex-wrap items-center gap-2">
+										<span class="badge capitalize {statusClass[lease.status]}">{lease.status}</span>
+										<span class="font-semibold"
+											>{lease.startDate} to {lease.endDate ?? 'month to month'}</span
+										>
+										<span class="opacity-80">{money(lease.rent)} / month</span>
+									</div>
+									{#if lease.tenants.length > 0}
+										<ul class="text-sm" aria-label="Tenants">
+											{#each lease.tenants as tenant (tenant.id)}
+												<li>{tenant.name} <span class="opacity-70">({tenant.email})</span></li>
+											{/each}
+										</ul>
+									{:else}
+										<p class="text-sm opacity-70">No tenants</p>
+									{/if}
+								</div>
+								<a
+									href="/admin/properties/{propertyId}/leases/{lease.id}"
+									class="btn btn-sm preset-tonal"
+									aria-label="Edit lease from {lease.startDate}">Edit</a
+								>
+							</li>
+						{/each}
+					</ul>
+				{/if}
 			{/if}
 		</Tabs.Content>
 	</Tabs>

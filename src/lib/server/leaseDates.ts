@@ -1,3 +1,4 @@
+import type { LeaseStatus } from '$lib/leaseTypes';
 import { BUSINESS_TIME_ZONE } from './payments';
 
 /** The stored shape of `leases/{leaseId}`. Dates are calendar days, `YYYY-MM-DD`. */
@@ -15,7 +16,7 @@ export type LeaseDoc = {
 
 export type LeaseDocument = { path: string; fileName: string; size: number; uploadedAt: string };
 
-export type LeaseStatus = 'upcoming' | 'current' | 'ended';
+export type { LeaseStatus };
 
 type Dated = { startDate: string; endDate: string | null };
 
