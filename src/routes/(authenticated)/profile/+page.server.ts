@@ -40,15 +40,20 @@ export const actions = {
 		const emailChanged = contact.email !== previous.email;
 
 		if (emailChanged) {
-			let verified: string | null;
+			const unverified = () =>
+				message(form, 'Could not verify your password. Please try again.', { status: 500 });
+			let check: Awaited<ReturnType<typeof verifyPassword>> | null;
 			try {
-				verified = currentPassword ? await verifyPassword(previous.email, currentPassword) : null;
+				check = currentPassword ? await verifyPassword(previous.email, currentPassword) : null;
 			} catch (err) {
 				console.log(err instanceof Error ? err.message : err);
-				return message(form, 'Could not verify your password. Please try again.', { status: 500 });
+				return unverified();
 			}
-			if (!verified) {
+			if (!check || ('error' in check && check.error === 'credentials')) {
 				return message(form, 'Enter your current password to change your email.', { status: 400 });
+			}
+			if ('error' in check) {
+				return unverified();
 			}
 		}
 
