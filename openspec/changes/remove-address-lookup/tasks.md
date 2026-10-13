@@ -2,9 +2,9 @@
 
 ## 1. Remove the lookup from the property form
 
-- [ ] 1.1 In `src/lib/Components/Forms/PropertyForm.svelte`, remove the Address Lookup label and input, the `getGoogle` and `onMount` imports, the `autocomplete`/`addressLookupField` variables, the `onMount` loader and `fillInAddress`. Keep the Address heading and every named field. Verify with `grep -n -i "google\|lookup\|autocomplete" src/lib/Components/Forms/PropertyForm.svelte`, which should return nothing
-- [ ] 1.2 Delete `src/lib/google.ts` and run `npm uninstall google-maps`. Verify that `grep -rn "google-maps\|\$lib/google" src package.json` returns nothing and that `package-lock.json` no longer lists `node_modules/google-maps` or `node_modules/@types/googlemaps`
-- [ ] 1.3 Verify `npm run lint`, `npm run check` and `npm run build` pass
+- [x] 1.1 In `src/lib/Components/Forms/PropertyForm.svelte`, remove the Address Lookup label and input, the `getGoogle` and `onMount` imports, the `autocomplete`/`addressLookupField` variables, the `onMount` loader and `fillInAddress`. Keep the Address heading and every named field. Verify with `grep -n -i "google\|lookup\|autocomplete" src/lib/Components/Forms/PropertyForm.svelte`, which should return nothing
+- [x] 1.2 Delete `src/lib/google.ts` and run `npm uninstall google-maps`. Verify that `grep -rn "google-maps\|\$lib/google" src package.json` returns nothing and that `package-lock.json` no longer lists `node_modules/google-maps` or `node_modules/@types/googlemaps`
+- [x] 1.3 Verify `npm run lint`, `npm run check` and `npm run build` pass
 
 ## 2. Tests
 

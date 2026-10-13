@@ -1,7 +1,7 @@
 # Lifecycle: remove-address-lookup
 
 - Branch: `remove-address-lookup`
-- Stage: 2 Propose
+- Stage: 3 Implement
 - Renamed from `fix-maps-address-autocomplete` on 2026-10-13 when the scope changed (see interview summary)
 - Review round: 0 of 3
 - QA cycle: 0 of 3
@@ -55,8 +55,8 @@ Fix needs both a console change (enable Places API (New), billing, key API restr
 **Assumptions.** "Add it again later" means a new change, not a feature flag kept in the code now.
 
 ## Gate A
-Approved: no
-Accepted preflight gaps: none
+Approved: yes, 2026-10-13 (user: "approve")
+Accepted preflight gaps: production PR #129 already open; stage 7 posts the QA report and checklist as a comment on #129. Playwright browser workaround via untracked local config.
 
 ## Preflight
 Run 2026-10-13. GitHub backend: **GitHub MCP** (`gh` token in GH_TOKEN is invalid; cloud session; `get_me` = rhit-LEHMANCB).
