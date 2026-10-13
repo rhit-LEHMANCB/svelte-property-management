@@ -1,7 +1,7 @@
 # Lifecycle: password-reset-and-signin
 
 - Branch: `claude/password-reset-and-signin`
-- Stage: 5 Ship to develop
+- Stage: 5 Ship to develop (waiting on PR #141 checks tests + build_and_preview, then merge with merge commit)
 - Review round: 3 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-13
