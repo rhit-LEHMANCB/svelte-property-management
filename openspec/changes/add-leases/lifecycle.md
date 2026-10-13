@@ -1,7 +1,7 @@
 # Lifecycle: add-leases
 
 - Branch: `claude/add-leases`
-- Stage: 2 Propose (Gate A pending)
+- Stage: 3 Implement
 - GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 0 of 5
 - QA cycle: 0 of 3
@@ -58,8 +58,8 @@
 **Spec impact:** new `leases` and `data-migrations` capabilities. Modified: `tenant-assignment` (replaced by leases), `rent-payments` (balance and ledger per lease), `user-management` (shared creation, removal from leases on delete), `maintenance-requests` and `access-control` (property from the current lease).
 
 ## Gate A
-Approved: no
-Accepted preflight gaps: none
+Approved: yes, 2026-10-13 ("approved": the user sets up the dev backup schedules before the merge)
+Accepted preflight gaps: none. Backup schedules on dev and the service account's permission to list them are unverified from this session; if they are missing, the dev deploy fails at the migrate step and the run halts in stage 6.
 
 ## Preflight
 Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.

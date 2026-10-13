@@ -2,16 +2,16 @@
 
 ## 1. Test and tooling groundwork
 
-- [ ] 1.1 Add `array-contains` (and `array-contains-any`) to `tests/helpers/fakeFirestore.ts` and verify with new cases in `tests/handlers/fakeFirestore.test.ts`
-- [ ] 1.2 Add `tsx` as a dev dependency and an `npm run migrate` script; verify `npm run migrate -- --help` prints usage
+- [x] 1.1 Add `array-contains` (and `array-contains-any`) to `tests/helpers/fakeFirestore.ts` and verify with new cases in `tests/handlers/fakeFirestore.test.ts`
+- [x] 1.2 Add `tsx` as a dev dependency and an `npm run migrate` script; verify `npm run migrate -- --help` prints usage
 
 ## 2. Migration framework
 
-- [ ] 2.1 Write `scripts/migrate.ts`: load `migrations/*.ts` in sequence order, read `_migrations`, take and release the `_migrations/_lock` lock (30-minute stale takeover), record `startedAt` before each migration, then `applied` or `failed` with the summary or error, and exit non-zero on failure; verify with unit tests run against the fake Firestore covering order, skipping applied migrations, failure stopping later ones, and both lock cases
-- [ ] 2.2 Add the dry-run `ctx.write` wrapper so no document (including `_migrations`) is written with `--dry-run`; verify with a unit test that a dry run leaves the fake store unchanged
-- [ ] 2.3 Add the backup-schedule check and restore-point lookup through the Firestore Admin REST API (fail with instructions when there is no schedule; record the newest `READY` backup for `(default)`, or warn and record none), skipped when `FIRESTORE_EMULATOR_HOST` is set; verify with unit tests on the response parsing (schedule present, no schedule, only unfinished backups, request error)
-- [ ] 2.4 Add `tests/unit/migrations.test.ts` checking every file in `migrations/` for the `NNNN-name` pattern, unique numbers, and non-empty `description` and `undo`; verify it fails on a deliberately bad fixture
-- [ ] 2.5 Add the migrate step to `.github/workflows/firebase-hosting-merge.yml` between the rules deploy and the hosting deploy, with the service account written to a temp file the same way as the rules step; verify with `npx actionlint` if available, otherwise by reading the YAML against the rules step
+- [x] 2.1 Write `scripts/migrate.ts`: load `migrations/*.ts` in sequence order, read `_migrations`, take and release the `_migrations/_lock` lock (30-minute stale takeover), record `startedAt` before each migration, then `applied` or `failed` with the summary or error, and exit non-zero on failure; verify with unit tests run against the fake Firestore covering order, skipping applied migrations, failure stopping later ones, and both lock cases
+- [x] 2.2 Add the dry-run `ctx.write` wrapper so no document (including `_migrations`) is written with `--dry-run`; verify with a unit test that a dry run leaves the fake store unchanged
+- [x] 2.3 Add the backup-schedule check and restore-point lookup through the Firestore Admin REST API (fail with instructions when there is no schedule; record the newest `READY` backup for `(default)`, or warn and record none), skipped when `FIRESTORE_EMULATOR_HOST` is set; verify with unit tests on the response parsing (schedule present, no schedule, only unfinished backups, request error)
+- [x] 2.4 Add `tests/unit/migrations.test.ts` checking every file in `migrations/` for the `NNNN-name` pattern, unique numbers, and non-empty `description` and `undo`; verify it fails on a deliberately bad fixture
+- [x] 2.5 Add the migrate step to `.github/workflows/firebase-hosting-merge.yml` between the rules deploy and the hosting deploy, with the service account written to a temp file the same way as the rules step; verify with `npx actionlint` if available, otherwise by reading the YAML against the rules step
 - [ ] 2.6 Document migrations in `README.md` (how to write one, dry run, how the deploy runs them, the backup-schedule prerequisite and how to create it, where the start time and restore point are shown, how to roll back including restoring a backup into a new database); verify the documented commands run as written against the emulator
 
 ## 3. Lease model and rules
