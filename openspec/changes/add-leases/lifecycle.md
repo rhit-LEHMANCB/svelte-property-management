@@ -1,7 +1,7 @@
 # Lifecycle: add-leases
 
 - Branch: `claude/add-leases`
-- Stage: **HALTED** at 6 QA on the dev site (dev deploy failed at the migrate step)
+- Stage: 6 QA on the dev site (resumed: deploy job re-run after the backup permission was granted)
 - GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
 - QA cycle: 0 of 3
@@ -140,3 +140,4 @@ Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
   2. Make sure the two backup schedules exist on the `(default)` database: daily with 2-day retention, weekly with 8-day retention (Firestore, Disaster recovery).
   3. Re-run the failed job of that run (Actions, the run, "Re-run failed jobs"), or tell Claude to, and the lifecycle continues at stage 6 (QA).
   4. Do the same for the production project's service account before Gate B.
+- **Resolved 2026-10-13:** the user granted the permission to the dev and prod deploy service accounts. The failed job was re-run; the run continues at stage 6.
