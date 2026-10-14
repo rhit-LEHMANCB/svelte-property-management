@@ -1,10 +1,10 @@
 # Lifecycle: add-leases
 
 - Branch: `claude/add-leases`
-- Stage: 6 QA, fixing the cycle 1 bug on `claude/fix-prototype-leases` before cycle 2
+- Stage: 7, production PR open, waiting for Gate B (human verification and merge)
 - GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 4 of 5
-- QA cycle: 1 of 3
+- QA cycle: 2 of 3 (cycle 2 passed)
 - Started: 2026-10-13
 
 ## Interview summary
@@ -146,8 +146,54 @@ Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
 - **Root cause (2026-10-14, from the Cloud Run log with the read-only `claude-code@` account):** `TypeError: Cannot read properties of undefined (reading 'map')` in `tenantSummaries` ← `summarizeLease` ← `listPropertyLeases`. The `leases` collection on dev still holds 7 documents written by the 2024 `feature/leases` prototype for boom (`users`, `lease`, `startTimestamp`; no `tenantIds`, no subcollections). The new-lease and lease-edit pages never list them, which is why they worked.
   - **Fix:** migration `0002-archive-prototype-leases` moves documents without `tenantIds` to `legacy_leases` (data kept, plus `archivedAt` and `archivedBy`), and stops if one has subcollections. They are not converted into leases: as ended 2024 leases with no payments they would show months of rent owed. New requirement "Prototype leases archived" in the data-migrations delta; task 9.3; 4 tests. Production may or may not hold such documents; the migration handles both.
 
+### Cycle 2 (2026-10-14, deployed commit 576de1d, dev deploy run 90)
+**Result: PASS.** 54 tests passed, 0 failed, from a fresh QA agent. It reused and corrected the cycle 1 specs and added a check of every listed property's edit page. Specs: branch `claude/add-leases-qa2`, `tests/qa/add-leases/` (not merged). Screenshots: 87 on branch `qa-evidence/add-leases` (not merged), under `openspec/changes/add-leases/qa/screenshots/`.
+
+- **Cycle 1 bug fixed:** boom's edit page, `?tab=leases`, and clicking the Leases tab all answer 200 with no console errors. `/admin/users` loaded 10 times in a row with 200.
+- **Passed:**
+  - Leases: create, validation, add by email (existing and new), admin and conflict refusals, back-to-back, overlap and Save anyway, list and statuses, prefilled rent, unknown property 404, edit (add, remove, last tenant, rent change), delete with and without payments, document attach, replace, type and size, and access 200/403/401.
+  - Tenant lease card.
+  - Payments: checkout 403/400 rules, a Stripe test-mode payment recorded by the webhook, carried-over months, ended plus current lease, paid in full.
+  - Admin-only and anonymous access.
+  - Cascades on property and user delete.
+  - Private lease documents in Storage.
+  - The migrated lease.
+  - A regression pass for both roles.
+- **Failures on the way (both fixed or explained):**
+  - A test bug: a screenshot mask rewrote a form field before the save. Fixed in the spec.
+  - Add User and welcome emails to `@example.com` fail because the dev Resend account only delivers to its testing addresses. With Resend's sandbox address, Add User answers 200. This is the environment, not the app.
+- **Not covered by automation:** see the human checklist below. It covers welcome email content, a tenant with no current lease, maintenance submission, webhook edge cases on the deployed site, migration mechanics beyond the result, and phone layout.
+- **Observations:**
+  - The edit page of a deleted property answers 500, not 404. This is existing behavior, outside scope.
+  - A deleted lease's document URL answers 403 to an admin, not 404.
+
 ## Verification checklist for the human
-(filled in stage 7)
+Ranked by risk. Items 1 and 2 must be done **before** merging the production PR, or the production deploy stops at "Apply data migrations" before Hosting.
+
+1. **Production backup schedules.** In the Firebase console for the production project, open Firestore, then Disaster recovery, for the `(default)` database. Create a daily schedule with 2-day retention and a weekly one with 8-day retention.
+2. **Production deploy service account roles.** In Google Cloud IAM for the production project, give the account whose key is in the `production` environment's `FIREBASE_SERVICE_ACCOUNT_LEHMAN_REALTY`:
+   - Cloud Datastore Viewer, or any role with `datastore.backupSchedules.list` and `datastore.backups.list`;
+   - Cloud Datastore User.
+
+   Dev needed both.
+3. **After the production deploy, read the "Apply data migrations" log.**
+   - 0001 lists one lease per property with tenants, and every tenant's balance is the same before and after.
+   - 0002 lists any 2024 prototype documents it moved to `legacy_leases`, or none.
+   - Spot-check a tenant's `/payment` balance against what they owed before.
+4. **Welcome email** (dev, then production). Create a lease with a new email address for a mailbox you control.
+   - Expect: sender `support@lehmanfamilyllc.com`; "Lehman Family LLC"; the property's street address, city and start date; a working password link.
+   - On dev, Resend refused every non-testing address, so check that the production Resend domain is verified.
+5. **Tenant with no current lease.** Use a tenant whose only lease has ended or is upcoming.
+   - The dashboard says no property is assigned and shows an upcoming lease.
+   - `/maintenance` redirects to `/`.
+   - `/payment` loads only when something is owed.
+   - `/profile` and `/insurance` load.
+6. **Webhook decision from review round 2.** A paid invoice that names a missing lease now answers 500 (Stripe retries it and shows the failed delivery), and logs `UNRECORDED PAYMENT`. Confirm this is wanted. In Stripe test mode, also resend an `invoice.payment_succeeded` event for a lease payment: it is acknowledged and nothing is recorded twice.
+7. **Live-mode checkout.**
+   - Checkout now requires a lease.
+   - A Checkout session started before the deploy carries only `propertyID`. It is recorded against the tenant's current lease at that property, or logged as `UNRECORDED PAYMENT` if there is none.
+   - Avoid deploying while a tenant is mid-payment, or watch the logs afterwards.
+8. **Phone layout.** At phone width, check the Leases tab, the lease form (with Save anyway and delete confirm), the tenant dashboard card and `/payment`.
 
 ## Halted
 - **2026-10-13, stage 6, QA cycle 1:** the edit page 500 for property `wrIhk0hPRVK1hDCaId8y` needs its server error to be root-caused.
@@ -176,6 +222,10 @@ Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
   - **Next step for a human:** grant the same deploy service account **Cloud Datastore User** (`roles/datastore.user`) on `lehman-realty-dev`, and on the production project before Gate B. Then re-run the failed job.
   - The README section "Data migrations" and design.md must also name this role; that goes into the record PR at stage 7.
 - **Resolved 2026-10-13 20:18:** the user granted Cloud Datastore User on dev and prod. Attempt 3 of run 38354071341 succeeded: rules, migrations and hosting deployed.
+
+## Dev deploy and migration 0002 (2026-10-14, run 90, PR #147)
+- **Restore point:** `projects/lehman-realty-dev/locations/nam5/backups/c55275e5-7bce-4886-bf04-2a1e04f8b606`, snapshot 2026-10-14T12:14:27Z.
+- **Migration 0002** ran from 23:05:49Z to 23:05:52Z and was applied. It moved 7 prototype documents to `legacy_leases`: `7EIx8vPmOHEAlHCXzRNf`, `8ROiSdBZzY4R4cMZK52X`, `IeUEkNPLxzYvi2kx8mZF`, `PPJ9hmfNeHuANYewUBqw`, `W87JPDeueiK5WyCVI0Nk`, `ZiXTfJ5pcOPUjKPQhgwW`, `pRilSKJR5PjfSBTkT8rT`.
 
 ## Dev deploy and migration (2026-10-13, run 38354071341 attempt 3)
 - **Restore point:** `projects/lehman-realty-dev/locations/nam5/backups/a6e92c76-cbe3-4018-94b0-5a0d61e293f4`, snapshot 2026-10-13T12:06:54Z.
