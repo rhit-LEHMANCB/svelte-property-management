@@ -59,6 +59,8 @@
 - [x] 9.1 Write `migrations/0001-leases-from-tenant-links.ts` (id `migrated-{propertyId}`, non-admin existing tenants, property rent, earliest move-in month or current month, copy `payment_history` and `recorded_invoices`, summary per property, undo steps); verify with tests against the fake Firestore for each scenario of Leases from existing tenant links, including a second run
 - [x] 9.2 Make the dry run print each linked tenant's balance before and after; verify with a test where two housemates have different move-in months
 
+- [x] 9.3 Write `migrations/0002-archive-prototype-leases.ts` to move 2024 prototype documents (no `tenantIds`) from `leases` to `legacy_leases`, after QA cycle 1 found them making the property edit page fail on dev; verify with tests against the fake Firestore for each scenario of Prototype leases archived, including a dry run
+
 ## 10. Integration checks
 
 - [x] 10.1 Run `npm run migrate` against the emulator with seeded junction data, then load the app and verify the migrated tenant sees the same balance

@@ -1,10 +1,10 @@
 # Lifecycle: add-leases
 
 - Branch: `claude/add-leases`
-- Stage: 5 Ship to develop (PR #145 open; waiting on the `tests` and `build_and_preview` checks, then merge)
+- Stage: 6 QA, fixing the cycle 1 bug on `claude/fix-prototype-leases` before cycle 2
 - GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
-- Review round: 3 of 5
-- QA cycle: 0 of 3
+- Review round: 4 of 5
+- QA cycle: 1 of 3
 - Started: 2026-10-13
 
 ## Interview summary
@@ -116,15 +116,73 @@ Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
   - Fixed: nit, the misplaced LeaseForm comment.
   - Not fixed: minor, the users page reading every lease (same reason as round 1).
 - After round 3: lint, check, 489 unit/handler tests, build, check:server and 111 e2e tests pass.
+- Round 4 (2026-10-14, the QA cycle 1 fix, migration 0002): 0 blockers, 1 major, 3 minors.
+  - Fixed: major, the migration checked and moved one document at a time, so a document with subcollections could stop the run after others had moved. It now checks every document first (test with two documents added).
+  - Fixed: minor, tests for a re-run, the `_migrations` record and summary, and a dry run leaving no record.
+  - Not fixed: minor, other code (users page, checkout, lease edit) also assumes every lease has `tenantIds`. Once 0002 has run nothing breaks it, and the deploy runs migrations before hosting.
 
 ## Out-of-scope observations
-(none yet)
+- Every SSR request logs "IAM Service Account Credentials API has not been used in project 226313058184 … create-custom-tokens" on dev, since at least 2026-10-08. The app never signs tokens, so this comes from Firebase Hosting's framework integration; pages still work. Enabling that API on the project, or granting the SSR service account Service Account Token Creator, would quiet it.
+- Opening the edit page of a property that no longer exists answers 500 ("Error retrieving property") rather than 404. This is existing behavior; QA hit it after deleting its own properties.
 
 ## QA report
-(filled in stage 6)
+### Cycle 1 (2026-10-13, deployed commit ab685c6)
+**Result: FAIL**, with 1 app bug. Every other observable scenario passed: lease create and edit, validation, add by email, conflicts, overlap and Save anyway, delete with and without payments, PDF type and size limits, document access 200/403/401, private Storage reads, tenant card, per-lease balances, a Stripe test-mode payment through the webhook, admin-only checks, cascades and the regression pass. Specs: `tests/qa/add-leases/` (not committed yet). Screenshots: `openspec/changes/add-leases/qa/screenshots/`.
+
+- **App bug:** `GET /admin/properties/wrIhk0hPRVK1hDCaId8y/edit` (property "boom", the one migrated lease) answers 500 every time.
+  - Its `__data.json` shows the edit page's own load failing ("Internal Error"). The layout, and the new-lease and lease-edit loads for the same property, all succeed.
+  - The same page works for QA-created properties with three leases, so the lease query and its index work.
+  - The property's fields validate locally with `superValidate`.
+  - The cause is therefore something specific to this property's data, and it is not visible without the server error (the app has no `handleError`, and this session has no Cloud Logging access).
+- **Observations needing a person:**
+  - Welcome emails to `qa-…@example.com` all failed; the lease-save path handled this correctly.
+  - Users → Add User with such an address shows "Error creating user." Its account creation rolls back when the welcome email fails, which is existing behavior.
+  - It is unknown whether the dev email provider rejects only example.com. Human test 1 covers it.
+- **Minor:**
+  - A tenant opening an admin lease URL gets 401 (admin route) rather than 403.
+  - An oversized PDF is cleared from the field, and saving then keeps no new document.
+  - Neither breaks a spec scenario.
+- **Data:** all `qa-` data was removed. Stripe test payments remain on the QA tenant's test customer.
+- **Root cause (2026-10-14, from the Cloud Run log with the read-only `claude-code@` account):** `TypeError: Cannot read properties of undefined (reading 'map')` in `tenantSummaries` ← `summarizeLease` ← `listPropertyLeases`. The `leases` collection on dev still holds 7 documents written by the 2024 `feature/leases` prototype for boom (`users`, `lease`, `startTimestamp`; no `tenantIds`, no subcollections). The new-lease and lease-edit pages never list them, which is why they worked.
+  - **Fix:** migration `0002-archive-prototype-leases` moves documents without `tenantIds` to `legacy_leases` (data kept, plus `archivedAt` and `archivedBy`), and stops if one has subcollections. They are not converted into leases: as ended 2024 leases with no payments they would show months of rent owed. New requirement "Prototype leases archived" in the data-migrations delta; task 9.3; 4 tests. Production may or may not hold such documents; the migration handles both.
 
 ## Verification checklist for the human
 (filled in stage 7)
 
 ## Halted
-(only if the run halted)
+- **2026-10-13, stage 6, QA cycle 1:** the edit page 500 for property `wrIhk0hPRVK1hDCaId8y` needs its server error to be root-caused.
+  - **Next step for a human:** open Google Cloud Console → Logging (project `lehman-realty-dev`), filter for the SSR function's errors around a fresh visit to `/admin/properties/wrIhk0hPRVK1hDCaId8y/edit`, and paste the error and its stack.
+  - Or sign the Firebase MCP in to the dev project so this session can read the property and lease documents.
+  - Then Claude fixes it, re-runs review and QA (cycle 2).
+  - **Resolved 2026-10-14:** the user set up a read-only dev service account; the log gave the cause (see QA report, cycle 1).
+- **Stage:** 6, before QA. PR #145 merged into develop on 2026-10-13 (merge commit ab685c6).
+- **Reason:** the dev deploy (run 38354071341, https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/38354071341) failed in the new "Apply data migrations" step. The deploy service account has no permission to list Firestore backup schedules:
+  `Could not read projects/lehman-realty-dev/databases/(default)/backupSchedules (HTTP 403) ... "The caller does not have permission", "status": "PERMISSION_DENIED"`.
+  This is an environment permission, not a code fault, so a re-run cannot fix it. It is the gap the preflight could not verify.
+- **State of dev:**
+  - Rules and indexes were deployed (the new Storage rules only narrow public reads; the new `leases` index).
+  - Migration 0001 did **not** run, so no data changed.
+  - Hosting was **not** deployed; the dev site still runs the previous version.
+- **Next step for a human:**
+  1. In Google Cloud IAM for `lehman-realty-dev`, find the service account whose key is in the GitHub `develop` environment secret `FIREBASE_SERVICE_ACCOUNT_LEHMAN_REALTY`. Grant it a role that includes `datastore.backupSchedules.list` and `datastore.backups.list`, for example **Cloud Datastore Viewer** (`roles/datastore.viewer`).
+  2. Make sure the two backup schedules exist on the `(default)` database: daily with 2-day retention, weekly with 8-day retention (Firestore, Disaster recovery).
+  3. Re-run the failed job of that run (Actions, the run, "Re-run failed jobs"), or tell Claude to, and the lifecycle continues at stage 6 (QA).
+  4. Do the same for the production project's service account before Gate B.
+- **Resolved 2026-10-13:** the user granted the permission to the dev and prod deploy service accounts. The failed job was re-run; the run continues at stage 6.
+- **Halted again 2026-10-13 19:40 (attempt 2 of run 38354071341):**
+  - The backup check passed. Restore point: `projects/lehman-realty-dev/locations/nam5/backups/a6e92c76-cbe3-4018-94b0-5a0d61e293f4`, snapshot 2026-10-13T12:06:54Z.
+  - The runner then failed reading `_migrations` with `7 PERMISSION_DENIED: Missing or insufficient permissions`. The deploy service account has deploy roles only and no Firestore data access. The preflight and the earlier instructions named only the backup permissions; the migration also reads and writes data with this account.
+  - No data changed, and hosting was not deployed.
+  - **Next step for a human:** grant the same deploy service account **Cloud Datastore User** (`roles/datastore.user`) on `lehman-realty-dev`, and on the production project before Gate B. Then re-run the failed job.
+  - The README section "Data migrations" and design.md must also name this role; that goes into the record PR at stage 7.
+- **Resolved 2026-10-13 20:18:** the user granted Cloud Datastore User on dev and prod. Attempt 3 of run 38354071341 succeeded: rules, migrations and hosting deployed.
+
+## Dev deploy and migration (2026-10-13, run 38354071341 attempt 3)
+- **Restore point:** `projects/lehman-realty-dev/locations/nam5/backups/a6e92c76-cbe3-4018-94b0-5a0d61e293f4`, snapshot 2026-10-13T12:06:54Z.
+- **Migration 0001** started 2026-10-13T20:13:26Z.
+  - **Created** `migrated-wrIhk0hPRVK1hDCaId8y`: 1 tenant, 0 history and 0 invoice documents. Tenant `ps5f8IRn…` owes $2000.00 before and after.
+  - **Skipped:**
+    - 5 junctions whose properties no longer exist: `62WeqsJTofz9uJFHC6mn`, `c1QSys9UFwvMVVFWlneo`, `dnJqCXQu8DtQqMXHVZhx`, `HFBVyK7XZFmW5wP0G4Xs`, `whfdvzJddthVUXxREVo2`.
+    - 1 junction for a tenant that no longer exists (`eVO0c9os…` on `wrIhk0hPRVK1hDCaId8y`).
+  - No balance changes, and no tenants on several properties.
+- **Hosting:** version `09d5393511f7d8e2` on https://lehman-realty-dev.web.app.

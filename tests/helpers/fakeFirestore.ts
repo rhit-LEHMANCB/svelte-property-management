@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 
 /**
  * A small in-memory stand-in for the Firestore Admin SDK, covering only the calls the app makes:
- * collection/doc/collection(sub), get/set(merge)/update/create/add/delete, where(==, !=, in, not-in,
+ * collection/doc/collection(sub)/listCollections, get/set(merge)/update/create/add/delete, where(==, !=, in, not-in,
  * array-contains, array-contains-any, documentId), orderBy, limit, transactions that read documents
  * and queries, and the FieldValue sentinels serverTimestamp, increment, arrayUnion, arrayRemove,
  * delete. It exists so handler tests run without Java or an emulator;
@@ -292,6 +292,9 @@ export class FakeDocRef {
 	collection(name: string) {
 		return this.db.collection(`${this.path}/${name}`);
 	}
+	async listCollections() {
+		return this.db.subcollectionNames(this.path).map((name) => this.collection(name));
+	}
 	async get() {
 		return new FakeSnapshot(this, this.db.read(this.path));
 	}
@@ -428,6 +431,15 @@ export class FakeFirestore {
 		return [...this.store.entries()]
 			.filter(([p]) => p.startsWith(prefix) && !p.slice(prefix.length).includes('/'))
 			.map(([p, data]) => [p.slice(prefix.length), data]);
+	}
+
+	/** Names of the collections directly under a document that hold at least one document. */
+	subcollectionNames(docPath: string): string[] {
+		const prefix = `${docPath}/`;
+		const names = [...this.store.keys()]
+			.filter((p) => p.startsWith(prefix))
+			.map((p) => p.slice(prefix.length).split('/')[0]);
+		return [...new Set(names)];
 	}
 
 	// Test conveniences.
