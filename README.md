@@ -106,9 +106,10 @@ GOOGLE_APPLICATION_CREDENTIALS=path/to/key.json FB_PROJECT_ID=lehman-realty-dev 
 **Backups first.** The runner refuses to touch a database that has no backup schedule. Create two
 in the Firebase console for the `(default)` database of each project (Firestore, Disaster recovery,
 Create backup schedule): daily with 2-day retention and weekly with 8-day retention. Point-in-time
-recovery stays off for now to avoid its cost; turn it on once the app holds real data. The service
-account must be able to list backup schedules and backups (for example the Cloud Datastore Viewer
-role).
+recovery stays off for now to avoid its cost; turn it on once the app holds real data. The deploy
+service account (`FIREBASE_SERVICE_ACCOUNT_LEHMAN_REALTY`) needs two roles for the migrate step: one
+that lists backup schedules and backups (for example Cloud Datastore Viewer) and Cloud Datastore User,
+to read and write the data.
 
 **Restore point.** Before applying a migration, the runner prints, and stores on
 `_migrations/{name}`, the start time and the newest finished backup (`restorePoint`). A schedule with

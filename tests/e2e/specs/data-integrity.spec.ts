@@ -90,6 +90,29 @@ test.describe('leases: a tenant cannot be on two overlapping leases', () => {
 				.filter({ hasText: `${ADMIN.email} belongs to an admin and cannot be a tenant.` })
 		).toBeVisible();
 	});
+
+	test('Scenario: Tenant on an overlapping lease or an admin email: no account is created for the other emails', async ({
+		page
+	}) => {
+		await signIn(page, ADMIN);
+		for (const blocked of ['di-tenant@e2e.test', ADMIN.email]) {
+			await page.goto(`/admin/properties/${PROPERTY_B}/leases/new`);
+			await page.waitForLoadState('networkidle');
+			await page.getByLabel('Start date').fill('2026-11-01');
+			await page.getByLabel('Tenant email 1', { exact: true }).fill(blocked);
+			await page.getByRole('button', { name: 'Add tenant' }).click();
+			await page.getByLabel('Tenant email 2', { exact: true }).fill('di-bystander@e2e.test');
+			await page.getByRole('button', { name: 'Save lease' }).click();
+
+			await expect(page.getByRole('alert').filter({ hasText: blocked })).toBeVisible();
+			await expect(adminAuth().getUserByEmail('di-bystander@e2e.test')).rejects.toBeTruthy();
+		}
+		const leasesAtB = await adminDb()
+			.collection('leases')
+			.where('propertyId', '==', PROPERTY_B)
+			.get();
+		expect(leasesAtB.size).toBe(0);
+	});
 });
 
 test.describe('property-management: delete removes leases, tenant links and payment history', () => {

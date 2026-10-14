@@ -1,5 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { ADMIN, FAKE_STRIPE_URL, LEASE_ID, PROPERTY, TENANT } from '../support/constants';
+import { adminAuth, adminDb } from '../support/admin';
 import { signIn } from '../support/helpers';
 
 type Recorded = { path: string; body: Record<string, string> };
@@ -124,5 +125,171 @@ test.describe('rent-payments', () => {
 			await page.goto(path);
 			await expect(page).toHaveURL(/\/admin$/);
 		}
+	});
+});
+
+test.describe('rent-payments: request checks', () => {
+	test.beforeEach(async () => {
+		await fetch(`${FAKE_STRIPE_URL}/__requests`, { method: 'DELETE' });
+	});
+
+	const post = (page: Page, body: Record<string, unknown>) =>
+		page.evaluate(async (payload) => {
+			const response = await fetch('/api/stripe/create-checkout-session/payment', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+			return response.status;
+		}, body);
+
+	test("Scenario: Not the tenant's lease: a missing leaseId is refused with 403", async ({
+		page
+	}) => {
+		await signIn(page, TENANT);
+		await page.goto('/payment');
+
+		expect(await post(page, { amount: 10 })).toBe(403);
+		expect(await recorded()).toHaveLength(0);
+	});
+
+	test('Scenario: Invalid amount: a missing or non-numeric amount is refused with 400', async ({
+		page
+	}) => {
+		await signIn(page, TENANT);
+		await page.goto('/payment');
+
+		expect(await post(page, { leaseId: LEASE_ID })).toBe(400);
+		expect(await post(page, { leaseId: LEASE_ID, amount: 'abc' })).toBe(400);
+		expect(await recorded()).toHaveLength(0);
+	});
+
+	test('Scenario: Fractional cents: more than two decimals, zero or a negative amount is refused with 400', async ({
+		page
+	}) => {
+		await signIn(page, TENANT);
+		await page.goto('/payment');
+
+		expect(await post(page, { leaseId: LEASE_ID, amount: 10.005 })).toBe(400);
+		expect(await post(page, { leaseId: LEASE_ID, amount: 0 })).toBe(400);
+		expect(await post(page, { leaseId: LEASE_ID, amount: -5 })).toBe(400);
+		expect(await recorded()).toHaveLength(0);
+	});
+});
+
+/** The first (or last) day of this month, or `offset` months later, as YYYY-MM-DD, in local time. */
+const monthDay = (offset: number, last = false) => {
+	const now = new Date();
+	const d = new Date(now.getFullYear(), now.getMonth() + offset + (last ? 1 : 0), last ? 0 : 1);
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const monthName = (date: string) =>
+	new Date(`${date}T12:00:00`).toLocaleString('en-US', { month: 'long' });
+
+// A tenant with two leases: one that ended last month with its last two months unpaid, and a
+// current one at another property. Each has its own balance.
+test.describe.serial('rent-payments: one balance per lease', () => {
+	const PAYER = {
+		uid: 'e2e-payer',
+		email: 'payer@e2e.test',
+		password: 'E2e-Payer-Passw0rd'
+	};
+	const ENDED = 'e2e-payer-ended-lease';
+	const CURRENT = 'e2e-payer-current-lease';
+	const property = (title: string, streetAddress: string) => ({
+		title,
+		description: 'Payment test property',
+		bedrooms: 1,
+		bathrooms: 1,
+		squareFeet: 600,
+		rent: 1000,
+		streetAddress,
+		apartmentInfo: '',
+		city: 'Terre Haute',
+		state: 'IN',
+		zip: '47803'
+	});
+	const lease = (propertyId: string, rent: number, startDate: string, endDate: string | null) => ({
+		propertyId,
+		tenantIds: [PAYER.uid],
+		rent,
+		startDate,
+		endDate,
+		document: null,
+		createdAt: '2026-01-01T00:00:00.000Z',
+		updatedAt: '2026-01-01T00:00:00.000Z'
+	});
+	const markPaid = (leaseId: string, date: string) =>
+		adminDb()
+			.doc(`leases/${leaseId}/payment_history/${date.slice(0, 4)}`)
+			.set({ [monthName(date)]: { remainingBalance: 0 } }, { merge: true });
+
+	test.beforeAll(async () => {
+		const db = adminDb();
+		await adminAuth()
+			.deleteUser(PAYER.uid)
+			.catch(() => undefined);
+		await adminAuth().createUser({ uid: PAYER.uid, email: PAYER.email, password: PAYER.password });
+		await db.doc(`users/${PAYER.uid}`).set({
+			email: PAYER.email,
+			firstName: 'Pat',
+			lastName: 'Payer',
+			phoneNumber: '+15555550170',
+			permissions: 'user',
+			stripeID: 'cus_payer'
+		});
+		await db.doc('properties/e2e-payer-old').set(property('E2E Old Place', '20 Old Rd'));
+		await db.doc('properties/e2e-payer-new').set(property('E2E New Place', '22 New Rd'));
+		await db
+			.doc(`leases/${ENDED}`)
+			.set(lease('e2e-payer-old', 1000, monthDay(-2), monthDay(-1, true)));
+		await db.doc(`leases/${CURRENT}`).set(lease('e2e-payer-new', 500, monthDay(0), null));
+	});
+
+	test('Scenario: Ended lease: /payment lists the ended lease and the current lease, each with its balance', async ({
+		page
+	}) => {
+		await signIn(page, PAYER);
+		await page.goto('/payment');
+		await page.waitForLoadState('networkidle');
+
+		const ended = page.locator(`[data-lease="${ENDED}"]`);
+		await expect(ended).toContainText('20 Old Rd, Terre Haute');
+		await expect(ended).toContainText('ended');
+		await expect(ended).toContainText('You have a balance of $2,000.00');
+		const current = page.locator(`[data-lease="${CURRENT}"]`);
+		await expect(current).toContainText('22 New Rd, Terre Haute');
+		await expect(current).toContainText('current');
+		await expect(current).toContainText('You have a balance of $500.00');
+		await expect(
+			page.getByRole('button', { name: 'Make a Payment for 20 Old Rd, Terre Haute' })
+		).toBeEnabled();
+	});
+
+	test('Scenario: Paid in full: nothing to pay and no amount can be submitted', async ({
+		page
+	}) => {
+		await markPaid(CURRENT, monthDay(0));
+		await markPaid(ENDED, monthDay(-2));
+		await markPaid(ENDED, monthDay(-1));
+		await signIn(page, PAYER);
+		await page.goto('/payment');
+		await page.waitForLoadState('networkidle');
+
+		// The ended lease owes nothing, so it is no longer offered.
+		await expect(page.locator(`[data-lease="${ENDED}"]`)).toHaveCount(0);
+		const current = page.locator(`[data-lease="${CURRENT}"]`);
+		await expect(current).toContainText('You have nothing to pay');
+		await expect(current.getByRole('button', { name: 'Make a Payment' })).toBeDisabled();
+
+		const status = await page.evaluate(async (leaseId) => {
+			const response = await fetch('/api/stripe/create-checkout-session/payment', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ amount: 1, leaseId })
+			});
+			return response.status;
+		}, CURRENT);
+		expect(status).toBe(400);
 	});
 });
