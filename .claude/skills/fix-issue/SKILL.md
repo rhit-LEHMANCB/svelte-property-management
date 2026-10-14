@@ -38,7 +38,11 @@ Write the test that shows the bug, run it, and see it fail **for the reason the 
 Pick the cheapest layer that shows the bug:
 - Pure logic, schemas, helpers: `tests/unit` (`npm run test:unit`).
 - Server `load` functions and form actions: `tests/handlers` (`npm run test:handlers`), with the fake Firestore in `tests/helpers`.
-- Anything that needs a browser (client state, forms, stores, navigation): a Playwright spec in `tests/e2e/specs`, next to the existing spec for that area (`npx firebase emulators:exec --config firebase.emulators.json --project demo-lehman-realty --only auth,firestore,storage "npx playwright test --project=e2e <spec>"`; needs Java). The first run builds the app and takes a few minutes.
+- Anything that needs a browser (client state, forms, stores, navigation): a Playwright spec in `tests/e2e/specs`, next to the existing spec for that area (`npx firebase emulators:exec --config firebase.emulators.json --project demo-lehman-realty --only auth,firestore,storage "npx playwright test --project=e2e <spec>"`; needs Java). The first run builds the app and takes a few minutes. While an e2e run is going, do not build, stash or switch branches in the same checkout: the app server serves the build output and dies if it changes, and every later test fails with `ECONNREFUSED 127.0.0.1:5174`.
+
+Read the failure before trusting it. A test can fail because the test environment cannot do something the real app can (for example a route the fake Stripe server in `tests/e2e/support/fake-stripe.mjs` does not answer). Fix the harness in the same PR and run again until the test fails on the bug itself.
+
+In a cloud session the pre-installed browser in `/opt/pw-browsers` may be older than the Playwright version the repo pins. Do not run `playwright install`. Instead, make a directory in the scratchpad that maps the expected browser name to the installed one, and point `PLAYWRIGHT_BROWSERS_PATH` at it.
 
 If it cannot be reproduced after a fair attempt, stop: comment on the issue with what was tried, what happened, and what would help (data, browser, exact steps), and tell the user. Do not open a PR.
 
@@ -61,7 +65,7 @@ Make the smallest change that makes the reproduction test pass, without changing
 
 `npm run lint`, `npm run check`, `npm test`, `npm run build`, plus the e2e spec(s) for the touched area if the reproduction was an e2e test.
 
-If a check was already failing on `origin/develop`, note it and do not fix it here.
+If a check was already failing on `origin/develop`, note it and do not fix it here. A plain `npm run build` needs the `PUBLIC_*` variables from `.env`, which a fresh cloud checkout lacks. When it fails only for that reason, the e2e run's own `vite build --mode e2e` counts as the build check.
 
 ### 6. Review, one round
 Start a **new** read-only reviewer: Agent tool, `subagent_type: "Explore"`, `model: "sonnet"`. Give it only the issue text, the diff against `origin/develop`, and this brief: "Review this bug fix. Does the test reproduce the reported bug, does the fix address its root cause rather than the symptom, and does it break anything nearby? List findings as blocker, major, minor or nit, each with file and line." Do not give it your reasoning.
