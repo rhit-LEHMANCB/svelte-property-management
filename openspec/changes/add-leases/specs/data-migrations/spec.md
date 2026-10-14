@@ -116,3 +116,18 @@ The system SHALL include a migration that creates, for each property with tenant
 #### Scenario: Links kept
 - **WHEN** the migration has run
 - **THEN** the `junction_user_property` documents and the property's `payment_history` are left in place
+
+### Requirement: Prototype leases archived
+The system SHALL include a migration that moves every document in `leases` without a `tenantIds` list, written by the 2024 leases prototype, to `legacy_leases` under the same id, adding when and by which migration it was moved.
+
+#### Scenario: Prototype lease moved
+- **WHEN** `leases` holds a prototype document with `users`, `rent`, `startDate` and `endDate`
+- **THEN** after the migration it is gone from `leases` and `legacy_leases` holds its data with `archivedAt` and `archivedBy`
+
+#### Scenario: Current leases untouched
+- **WHEN** a lease has a `tenantIds` list
+- **THEN** it and its subcollections are left in place
+
+#### Scenario: Unexpected subcollections
+- **WHEN** a document without `tenantIds` has subcollections
+- **THEN** the run stops with an error naming the document and nothing is moved
