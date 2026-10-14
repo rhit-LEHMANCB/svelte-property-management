@@ -163,6 +163,7 @@ Run 2026-10-13 on `claude/add-leases` after merging `origin/develop` at 34e4366.
   - A test bug: a screenshot mask rewrote a form field before the save. Fixed in the spec.
   - Add User and welcome emails to `@example.com` fail because the dev Resend account only delivers to its testing addresses. With Resend's sandbox address, Add User answers 200. This is the environment, not the app.
 - **Not covered by automation:** see the human checklist below. It covers welcome email content, a tenant with no current lease, maintenance submission, webhook edge cases on the deployed site, migration mechanics beyond the result, and phone layout.
+- **Ported to e2e:** the 33 passing QA scenarios not already covered now run on the emulators (`tests/e2e/specs/leases.spec.ts`, `payment.spec.ts`, `property.spec.ts`, `data-integrity.spec.ts`). The e2e suite has 144 tests, all passing. Dev-only checks were not ported: real Stripe Checkout, Resend delivery, and the real property list.
 - **Observations:**
   - The edit page of a deleted property answers 500, not 404. This is existing behavior, outside scope.
   - A deleted lease's document URL answers 403 to an admin, not 404.

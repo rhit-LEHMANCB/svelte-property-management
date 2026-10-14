@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { ADMIN, FIRESTORE_EMULATOR, PROJECT_ID } from '../support/constants';
-import { adminDb } from '../support/admin';
+import { adminAuth, adminDb, storageFileExists, uploadStorageFile } from '../support/admin';
 import { signIn } from '../support/helpers';
 
 const findProperty = async (title: string) => {
@@ -155,5 +155,88 @@ test.describe('property-management', () => {
 		await expect(row).toBeVisible();
 		await expect(row.locator('img')).toHaveCount(0);
 		await expect(row.locator('svg').first()).toBeVisible();
+	});
+});
+
+test.describe('property-management: Cascade', () => {
+	const PROPERTY_ID = 'e2e-cascade-property';
+	const TITLE = 'E2E Cascade Court';
+	const LEASE = 'e2e-cascade-lease';
+	const DOCUMENT = `leases/${LEASE}/lease.pdf`;
+	const RESIDENT = {
+		uid: 'e2e-cascade-tenant',
+		email: 'cascade@e2e.test',
+		password: 'E2e-Cascade-Passw0rd'
+	};
+
+	test.beforeAll(async () => {
+		const db = adminDb();
+		await adminAuth()
+			.deleteUser(RESIDENT.uid)
+			.catch(() => undefined);
+		await adminAuth().createUser({
+			uid: RESIDENT.uid,
+			email: RESIDENT.email,
+			password: RESIDENT.password
+		});
+		await db.doc(`users/${RESIDENT.uid}`).set({
+			email: RESIDENT.email,
+			firstName: 'Cass',
+			lastName: 'Cascade',
+			phoneNumber: '+15555550180',
+			permissions: 'user',
+			stripeID: 'cus_cascade'
+		});
+		await db.doc(`properties/${PROPERTY_ID}`).set({
+			title: TITLE,
+			description: 'Deleted by the cascade test',
+			streetAddress: '24 Cascade Way',
+			city: 'Terre Haute',
+			state: 'IN',
+			rent: 900
+		});
+		await uploadStorageFile(DOCUMENT, Buffer.from('%PDF-1.4\n%%EOF\n'), 'application/pdf');
+		await db.doc(`leases/${LEASE}`).set({
+			propertyId: PROPERTY_ID,
+			tenantIds: [RESIDENT.uid],
+			rent: 900,
+			startDate: '2026-01-01',
+			endDate: null,
+			document: {
+				path: DOCUMENT,
+				fileName: 'lease.pdf',
+				size: 15,
+				uploadedAt: '2026-01-01T00:00:00.000Z'
+			},
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z'
+		});
+		await db.doc(`leases/${LEASE}/payment_history/2026`).set({ January: { remainingBalance: 0 } });
+		await db.doc(`leases/${LEASE}/recorded_invoices/in_cascade`).set({ recordedAt: '2026-01-15' });
+	});
+
+	test('Scenario: Cascade: deleting a property with a paid lease removes the lease, its document and its records, and the tenant still loads the app', async ({
+		page
+	}) => {
+		await signIn(page, ADMIN);
+		await page.goto('/admin/properties');
+		await page.waitForLoadState('networkidle');
+		await page.getByRole('searchbox', { name: 'Search properties' }).fill(TITLE);
+		await page.getByRole('button', { name: `Actions for ${TITLE}` }).click();
+		await page.getByRole('menuitem', { name: 'Delete' }).click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
+		await expect(page.getByText('Property Successfully Removed.')).toBeVisible();
+
+		const db = adminDb();
+		expect((await db.doc(`properties/${PROPERTY_ID}`).get()).exists).toBe(false);
+		expect((await db.doc(`leases/${LEASE}`).get()).exists).toBe(false);
+		expect((await db.doc(`leases/${LEASE}/payment_history/2026`).get()).exists).toBe(false);
+		expect((await db.doc(`leases/${LEASE}/recorded_invoices/in_cascade`).get()).exists).toBe(false);
+		expect(await storageFileExists(DOCUMENT)).toBe(false);
+
+		await page.context().clearCookies();
+		await signIn(page, RESIDENT);
+		await page.waitForLoadState('networkidle');
+		await expect(page.getByText('No property is assigned to your account yet.')).toBeVisible();
 	});
 });
