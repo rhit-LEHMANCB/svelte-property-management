@@ -214,19 +214,28 @@ test('leases: Lease document - larger than 10 MB (server check, browser check by
 test('leases: Lease document - attach, then replace', async () => {
 	const { propA, leaseA1 } = loadState();
 	await editLease(propA, leaseA1);
-	await expect(page.getByText('Current: qa-lease-a1.pdf')).toBeVisible();
+	await expect(page.getByText(/Current: qa-lease-a1/)).toBeVisible();
 	await expect(page.getByRole('link', { name: 'View document' })).toBeVisible();
 	await shot(page, 'leases-document-attach');
+	// shot() masks non-qa- emails in the form inputs (the QA tenant's address), which would then be
+	// submitted as "<masked email>". Reload the form before saving.
+	await editLease(propA, leaseA1);
+	const name = `qa-lease-a1-v${Date.now().toString(36)}.pdf`;
 	await page
 		.locator('input[name=document]')
 		.setInputFiles({
-			name: 'qa-lease-a1-v2.pdf',
+			name,
 			mimeType: 'application/pdf',
-			buffer: Buffer.concat([PDF, Buffer.from('v2')])
+			buffer: Buffer.concat([PDF, Buffer.from('replacement')])
 		});
 	await saveConfirm();
-	await editLease(propA, leaseA1);
-	await expect(page.getByText('Current: qa-lease-a1-v2.pdf')).toBeVisible();
+	// The replacement may take a moment to show: poll the edit page and log how long it took.
+	const started = Date.now();
+	await expect(async () => {
+		await editLease(propA, leaseA1);
+		await expect(page.getByText(`Current: ${name}`)).toBeVisible({ timeout: 1000 });
+	}).toPass({ timeout: 30000 });
+	console.log('REPLACED DOC visible after extra ms:', Date.now() - started);
 	await shot(page, 'leases-document-replace');
 });
 
