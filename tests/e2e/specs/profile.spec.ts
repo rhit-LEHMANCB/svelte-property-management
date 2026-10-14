@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { TENANT } from '../support/constants';
+import { adminDb } from '../support/admin';
 import { signIn } from '../support/helpers';
 
 // The reset email goes out through Resend, which end-to-end runs never reach, so the browser's
@@ -57,5 +58,44 @@ test.describe('user-profile: changing the email asks for the current password', 
 		await page.reload();
 		await page.waitForLoadState('networkidle');
 		await expect(page.getByLabel('Email', { exact: true })).toHaveValue(TENANT.email);
+	});
+});
+
+test.describe('user-profile: saving contact info', () => {
+	test.afterEach(async () => {
+		await adminDb().doc(`users/${TENANT.uid}`).update({
+			firstName: TENANT.firstName,
+			lastName: TENANT.lastName,
+			phoneNumber: TENANT.phoneNumber
+		});
+	});
+
+	test('Scenario: the form keeps the saved values after a successful save, without a reload', async ({
+		page
+	}) => {
+		await signIn(page, TENANT);
+		await page.goto('/profile');
+		await page.waitForLoadState('networkidle');
+
+		await page.getByLabel('First Name').fill('Tess');
+		await page.getByLabel('Last Name').fill('Renter');
+		const phone = page.getByLabel('Phone Number');
+		await phone.clear();
+		// Typed key by key so the input mask formats it the way a user would see it.
+		await phone.pressSequentially('8125550199');
+		const typedPhone = await phone.inputValue();
+		await page.getByRole('button', { name: 'Save' }).click();
+		await expect(page.getByText('Successfully updated user info.')).toBeVisible();
+		await page.waitForLoadState('networkidle');
+
+		await expect(page.getByLabel('First Name')).toHaveValue('Tess');
+		await expect(page.getByLabel('Last Name')).toHaveValue('Renter');
+		await expect(phone).toHaveValue(typedPhone);
+
+		await page.reload();
+		await page.waitForLoadState('networkidle');
+		await expect(page.getByLabel('First Name')).toHaveValue('Tess');
+		await expect(page.getByLabel('Last Name')).toHaveValue('Renter');
+		await expect(phone).toHaveValue(typedPhone);
 	});
 });

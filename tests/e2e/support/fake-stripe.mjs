@@ -6,6 +6,7 @@
 //   GET    /__requests            what the app has sent so far (used by the specs)
 //   DELETE /__requests            forget recorded requests
 //   POST   /v1/customers          answers with a new customer id
+//   POST   /v1/customers/<id>     records the update, answers with the customer
 //   DELETE /v1/customers/<id>     answers that the customer is deleted
 //
 // It also stands in for the Resend API (the app's RESEND_BASE_URL points here in e2e mode):
@@ -49,6 +50,10 @@ const server = http.createServer(async (req, res) => {
 	if (req.method === 'POST' && pathname === '/v1/customers') {
 		customers += 1;
 		return send(res, 200, { id: `cus_fake_${customers}`, object: 'customer' });
+	}
+	if (req.method === 'POST' && pathname.startsWith('/v1/customers/')) {
+		requests.push({ path: pathname, body: Object.fromEntries(new URLSearchParams(raw)) });
+		return send(res, 200, { id: pathname.split('/').pop(), object: 'customer' });
 	}
 	if (req.method === 'DELETE' && pathname.startsWith('/v1/customers/')) {
 		return send(res, 200, { id: pathname.split('/').pop(), object: 'customer', deleted: true });
