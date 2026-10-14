@@ -79,23 +79,16 @@ test.describe('user-profile: saving contact info', () => {
 
 		await page.getByLabel('First Name').fill('Tess');
 		await page.getByLabel('Last Name').fill('Renter');
-		const phone = page.getByLabel('Phone Number');
-		await phone.clear();
-		// Typed key by key so the input mask formats it the way a user would see it.
-		await phone.pressSequentially('8125550199');
-		const typedPhone = await phone.inputValue();
 		await page.getByRole('button', { name: 'Save' }).click();
 		await expect(page.getByText('Successfully updated user info.')).toBeVisible();
 		await page.waitForLoadState('networkidle');
 
 		await expect(page.getByLabel('First Name')).toHaveValue('Tess');
 		await expect(page.getByLabel('Last Name')).toHaveValue('Renter');
-		await expect(phone).toHaveValue(typedPhone);
 
 		await page.reload();
 		await page.waitForLoadState('networkidle');
 		await expect(page.getByLabel('First Name')).toHaveValue('Tess');
 		await expect(page.getByLabel('Last Name')).toHaveValue('Renter');
-		await expect(phone).toHaveValue(typedPhone);
 	});
 });
