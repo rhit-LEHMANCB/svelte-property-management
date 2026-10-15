@@ -1,0 +1,105 @@
+# Spec Delta
+
+## MODIFIED Requirements
+
+### Requirement: Lease record
+The system SHALL store each lease in `leases/{leaseId}` with its property, one or more tenant user ids, a monthly rent, a start date, an optional end date, an optional document, an optional deposit amount with its due date, a late fee, grace days and a late-fee start date. A lease with no end date runs month to month.
+
+#### Scenario: Valid lease
+- **WHEN** an admin saves a lease with rent 1250, start 2026-11-01, no end date, one tenant, no deposit, late fee 62.50 and grace days 5
+- **THEN** a lease document stores the property id, the tenant id, rent 1250, start `2026-11-01`, no end date, no deposit, late fee 62.50, grace days 5 and a late-fee start date of the day it was created
+
+#### Scenario: Invalid fields
+- **WHEN** rent is not greater than 0 or has more than two decimal places, the start date is missing, or the end date is not after the start date
+- **THEN** nothing is saved and the form shows the error next to the field
+
+#### Scenario: No tenants
+- **WHEN** an admin saves a lease with no tenant emails
+- **THEN** nothing is saved and the form shows "A lease needs at least one tenant."
+
+### Requirement: Admin lease list
+The system SHALL show admins every lease of a property on a Leases tab of the property edit page, newest start date first, with its status, dates, rent, tenant names and emails, balance owed, credit, deposit (paid, held or settled), and each late fee charged with whether it is owed, paid or waived.
+
+#### Scenario: Property with leases
+- **WHEN** an admin opens the Leases tab of a property with an ended and a current lease
+- **THEN** both are listed with their status, the current one first
+
+#### Scenario: Property with no leases
+- **WHEN** the property has no leases
+- **THEN** the tab says there are no leases and offers to create one
+
+#### Scenario: Billing details
+- **WHEN** a current lease has a $75.00 late fee owed for November, $677.42 of credit and $1,000.00 of deposit held
+- **THEN** its entry shows the late fee with a "Waive" action, the credit and the deposit held
+
+### Requirement: Create a lease
+The system SHALL let an admin create a lease for a property from a form whose rent starts at the property's rent, whose late fee starts at 5% of that rent (rounded to the cent) until the admin edits the late fee, whose grace days start at 5, and whose deposit starts empty.
+
+#### Scenario: Prefilled rent
+- **WHEN** an admin opens the new-lease form for a property with rent 1200
+- **THEN** the rent field shows 1200, the late fee 60.00 and the grace days 5, and each can be changed
+
+#### Scenario: Rent changed before the late fee
+- **WHEN** the admin changes the rent to 1300 without having edited the late fee
+- **THEN** the late fee field shows 65.00
+
+#### Scenario: Unknown property
+- **WHEN** the property does not exist
+- **THEN** the page responds 404
+
+### Requirement: Edit a lease
+The system SHALL let an admin change a lease's rent, dates, tenants, deposit and late-fee terms, applying the same validation, account creation, conflict and overlap rules as creating one.
+
+#### Scenario: Add a tenant
+- **WHEN** an admin adds a new email to an existing lease
+- **THEN** an account is created for it, it is put on the lease and it gets the welcome email
+
+#### Scenario: Remove a tenant
+- **WHEN** an admin removes one of two tenants
+- **THEN** the removed user's account is kept and they are no longer on the lease
+
+#### Scenario: Remove the last tenant
+- **WHEN** an admin removes every tenant
+- **THEN** nothing is saved and the form shows "A lease needs at least one tenant."
+
+#### Scenario: Change the rent
+- **WHEN** an admin changes the rent
+- **THEN** every month is charged the new (prorated) rent, amounts already recorded against each month stay recorded, and any month now paid beyond its charge adds to the lease's credit
+
+#### Scenario: Change the dates
+- **WHEN** an admin moves the start date from 2026-10-01 to 2026-10-15
+- **THEN** October is charged for 17 of 31 days and is due on 2026-10-15
+
+### Requirement: Delete a lease
+The system SHALL let an admin delete a lease that has no recorded rent, deposit or late-fee payments, removing it and its document, and SHALL refuse to delete a lease with any of them.
+
+#### Scenario: No payments
+- **WHEN** an admin deletes a lease with no payment history
+- **THEN** the lease and its document are removed
+
+#### Scenario: Has payments
+- **WHEN** an admin deletes a lease that has recorded payments
+- **THEN** the response is 409, nothing is removed and the admin is told to set an end date instead
+
+#### Scenario: Has only a deposit payment
+- **WHEN** an admin deletes an upcoming lease whose only payment is toward its deposit
+- **THEN** the response is 409 and nothing is removed
+
+### Requirement: Tenant lease card
+The system SHALL show a tenant, on their dashboard, a read-only card for each of their current and upcoming leases with the property address, dates, monthly rent, the other tenants' names, a link to the document if there is one, the deposit (amount, due date, paid and held) if there is one, the late fee and grace days, and any credit.
+
+#### Scenario: Current lease
+- **WHEN** a tenant with a current lease that has a document opens the dashboard
+- **THEN** the card shows the address, dates, rent, the other tenants' names and a document link
+
+#### Scenario: Month to month
+- **WHEN** the lease has no end date
+- **THEN** the card says it is month to month
+
+#### Scenario: No lease
+- **WHEN** a tenant has no current or upcoming lease
+- **THEN** the dashboard says no lease is on file
+
+#### Scenario: Deposit and late-fee terms
+- **WHEN** the lease has a $1,000.00 deposit of which $400.00 is paid, a $75.00 late fee and 5 grace days
+- **THEN** the card shows the deposit $1,000.00 with $400.00 paid and held, and says a $75.00 late fee applies to rent unpaid 5 days after it is due
