@@ -116,7 +116,11 @@ export async function loadTenantLeases(
 					endDate: lease.endDate,
 					status: leaseStatus(lease, today),
 					...(others && { otherTenants: others.map((t) => t.name || 'A tenant') }),
-					hasDocument: Boolean(lease.document)
+					hasDocument: Boolean(lease.document),
+					deposit: lease.deposit ?? null,
+					lateFee: lease.lateFee,
+					graceDays: lease.graceDays,
+					lateFeesFrom: lease.lateFeesFrom
 				},
 				property
 			};

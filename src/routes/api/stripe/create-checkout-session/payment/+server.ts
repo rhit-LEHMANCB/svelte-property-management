@@ -5,7 +5,8 @@ import { adminDB } from '$lib/server/admin';
 import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 import { getUserDataOrError } from '$lib/server/authHelpers';
 import { getUserIdOrError } from '$lib/server/authHelpers';
-import { loadLeaseBalance } from '$lib/server/balance';
+import { loadLeaseLedger } from '$lib/server/balance';
+import { allocate, allocationParts } from '$lib/server/billing';
 import type { LeaseDoc } from '$lib/server/leaseDates';
 import { propertyAddress } from '$lib/server/leases';
 
@@ -36,14 +37,39 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		throw error(403, 'You can only pay for a lease you are on.');
 	}
 
-	const { balanceCents } = await loadLeaseBalance(leaseId, lease);
-	if (amountCents > balanceCents) {
+	const ledger = await loadLeaseLedger(leaseId, lease);
+	if (amountCents > ledger.totalCents) {
 		throw error(400, 'Amount is greater than the balance owed');
 	}
 
 	const propertyData = (await adminDB.collection('properties').doc(lease.propertyId).get()).data();
+	const where = propertyData
+		? `${propertyAddress(propertyData)}, ${propertyData.state}`
+		: 'your lease';
 
+	// The same split the webhook applies: late fees, then the deposit, then rent. The webhook
+	// recomputes it when the payment is recorded, so the lines describe the intent at checkout.
+	const parts = allocationParts(allocate(ledger, lease, amountCents));
 	const feeCents = Math.round(amountCents * 0.029 + 30);
+
+	const line = (name: string, description: string, unit_amount: number) => ({
+		price_data: { currency: 'usd', product_data: { name, description }, unit_amount },
+		quantity: 1
+	});
+	const lineItems = [
+		...(parts.lateFeeCents > 0
+			? [line('Late Fee', `Late fee for ${where}`, parts.lateFeeCents)]
+			: []),
+		...(parts.depositCents > 0
+			? [line('Security Deposit', `Security deposit for ${where}`, parts.depositCents)]
+			: []),
+		...(parts.rentCents > 0 ? [line('Rent', `Rent payment for ${where}`, parts.rentCents)] : []),
+		line(
+			'Transaction Fee',
+			'Transaction fee for one-time payment. Set up auto-pay to waive this fee.',
+			feeCents
+		)
+	];
 
 	const session = await stripe.checkout.sessions.create({
 		customer: userData.stripeID,
@@ -51,41 +77,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		payment_intent_data: {
 			setup_future_usage: 'on_session'
 		},
-		line_items: [
-			{
-				price_data: {
-					currency: 'usd',
-					product_data: {
-						name: 'Rent',
-						description: `Rent payment for ${propertyData ? `${propertyAddress(propertyData)}, ${propertyData.state}` : 'your lease'}`
-					},
-					unit_amount: amountCents
-				},
-				// For metered billing, do not pass quantity
-				quantity: 1
-			},
-			{
-				price_data: {
-					currency: 'usd',
-					product_data: {
-						name: 'Transaction Fee',
-						description: `Transaction fee for one-time payment. Set up auto-pay to waive this fee.`
-					},
-					unit_amount: feeCents
-				},
-				// For metered billing, do not pass quantity
-				quantity: 1
-			}
-		],
+		line_items: lineItems,
 		mode: 'payment',
 		invoice_creation: {
 			enabled: true,
 			invoice_data: {
 				metadata: {
-					// The webhook records the payment against this lease, oldest unpaid month first.
+					// The webhook records the payment against this lease: late fees, then the deposit, then
+					// the oldest unpaid rent. `rentCents` is kept for invoices read by older code.
 					leaseID: leaseId,
 					propertyID: lease.propertyId,
-					rentCents: String(amountCents),
+					rentCents: String(parts.rentCents),
+					depositCents: String(parts.depositCents),
+					lateFeeCents: String(parts.lateFeeCents),
 					feeCents: String(feeCents)
 				}
 			}

@@ -5,8 +5,15 @@ import { stripe } from '$lib/server/stripe';
 import type { Stripe } from 'stripe';
 import { adminDB } from '$lib/server/admin';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
-import { allocatePayment } from '$lib/server/payments';
-import { leaseMonths, loadHistories } from '$lib/server/balance';
+import { depositRef, loadLedgerRecords } from '$lib/server/balance';
+import {
+	allocate,
+	computeLedger,
+	monthCharge,
+	monthPaidCents,
+	toCents,
+	type MonthEntry
+} from '$lib/server/billing';
 import { businessToday, leaseStatus, type LeaseDoc } from '$lib/server/leaseDates';
 import { leasesOfTenant } from '$lib/server/leases';
 
@@ -14,17 +21,27 @@ const wholeCents = (value: string | undefined) =>
 	value !== undefined && /^\d+$/.test(value) ? Number(value) : undefined;
 
 /**
- * The rent and fee of a paid invoice, in cents. Invoices created by the app carry both in their
- * metadata; invoices from before that fall back to the line items by description.
+ * What a paid invoice paid, in cents, without the transaction fee. Invoices created by the app carry
+ * the parts in their metadata; ones from before deposits and late fees carry only `rentCents` and
+ * are all rent (`rentOnly`); older ones fall back to the line items by description.
  */
 function readAmounts(invoice: Stripe.Invoice) {
-	const rentCents = wholeCents(invoice.metadata?.rentCents);
-	if (rentCents) {
-		return { rentCents, feeCents: wholeCents(invoice.metadata?.feeCents) };
+	const metadata = invoice.metadata ?? {};
+	const feeCents = wholeCents(metadata.feeCents);
+	const rentCents = wholeCents(metadata.rentCents);
+	const depositCents = wholeCents(metadata.depositCents);
+	const lateFeeCents = wholeCents(metadata.lateFeeCents);
+	if (depositCents !== undefined || lateFeeCents !== undefined) {
+		return {
+			totalCents: (rentCents ?? 0) + (depositCents ?? 0) + (lateFeeCents ?? 0),
+			feeCents,
+			rentOnly: false
+		};
 	}
+	if (rentCents) return { totalCents: rentCents, feeCents, rentOnly: true };
 	const line = (description: string) =>
 		invoice.lines.data.find((l) => l.description === description)?.amount;
-	return { rentCents: line('Rent'), feeCents: line('Transaction Fee') };
+	return { totalCents: line('Rent'), feeCents: line('Transaction Fee'), rentOnly: true };
 }
 
 /**
@@ -83,9 +100,9 @@ export const POST: RequestHandler = async ({ request }) => {
 				break;
 			}
 
-			const { rentCents, feeCents } = readAmounts(invoice);
-			if (!rentCents) {
-				console.error('Could not find rent payment amount');
+			const { totalCents, feeCents, rentOnly } = readAmounts(invoice);
+			if (!totalCents) {
+				console.error('Could not find the payment amount');
 				break;
 			}
 
@@ -95,7 +112,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				console.error(
 					`UNRECORDED PAYMENT: ${reason}. invoice=${invoice.id} customer=${
 						typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
-					} lease=${invoice.metadata?.leaseID ?? '-'} property=${invoice.metadata?.propertyID ?? '-'} rentCents=${rentCents} feeCents=${feeCents ?? '-'}`
+					} lease=${invoice.metadata?.leaseID ?? '-'} property=${invoice.metadata?.propertyID ?? '-'} totalCents=${totalCents} feeCents=${feeCents ?? '-'}`
 				);
 
 			// Any failure below responds 500 so that Stripe redelivers the event. Everything is read and
@@ -123,38 +140,82 @@ export const POST: RequestHandler = async ({ request }) => {
 						return 'unknown-lease';
 					}
 
-					// A payment clears the oldest unpaid months first, the same order the balance uses.
-					const billing = leaseMonths(lease);
-					const histories = await loadHistories(leaseRef, billing, eventDate.toDate(), (ref) =>
-						tx.get(ref)
-					);
-					const allocations = allocatePayment({
-						rent: lease.rent,
-						...billing,
-						histories,
-						now: eventDate.toDate(),
-						amountCents: rentCents
+					// The payment goes to late fees, then the deposit, then the oldest unpaid rent, against
+					// what the lease owed when the invoice was created.
+					const now = eventDate.toDate();
+					const records = await loadLedgerRecords(leaseRef, lease, now, {
+						doc: (ref) => tx.get(ref),
+						collection: (ref) => tx.get(ref)
 					});
+					const ledger = computeLedger({ lease, ...records, now });
+					const allocation = allocate(ledger, lease, totalCents, { rentOnly });
 
-					// One entry per year document; the fee is recorded once, on the first transaction.
-					const years = new Map<string, Record<string, unknown>>();
-					allocations.forEach((a, index) => {
-						const amount = a.cents / 100;
-						const transaction = {
+					// The transaction fee is recorded once, on the first transaction of the payment.
+					let feePending = feeCents !== undefined;
+					const transaction = (cents: number, extra: Record<string, unknown> = {}) => {
+						const entry = {
 							date: eventDate,
-							amount,
-							...(index === 0 && feeCents !== undefined && { fee: feeCents / 100 })
+							amount: cents / 100,
+							...extra,
+							...(feePending && { fee: feeCents! / 100 })
 						};
-						const months = years.get(String(a.month.year)) ?? {};
-						months[a.month.monthName] = {
-							remainingBalance: a.hasEntry
-								? FieldValue.increment(-1 * amount)
-								: (lease.rent * 100 - a.cents) / 100,
-							transactions: FieldValue.arrayUnion(transaction)
-						};
-						years.set(String(a.month.year), months);
-					});
+						feePending = false;
+						return entry;
+					};
 
+					for (const part of allocation.lateFees) {
+						const row = ledger.lateFees.find((f) => f.month.key === part.month.key)!;
+						tx.set(
+							leaseRef.collection('late_fees').doc(part.month.key),
+							{
+								amount: row.amountCents / 100,
+								paid: (row.paidCents + part.cents) / 100,
+								transactions: FieldValue.arrayUnion(
+									transaction(part.cents, { invoiceId: invoice.id ?? null })
+								)
+							},
+							{ merge: true }
+						);
+					}
+
+					if (allocation.depositCents > 0) {
+						tx.set(
+							depositRef(leaseRef),
+							{
+								paid: (ledger.deposit.paidCents + allocation.depositCents) / 100,
+								transactions: FieldValue.arrayUnion(
+									transaction(allocation.depositCents, { invoiceId: invoice.id ?? null })
+								)
+							},
+							{ merge: true }
+						);
+					}
+
+					// Rent: one entry per month, grouped by year document. `remainingBalance` is what the
+					// month still owes after this payment; the transactions are the record.
+					const rentCents = toCents(lease.rent);
+					const years = new Map<string, Record<string, unknown>>();
+					for (const part of allocation.rent) {
+						const year = String(part.month.year);
+						const entry = records.histories[year]?.[part.month.monthName] as MonthEntry | undefined;
+						const paidBefore = monthPaidCents(entry, rentCents);
+						const charge = monthCharge(lease, part.month);
+						const added: Record<string, unknown>[] = [];
+						// An entry from before transactions were the record keeps its paid amount as one.
+						const legacy =
+							paidBefore > 0 &&
+							!(entry?.transactions ?? []).some(
+								(t) => typeof t.amount === 'number' && t.amount !== 0
+							);
+						if (legacy) added.push({ amount: paidBefore / 100, legacy: true });
+						added.push(transaction(part.cents));
+						const months = years.get(year) ?? {};
+						months[part.month.monthName] = {
+							remainingBalance: (charge - paidBefore - part.cents) / 100,
+							transactions: FieldValue.arrayUnion(...added)
+						};
+						years.set(year, months);
+					}
 					for (const [year, months] of years) {
 						tx.set(leaseRef.collection('payment_history').doc(year), months, { merge: true });
 					}

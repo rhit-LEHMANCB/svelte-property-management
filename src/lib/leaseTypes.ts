@@ -47,4 +47,9 @@ export type TenantLease = {
 	 */
 	otherTenants?: string[];
 	hasDocument: boolean;
+	/** The security deposit in dollars and its due date, or null for none. */
+	deposit: { amount: number; dueDate: string } | null;
+	lateFee?: number;
+	graceDays?: number;
+	lateFeesFrom?: string;
 };

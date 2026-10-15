@@ -2,22 +2,22 @@
 
 ## 1. Lease billing terms in the data model
 
-- [ ] 1.1 Add `deposit: { amount, dueDate } | null`, `lateFee`, `graceDays` and `lateFeesFrom` to `LeaseDoc` (`src/lib/server/leaseDates.ts`) and types for the `late_fees/{YYYY-MM}` and `deposit/ledger` documents; verify `npm run check` passes
-- [ ] 1.2 Add migration `migrations/0003-lease-billing-terms.ts` (no deposit, late fee 5% of rent, 5 grace days, `lateFeesFrom` = run date; skip leases that already have `lateFee`; undo steps); verify `tests/unit/migrations.test.ts` passes, with new cases for a fresh lease, a re-run and an already-migrated lease
+- [x] 1.1 Add `deposit: { amount, dueDate } | null`, `lateFee`, `graceDays` and `lateFeesFrom` to `LeaseDoc` (`src/lib/server/leaseDates.ts`) and types for the `late_fees/{YYYY-MM}` and `deposit/ledger` documents; verify `npm run check` passes
+- [x] 1.2 Add migration `migrations/0003-lease-billing-terms.ts` (no deposit, late fee 5% of rent, 5 grace days, `lateFeesFrom` = run date; skip leases that already have `lateFee`; undo steps); verify `tests/unit/migrations.test.ts` passes, with new cases for a fresh lease, a re-run and an already-migrated lease
 
 ## 2. Billing ledger
 
-- [ ] 2.1 Add day-count proration in `src/lib/server/billing.ts` (charge per month, due dates: start date for the first month, the 1st after); verify unit tests in `tests/unit/billing.test.ts` for the Oct 15–Mar 14, single-month, leap-year and whole-month scenarios
-- [ ] 2.2 Compute paid per month from `transactions`, with the legacy `rent − remainingBalance` fallback, and the credit pool applied oldest first; verify unit tests for the recomputed existing lease ($677.42 credit), credit larger than owed, and a legacy entry
-- [ ] 2.3 Derive late fees (due date ≥ `lateFeesFrom`, deadline = due + grace, on-time payments by transaction date, credit counts as on time, fixed `amount` once recorded, waivers); verify unit tests for unpaid after grace, paid within grace, paid after the fee, before the start date, waived, and fee 0
-- [ ] 2.4 Compute deposit owed, paid, held and settlement state ("to settle" when ended and unsettled or mismatched); verify unit tests for upcoming, partial, settled and paid-after-settlement
-- [ ] 2.5 Compute totals, the rent, deposit and late-fee breakdown, and the earliest due date; replace `computeBalance` and `loadLeaseBalance` callers with a `loadLeaseLedger` that also reads `late_fees` and `deposit/ledger`; verify existing balance tests are updated and `npm run test:unit` passes
-- [ ] 2.6 Add `allocate(ledger, amountCents)` (late fees oldest first, then deposit, then rent oldest first, leftover to the last rent month); verify unit tests for the $600 split example and a waived fee
+- [x] 2.1 Add day-count proration in `src/lib/server/billing.ts` (charge per month, due dates: start date for the first month, the 1st after); verify unit tests in `tests/unit/billing.test.ts` for the Oct 15–Mar 14, single-month, leap-year and whole-month scenarios
+- [x] 2.2 Compute paid per month from `transactions`, with the legacy `rent − remainingBalance` fallback, and the credit pool applied oldest first; verify unit tests for the recomputed existing lease ($677.42 credit), credit larger than owed, and a legacy entry
+- [x] 2.3 Derive late fees (due date ≥ `lateFeesFrom`, deadline = due + grace, on-time payments by transaction date, credit counts as on time, fixed `amount` once recorded, waivers); verify unit tests for unpaid after grace, paid within grace, paid after the fee, before the start date, waived, and fee 0
+- [x] 2.4 Compute deposit owed, paid, held and settlement state ("to settle" when ended and unsettled or mismatched); verify unit tests for upcoming, partial, settled and paid-after-settlement
+- [x] 2.5 Compute totals, the rent, deposit and late-fee breakdown, and the earliest due date; replace `computeBalance` and `loadLeaseBalance` callers with a `loadLeaseLedger` that also reads `late_fees` and `deposit/ledger`; verify existing balance tests are updated and `npm run test:unit` passes
+- [x] 2.6 Add `allocate(ledger, amountCents)` (late fees oldest first, then deposit, then rent oldest first, leftover to the last rent month); verify unit tests for the $600 split example and a waived fee
 
 ## 3. Checkout and webhook
 
-- [ ] 3.1 Build checkout line items from `allocate` ("Late Fee", "Security Deposit", "Rent" when greater than 0, "Transaction Fee" on the total) and metadata `lateFeeCents`, `depositCents`, `rentCents`, `feeCents`; cap at the ledger total; verify handler tests in `tests/handlers/rent-payments.test.ts` for split, rent-only and over-balance
-- [ ] 3.2 Rewrite webhook recording to recompute the ledger in the transaction and write `payment_history`, `late_fees` and `deposit/ledger` from `allocate`, setting `remainingBalance` to charge minus all paid; pre-change invoices go to rent only; verify handler tests for the split, a waived fee before recording, a redelivery, a legacy invoice and a write failure
+- [x] 3.1 Build checkout line items from `allocate` ("Late Fee", "Security Deposit", "Rent" when greater than 0, "Transaction Fee" on the total) and metadata `lateFeeCents`, `depositCents`, `rentCents`, `feeCents`; cap at the ledger total; verify handler tests in `tests/handlers/rent-payments.test.ts` for split, rent-only and over-balance
+- [x] 3.2 Rewrite webhook recording to recompute the ledger in the transaction and write `payment_history`, `late_fees` and `deposit/ledger` from `allocate`, setting `remainingBalance` to charge minus all paid; pre-change invoices go to rent only; verify handler tests for the split, a waived fee before recording, a redelivery, a legacy invoice and a write failure
 
 ## 4. Leases: form, delete, admin actions
 

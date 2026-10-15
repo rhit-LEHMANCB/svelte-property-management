@@ -41,7 +41,8 @@ describe('access-control: tenant property context (authenticated layout)', () =>
 				startDate: '2020-01-01',
 				endDate: null,
 				status: 'current',
-				hasDocument: true
+				hasDocument: true,
+				deposit: null
 			}
 		]);
 	});
