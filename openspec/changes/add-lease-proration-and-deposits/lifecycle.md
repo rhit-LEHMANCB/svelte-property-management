@@ -1,7 +1,7 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 2 Amendment 1 proposed, waiting for Gate A
+- Stage: 3 Implement (amendment 1)
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 1 of 5
 - QA cycle: 1 of 3
@@ -77,6 +77,8 @@ The user chose to hold production PR #157 and move late fees to a daily schedule
 ## Gate A
 Approved: yes, 2026-10-15 (by the user in session, after the proposal and preflight were presented)
 Accepted preflight gaps: none
+
+Amendment 1: approved 2026-10-15 by the user in session. Accepted gaps: `JOBS_SECRET` is not yet in the GitHub environments, and the Cloud Scheduler API is disabled with no job in either project. Both are human rollout steps before production; dev QA runs the job as an admin.
 
 ## Preflight
 Run 2026-10-15 on `claude/add-lease-proration-and-deposits` (develop merged in at 0efda52, which has the add-leases archive).
