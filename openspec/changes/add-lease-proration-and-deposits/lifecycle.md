@@ -1,10 +1,10 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 6 QA (amendment 1): PR #158 merged 2026-10-15 (7d1b3dc); waiting for the dev deploy
+- Stage: 6 QA cycle 2 running (amendment 1; dev deploy run 38771381143 on 7d1b3dc succeeded 2026-10-15 16:49 UTC)
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
-- QA cycle: 1 of 3
+- QA cycle: 2 of 3
 - Started: 2026-10-15
 
 ## Interview summary
@@ -147,7 +147,7 @@ Implementation notes: the tenant refusal status in the two new admin routes is 4
 QA report: add-lease-proration-and-deposits
 
 - Deployed commit: `1763b66` on `develop` (dev site: https://lehman-realty-dev.web.app)
-- QA cycle: 1 of 3, by a fresh independent QA agent (Sonnet), 2026-10-15, about 04:20 to 05:30 UTC
+- QA cycle: 2 of 3, by a fresh independent QA agent (Sonnet), 2026-10-15, about 04:20 to 05:30 UTC
 - Result: **PASS**, 0 failing scenarios. Of 87 changed scenarios: 54 pass (some partly), 33 not verified on the dev site.
 - Evidence branch: [`qa-evidence/add-lease-proration-and-deposits`](https://github.com/rhit-LEHMANCB/svelte-property-management/tree/qa-evidence/add-lease-proration-and-deposits). It holds 73 screenshots under `openspec/changes/add-lease-proration-and-deposits/qa/screenshots/` and the QA specs under `tests/qa/add-lease-proration-and-deposits/`.
 - Stripe test mode and the dev webhook both worked. Four test-card payments were recorded (a deposit and rent split, a partial deposit, and a deposit paid after settlement).
