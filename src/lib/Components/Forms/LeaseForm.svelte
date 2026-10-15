@@ -53,13 +53,11 @@
 	}
 
 	// svelte-ignore state_referenced_locally
-	let lateFeeEdited = $state(!lateFeeFollowsRent);
-	$effect(() => {
-		const rent = $form.rent;
-		if (!lateFeeEdited && typeof rent === 'number' && Number.isFinite(rent) && rent > 0) {
-			$form.lateFee = defaultLateFee(rent);
-		}
-	});
+	let lateFeeEdited = !lateFeeFollowsRent;
+	function rentChanged(event: Event) {
+		const rent = (event.currentTarget as HTMLInputElement).valueAsNumber;
+		if (!lateFeeEdited && Number.isFinite(rent) && rent > 0) $form.lateFee = defaultLateFee(rent);
+	}
 
 	async function saveAnyway() {
 		$form.confirmOverlap = true;
@@ -133,6 +131,7 @@
 					<input
 						name="rent"
 						bind:value={$form.rent}
+						oninput={rentChanged}
 						class="input"
 						class:input-error={$errors.rent}
 						aria-invalid={$errors.rent ? 'true' : undefined}
@@ -193,7 +192,7 @@
 						>{/if}
 				</label>
 				<label class="label">
-					<span>Deposit due <span class="opacity-70">(empty: the start date)</span></span>
+					<span>Deposit due <span class="opacity-70">(empty: when the lease begins)</span></span>
 					<input
 						name="depositDueDate"
 						bind:value={$form.depositDueDate}

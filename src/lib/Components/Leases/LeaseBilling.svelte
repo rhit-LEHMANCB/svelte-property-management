@@ -77,8 +77,10 @@
 	<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
 		<dt class="opacity-70">Owed</dt>
 		<dd>
-			{money(billing.totalCents)}{#if billing.totalCents > 0 && billing.dueDate}
-				<span class="opacity-70"> (oldest due {billing.dueDate})</span>{/if}
+			{money(billing.totalCents)}
+			{#if billing.totalCents > 0 && billing.dueDate}
+				<span class="opacity-70">(due {billing.dueDate})</span>
+			{/if}
 		</dd>
 		{#if billing.creditCents > 0}
 			<dt class="opacity-70">Credit</dt>
