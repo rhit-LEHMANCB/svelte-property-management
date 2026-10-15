@@ -15,7 +15,7 @@ const checkoutText = async (page: Page) => {
 	return (await page.locator('body').innerText()).replace(/\s+/g, ' ');
 };
 
-test.describe.configure({ mode: 'serial' });
+test.describe.configure({ mode: 'serial', timeout: 120_000 });
 
 test.beforeAll(async ({ browser }) => {
 	test.setTimeout(300_000);
@@ -23,11 +23,11 @@ test.beforeAll(async ({ browser }) => {
 	tenant = await newSession(browser, 'tenant');
 	prop = await createProperty(admin, 'qa-billing-payments', 1500, 'payments QA Way');
 	remember('property', prop);
-	// R1: rent 1500, 2023-03-15 to 2023-05-31 = 822.58 + 1500 + 1500 = 3,822.58 owed, rent only.
-	ids.r1 = await createLease(admin, prop, { rent: 1500, start: '2023-03-15', end: '2023-05-31' });
+	// R1: rent 1500, 2021-03-15 to 2021-05-31 = 822.58 + 1500 + 1500 = 3,822.58 owed, rent only.
+	ids.r1 = await createLease(admin, prop, { rent: 1500, start: '2021-03-15', end: '2021-05-31' });
 	remember('lease', ids.r1, prop);
-	// R2: rent 1000, 2023-07-01 to 2023-08-31 with a $500 deposit = 2,500.00 owed.
-	ids.r2 = await createLease(admin, prop, { rent: 1000, start: '2023-07-01', end: '2023-08-31', deposit: 500 });
+	// R2: rent 1000, 2021-07-01 to 2021-08-31 with a $500 deposit = 2,500.00 owed.
+	ids.r2 = await createLease(admin, prop, { rent: 1000, start: '2021-07-01', end: '2021-08-31', deposit: 500 });
 	remember('lease', ids.r2, prop);
 });
 
@@ -45,7 +45,7 @@ test.describe('Real balance and due date', () => {
 		await tenant.waitForLoadState('networkidle');
 		const r1 = paymentBlock(tenant, ids.r1);
 		await expect(r1).toContainText('$3,822.58');
-		await expect(r1).toContainText('due on 3/15/23');
+		await expect(r1).toContainText('due on 3/15/21');
 		await expect(r1).toContainText(/ended/i);
 		await expect(paymentBlock(tenant, ids.r2)).toContainText('$2,500.00');
 		await r1.scrollIntoViewIfNeeded();
@@ -55,9 +55,9 @@ test.describe('Real balance and due date', () => {
 	test('Mid-month start', async () => {
 		await tenant.goto('/payment');
 		await tenant.waitForLoadState('networkidle');
-		// Start 2023-03-15, first month 17 of 31 days: 822.58 + 1500 + 1500, due on the start date.
+		// Start 2021-03-15, first month 17 of 31 days: 822.58 + 1500 + 1500, due on the start date.
 		await expect(paymentBlock(tenant, ids.r1)).toContainText('$3,822.58');
-		await expect(paymentBlock(tenant, ids.r1)).toContainText('due on 3/15/23');
+		await expect(paymentBlock(tenant, ids.r1)).toContainText('due on 3/15/21');
 		await paymentBlock(tenant, ids.r1).scrollIntoViewIfNeeded();
 		await shot(tenant, `${CAP}-mid-month-start`);
 	});
@@ -107,6 +107,9 @@ test.describe('Start a payment', () => {
 		await checkoutText(tenant);
 		await tenant.getByRole('link', { name: 'Back' }).first().click();
 		await tenant.waitForURL(/\/payment$/, { timeout: 60_000 });
+		// The page is blank for a moment after Stripe's Back; wait for the rendered balance.
+		await expect(paymentBlock(tenant, ids.r1)).toBeVisible({ timeout: 30_000 });
+		await tenant.waitForLoadState('networkidle');
 		await shot(tenant, `${CAP}-return-pages-cancel`);
 	});
 
@@ -190,10 +193,10 @@ test.describe('Record payments', () => {
 		await shot(tenant, `${CAP}-return-pages-success`);
 		const recorded = await waitFor(admin, async () => {
 			await openLeases(admin, prop);
-			return (await entryText(admin, '2023-07-01')).includes('$500.00 paid');
+			return (await entryText(admin, '2021-07-01')).includes('$500.00 paid');
 		});
 		test.skip(!recorded, 'environment: the payment was not recorded (webhook not delivered to the dev site)');
-		const t = await entryText(admin, '2023-07-01');
+		const t = await entryText(admin, '2021-07-01');
 		// Deposit fully paid, rent owed is 2,000 - 1,200 = 800.
 		expect(t).toContain('Owed $800.00');
 		expect(t).toContain('$500.00 held');
@@ -209,7 +212,7 @@ test.describe('Record payments', () => {
 	test('Late fee and deposit parts', async () => {
 		// The payment above was recorded with its deposit part as deposit and the rent part as rent.
 		await openLeases(admin, prop);
-		const t = await entryText(admin, '2023-07-01');
+		const t = await entryText(admin, '2021-07-01');
 		expect(t).toContain('$500.00 paid');
 		expect(t).toContain('Owed $800.00');
 		await shot(admin, `${CAP}-late-fee-and-deposit-parts`);

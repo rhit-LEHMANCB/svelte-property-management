@@ -220,7 +220,10 @@ export function paymentBlock(page: Page, leaseId: string) {
 export async function startCheckout(page: Page, leaseId: string, amount: number | string) {
 	await page.goto('/payment');
 	await page.waitForLoadState('networkidle');
-	await paymentBlock(page, leaseId).getByRole('button', { name: /Make a Payment/ }).click();
+	const button = paymentBlock(page, leaseId).getByRole('button', { name: /Make a Payment/ });
+	await expect(button).toBeVisible({ timeout: 30_000 });
+	await button.scrollIntoViewIfNeeded();
+	await button.click();
 	await page.getByRole('dialog').locator('input').fill(String(amount));
 	await page.getByRole('button', { name: 'Submit' }).click();
 	await page.waitForURL(/checkout\.stripe\.com/, { timeout: 60_000 });

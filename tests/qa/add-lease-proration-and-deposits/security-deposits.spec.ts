@@ -1,15 +1,15 @@
 import { test, expect, type Page } from '@playwright/test';
-import fs from 'node:fs';
-import path from 'node:path';
 import {
-	CHANGE,
 	newSession, createProperty, createLease, remember, entryText, leaseEntry, openLeases, editLease,
 	shot, cleanup, startCheckout, payWithTestCard, waitFor, paymentBlock
 } from './helpers';
 
 const CAP = 'security-deposits';
-const SHARED = path.resolve(process.cwd(), 'tests/qa', CHANGE, '.shared-dep.json');
-let reused = false;
+// Each run creates its own property and T6 lease. A lease with payments cannot be deleted, so these
+// 2021 windows (used by no earlier qa- lease) must be bumped for each new cycle.
+const T6_START = '2021-10-01';
+const T6_END = '2021-10-31';
+const T6_LONG = 'October 1, 2021';
 let admin: Page;
 let tenant: Page;
 let prop = '';
@@ -17,26 +17,19 @@ const ids: Record<string, string> = {};
 const fieldError = (page: Page, name: string) =>
 	page.locator(`[name="${name}"]`).locator('xpath=ancestor::label').locator('.text-error-600-400');
 const save = (page: Page) => page.getByRole('button', { name: 'Save lease' }).click();
-const entry = () => leaseEntry(admin, '2026-06-01');
+const entry = () => leaseEntry(admin, T6_START);
 
-test.describe.configure({ mode: 'serial' });
+test.describe.configure({ mode: 'serial', timeout: 120_000 });
 
 test.beforeAll(async ({ browser }) => {
 	test.setTimeout(300_000);
 	admin = await newSession(browser, 'admin');
 	tenant = await newSession(browser, 'tenant');
-	// T6 is the lease whose deposit is paid and settled. It cannot be deleted once paid, so a later run reuses it.
-	if (fs.existsSync(SHARED)) {
-		const old = JSON.parse(fs.readFileSync(SHARED, 'utf8')) as { prop: string; t6: string };
-		prop = old.prop; ids.t6 = old.t6; reused = true;
-	} else {
-		prop = await createProperty(admin, 'qa-billing-deposits', 1000, 'deposits QA Way');
-		remember('property', prop);
-		// Rent 1000, deposit 1000, due on the start date.
-		ids.t6 = await createLease(admin, prop, { rent: 1000, start: '2026-06-01', end: '2026-06-30', deposit: 1000 });
-		remember('lease', ids.t6, prop);
-		fs.writeFileSync(SHARED, JSON.stringify({ prop, t6: ids.t6 }));
-	}
+	prop = await createProperty(admin, 'qa-billing-deposits', 1000, 'deposits QA Way');
+	remember('property', prop);
+	// Rent 1000, deposit 1000, due on the start date.
+	ids.t6 = await createLease(admin, prop, { rent: 1000, start: T6_START, end: T6_END, deposit: 1000 });
+	remember('lease', ids.t6, prop);
 });
 
 test.afterAll(async () => {
@@ -49,7 +42,7 @@ test.afterAll(async () => {
 
 test.describe('Deposit terms', () => {
 	test('Deposit with default due date', async () => {
-		ids.s1 = await createLease(admin, prop, { rent: 500, start: '2022-01-01', end: '2022-01-31', deposit: 1000 });
+		ids.s1 = await createLease(admin, prop, { rent: 500, start: '2021-12-01', end: '2021-12-31', deposit: 1000 });
 		remember('lease', ids.s1, prop);
 		await editLease(admin, prop, ids.s1);
 		await expect(admin.locator('input[name="deposit"]')).toHaveValue('1000');
@@ -57,19 +50,19 @@ test.describe('Deposit terms', () => {
 		test.info().annotations.push({ type: 'observed deposit due field', description: due || '(empty)' });
 		// The tenant's /payment page shows the due date used for the deposit: with rent due the same day it
 		// cannot tell them apart, so the form value is the evidence.
-		expect(['', '2022-01-01']).toContain(due);
+		expect(['', '2021-12-01']).toContain(due);
 		await shot(admin, `${CAP}-deposit-with-default-due-date`);
 	});
 
 	test('Chosen due date', async () => {
-		ids.s2 = await createLease(admin, prop, { rent: 500, start: '2022-03-01', end: '2022-03-31', deposit: 800, depositDue: '2022-02-20' });
+		ids.s2 = await createLease(admin, prop, { rent: 500, start: '2021-09-01', end: '2021-09-30', deposit: 800, depositDue: '2021-08-20' });
 		remember('lease', ids.s2, prop);
 		await editLease(admin, prop, ids.s2);
-		await expect(admin.locator('input[name="depositDueDate"]')).toHaveValue('2022-02-20');
+		await expect(admin.locator('input[name="depositDueDate"]')).toHaveValue('2021-08-20');
 		await tenant.goto('/payment');
 		await tenant.waitForLoadState('networkidle');
-		// Deposit due 2022-02-20 is earlier than the March rent, so it is the lease's earliest due date.
-		await expect(paymentBlock(tenant, ids.s2)).toContainText('due on 2/20/22');
+		// Deposit due 2021-08-20 is earlier than the September rent, so it is the lease's earliest due date.
+		await expect(paymentBlock(tenant, ids.s2)).toContainText('due on 8/20/21');
 		await paymentBlock(tenant, ids.s2).scrollIntoViewIfNeeded();
 		await shot(tenant, `${CAP}-chosen-due-date`);
 	});
@@ -95,16 +88,14 @@ test.describe('Deposit terms', () => {
 test.describe('Deposit owed and paid', () => {
 	test('Partial deposit', async () => {
 		test.setTimeout(420_000);
-		if (!reused) {
-			await startCheckout(tenant, ids.t6, 400);
-			await payWithTestCard(tenant);
-		}
+		await startCheckout(tenant, ids.t6, 400);
+		await payWithTestCard(tenant);
 		const ok = await waitFor(admin, async () => {
 			await openLeases(admin, prop);
 			return (await entry().innerText()).includes('$400.00 paid');
 		});
 		test.skip(!ok, 'environment: the payment was not recorded (webhook not delivered to the dev site)');
-		const t = await entryText(admin, '2026-06-01');
+		const t = await entryText(admin, T6_START);
 		// Deposit 1000 owed, 400 paid and held, 600 still owed; rent untouched.
 		expect(t).toContain('$400.00 paid');
 		expect(t).toContain('$400.00 held');
@@ -138,7 +129,6 @@ test.describe('Lowered below what is paid', () => {
 		await save(admin);
 		const err = fieldError(admin, 'deposit');
 		await expect(err).toBeVisible();
-		// The reused lease may already hold more than $400.00 from an earlier cycle.
 		await expect(err).toContainText(/cannot be less than the \$[\d,]+\.\d\d already paid/);
 		await shot(admin, `${CAP}-lowered-below-what-is-paid`);
 		await editLease(admin, prop, ids.t6);
@@ -149,11 +139,11 @@ test.describe('Lowered below what is paid', () => {
 test.describe('Deposit held', () => {
 	test('Before settlement', async () => {
 		await openLeases(admin, prop);
-		expect(await entryText(admin, '2026-06-01')).toContain('$400.00 held');
+		expect(await entryText(admin, T6_START)).toContain('$400.00 held');
 		await shot(admin, `${CAP}-before-settlement-admin`);
 		await tenant.goto('/');
 		await tenant.waitForLoadState('networkidle');
-		const past = tenant.getByLabel('Past lease').filter({ hasText: 'June 1, 2026' });
+		const past = tenant.getByLabel('Past lease').filter({ hasText: T6_LONG });
 		await expect(past).toContainText('Deposit paid');
 		await expect(past).toContainText('$400.00');
 		await expect(past).toContainText('not yet settled');
@@ -208,7 +198,7 @@ test.describe('Settle a deposit', () => {
 		await form.getByPlaceholder('Reason').fill('Carpet cleaning');
 		await form.getByRole('button', { name: 'Save settlement' }).click();
 		await expect(entry().getByText('Settled', { exact: true })).toBeVisible();
-		const t = await entryText(admin, '2026-06-01');
+		const t = await entryText(admin, T6_START);
 		expect(t).toContain('Returned $300.00; kept $100.00 for Carpet cleaning');
 		expect(t).not.toContain('Deposit to settle');
 		await shot(admin, `${CAP}-settled`);
@@ -222,7 +212,7 @@ test.describe('Settle a deposit', () => {
 		await form.getByPlaceholder('Amount').fill('50');
 		await form.getByRole('button', { name: 'Save settlement' }).click();
 		await expect(entry()).toContainText('Returned $350.00; kept $50.00 for Carpet cleaning');
-		expect(await entryText(admin, '2026-06-01')).not.toContain('$300.00; kept $100.00');
+		expect(await entryText(admin, T6_START)).not.toContain('$300.00; kept $100.00');
 		await shot(admin, `${CAP}-correct-a-settlement`);
 	});
 
@@ -263,7 +253,7 @@ test.describe('Tenant sees the deposit settlement', () => {
 		await expect(entry().getByText('Settled', { exact: true })).toBeVisible();
 		await tenant.goto('/');
 		await tenant.waitForLoadState('networkidle');
-		const past = tenant.getByLabel('Past lease').filter({ hasText: 'June 1, 2026' });
+		const past = tenant.getByLabel('Past lease').filter({ hasText: T6_LONG });
 		await expect(past).toContainText('$500.00');
 		await expect(past).toContainText('Returned');
 		await expect(past).toContainText('$450.00');

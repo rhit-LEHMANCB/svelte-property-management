@@ -2,7 +2,9 @@
  "properties": [
   "gCp72oENBV5tyIgQLfY1",
   "Dbqj4T31aYytM4b0Wovg",
-  "bcGBptGzNWg0H4WXTNeZ"
+  "bcGBptGzNWg0H4WXTNeZ",
+  "oMXEHgZYkpGHNQk8B1vu",
+  "s3cIb4qjfvXlK47VQUj9"
  ],
  "leases": [
   {
@@ -24,6 +26,18 @@
   {
    "id": "7cfJ2bz0oBJkrqDaL5WD",
    "propertyId": "aDWmJZi4n5CVKqzHpq2N"
+  },
+  {
+   "id": "x38pJw0O3L9cWdWiKphW",
+   "propertyId": "oMXEHgZYkpGHNQk8B1vu"
+  },
+  {
+   "id": "k28Qa0V7H8Vl9QJLyqm0",
+   "propertyId": "s3cIb4qjfvXlK47VQUj9"
+  },
+  {
+   "id": "s9jYAxA2l49mtWnuYEqK",
+   "propertyId": "sPlqucfamqVMa33Bmj67"
   }
  ]
 }

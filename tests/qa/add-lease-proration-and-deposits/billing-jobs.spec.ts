@@ -192,25 +192,29 @@ test.describe('Run and repeat', () => {
 		await shot(admin, `${CAP}-summary`, false);
 	});
 
+	// The daily route may be called as admin at most 3 times per QA cycle: the baseline above plus
+	// this one pair of simultaneous calls. The pair is both the repeat run and the overlapping calls.
+	let pair: { status: number; body: any }[] = [];
 	test('Run again the same day', async () => {
-		const r = await runJob(admin);
-		console.log('RUN again', JSON.stringify(r));
-		expect(r.status).toBe(200);
-		expect((r.body as Summary).emailsSent).toBe(0);
-		expect((r.body as Summary).feesCharged).toBe(0);
+		pair = await Promise.all([runJob(admin), runJob(admin)]);
+		console.log('RUN pair', JSON.stringify(pair));
+		const done = pair.filter((x) => x.status === 200);
+		expect(done.length).toBeGreaterThanOrEqual(1);
+		for (const r of done) {
+			expect((r.body as Summary).emailsSent).toBe(0);
+			expect((r.body as Summary).feesCharged).toBe(0);
+		}
 		await admin.goto('/admin/properties');
-		await showJson(admin, 'Run again the same day', r);
+		await showJson(admin, 'Run again the same day', done[0]);
 		await shot(admin, `${CAP}-run-again-the-same-day`, false);
 	});
 
 	test('Overlapping calls', async () => {
-		const [a, b] = await Promise.all([runJob(admin), runJob(admin)]);
-		console.log('RUN overlap', JSON.stringify([a, b]));
-		const statuses = [a.status, b.status].sort();
+		const statuses = pair.map((x) => x.status).sort();
 		expect(statuses.every((x) => x === 200 || x === 409)).toBe(true);
 		test.info().annotations.push({ type: 'statuses', description: statuses.join(',') });
 		await admin.goto('/admin/properties');
-		await showJson(admin, 'Two simultaneous calls', [a, b]);
+		await showJson(admin, 'Two simultaneous calls', pair);
 		await shot(admin, `${CAP}-overlapping-calls`, false);
 	});
 
