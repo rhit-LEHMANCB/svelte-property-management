@@ -70,11 +70,21 @@ describe('lease-billing: Prorated partial months', () => {
 });
 
 describe('lease-billing: Rent due dates', () => {
-	it('Scenario: Mid-month start: owed from the 1st, due on the start date', () => {
+	it('Scenario: Before the first payable day: nothing is owed 8 days before the start', () => {
 		const ledger = computeLedger({
 			lease: lease({ endDate: null }),
 			histories: {},
-			now: on('2026-10-03')
+			now: on('2026-10-07')
+		});
+		expect(ledger.rent).toEqual([]);
+		expect(ledger.totalCents).toBe(0);
+	});
+
+	it('Scenario: Mid-month start: payable 7 days before, due on the start date', () => {
+		const ledger = computeLedger({
+			lease: lease({ endDate: null }),
+			histories: {},
+			now: on('2026-10-08')
 		});
 		expect(ledger.rent).toHaveLength(1);
 		expect(ledger.rent[0]).toMatchObject({ dueDate: '2026-10-15', owedCents: 82258 });
@@ -82,9 +92,18 @@ describe('lease-billing: Rent due dates', () => {
 		expect(ledger.totalCents).toBe(82258);
 	});
 
-	it('Scenario: Later months are due on the 1st', () => {
-		const ledger = computeLedger({ lease: lease(), histories: {}, now: on('2026-11-02') });
-		expect(ledger.rent[1]).toMatchObject({ dueDate: '2026-11-01' });
+	it('Scenario: Later months: November is payable from 2026-10-25 and due on the 1st', () => {
+		expect(
+			computeLedger({ lease: lease(), histories: {}, now: on('2026-10-24') }).rent
+		).toHaveLength(1);
+		const ledger = computeLedger({ lease: lease(), histories: {}, now: on('2026-10-25') });
+		expect(ledger.rent[1]).toMatchObject({ dueDate: '2026-11-01', owedCents: 150000 });
+		expect(ledger.totalCents).toBe(82258 + 150000);
+	});
+
+	it('the end month is the last one, even when the next month is within 7 days', () => {
+		const ledger = computeLedger({ lease: lease(), histories: {}, now: on('2027-03-28') });
+		expect(ledger.rent.at(-1)?.month.key).toBe('2027-03');
 	});
 
 	it('Scenario: Start on the 1st is due on the 1st', () => {
@@ -182,30 +201,73 @@ describe('lease-billing: Late fee charged once per late month', () => {
 			November: { transactions }
 		}
 	});
+	/** November's fee as the daily job records it. */
+	const charged = {
+		'2026-11': { amount: 75, chargedAt: '2026-11-07T11:00:00Z', dueDate: '2026-11-07', paid: 0 }
+	};
 
-	it('Scenario: Unpaid after grace: a $75.00 fee is owed from the day after the grace period', () => {
+	it('Scenario: Before the run: a late month is listed for the job but nothing is owed', () => {
 		const histories = nov([{ amount: 1000, date: ts('2026-11-03') }]);
-		expect(computeLedger({ lease: lease(), histories, now: on('2026-11-06') }).lateFees).toEqual(
-			[]
-		);
+		expect(
+			computeLedger({ lease: lease(), histories, now: on('2026-11-06') }).unchargedLateFees
+		).toEqual([]);
 		const ledger = computeLedger({ lease: lease(), histories, now: on('2026-11-07') });
+		expect(ledger.unchargedLateFees).toEqual([
+			{
+				month: expect.objectContaining({ key: '2026-11' }),
+				dueDate: '2026-11-07',
+				amountCents: 7500
+			}
+		]);
+		expect(ledger.lateFees).toEqual([]);
+		expect(ledger.owed.lateFeesCents).toBe(0);
+	});
+
+	it('Scenario: Unpaid after grace: once charged, the $75.00 fee is owed and no longer listed for the job', () => {
+		const histories = nov([{ amount: 1000, date: ts('2026-11-03') }]);
+		const ledger = computeLedger({
+			lease: lease(),
+			histories,
+			lateFees: charged,
+			now: on('2026-11-07')
+		});
 		expect(ledger.lateFees).toEqual([
 			expect.objectContaining({ dueDate: '2026-11-07', amountCents: 7500, owedCents: 7500 })
 		]);
+		expect(ledger.unchargedLateFees).toEqual([]);
 		expect(ledger.owed).toEqual({ lateFeesCents: 7500, depositCents: 0, rentCents: 50000 });
 	});
 
 	it('Scenario: Paid within grace: no late fee', () => {
 		const histories = nov([{ amount: 1500, date: ts('2026-11-06') }]);
-		expect(computeLedger({ lease: lease(), histories, now: on('2026-11-20') }).lateFees).toEqual(
-			[]
-		);
+		expect(
+			computeLedger({ lease: lease(), histories, now: on('2026-11-20') }).unchargedLateFees
+		).toEqual([]);
+	});
+
+	it('Scenario: Paid late but before the run: still charged', () => {
+		const histories = nov([{ amount: 1500, date: ts('2026-11-07') }]);
+		expect(
+			computeLedger({ lease: lease(), histories, now: on('2026-11-07') }).unchargedLateFees
+		).toHaveLength(1);
 	});
 
 	it('Scenario: Paid after the fee: the fee stays owed', () => {
 		const histories = nov([{ amount: 1500, date: ts('2026-11-10') }]);
-		const ledger = computeLedger({ lease: lease(), histories, now: on('2026-11-20') });
+		const ledger = computeLedger({
+			lease: lease(),
+			histories,
+			lateFees: charged,
+			now: on('2026-11-20')
+		});
 		expect(ledger.owed).toEqual({ lateFeesCents: 7500, depositCents: 0, rentCents: 0 });
+	});
+
+	it('Scenario: Missed run: a later run still finds the month, with its own due date', () => {
+		const ledger = computeLedger({ lease: lease(), histories: nov([]), now: on('2026-11-09') });
+		expect(ledger.unchargedLateFees.map((f) => [f.month.key, f.dueDate])).toEqual([
+			['2026-11', '2026-11-07']
+		]);
 	});
 
 	it('Scenario: Before the late-fee start date: never charged', () => {
@@ -214,7 +276,7 @@ describe('lease-billing: Late fee charged once per late month', () => {
 			histories: {},
 			now: on('2026-12-20')
 		});
-		expect(ledger.lateFees.map((f) => f.month.key)).toEqual(['2026-12']);
+		expect(ledger.unchargedLateFees.map((f) => f.month.key)).toEqual(['2026-12']);
 	});
 
 	it('Scenario: No late fee: a fee of 0 is never charged', () => {
@@ -343,6 +405,9 @@ describe('payment allocation', () => {
 				October: { transactions: [{ amount: 1500, date: ts('2026-10-01') }] },
 				November: { transactions: [{ amount: 1000, date: ts('2026-11-02') }] }
 			}
+		},
+		lateFees: {
+			'2026-11': { amount: 75, chargedAt: '2026-11-07T11:00:00Z', dueDate: '2026-11-07' }
 		},
 		deposit: { paid: 500 },
 		now: on('2026-11-20')
