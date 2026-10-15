@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { renderPasswordResetEmail, renderWelcomeEmail } from '$lib/server/email-templates';
+import {
+	renderDueReminderEmail,
+	renderLateFeeEmail,
+	renderPasswordResetEmail,
+	renderWelcomeEmail
+} from '$lib/server/email-templates';
 
 const LINK = 'https://example.test/reset?mode=resetPassword&oobCode=a"b';
 
@@ -55,5 +60,54 @@ describe('leases: New tenant accounts from a lease (welcome email)', () => {
 
 	it('without a lease the welcome email has no lease sentence', () => {
 		expect(renderWelcomeEmail(LINK).text).not.toContain('Your lease');
+	});
+});
+
+describe('billing-jobs: email templates', () => {
+	it('late-fee notice names the month, fee, address and balance, and links to /payment', () => {
+		const email = renderLateFeeEmail({
+			address: '1 Main St, Terre Haute',
+			monthLabel: 'November 2026',
+			feeCents: 7500,
+			totalOwedCents: 57500,
+			link: 'https://example.test/payment'
+		});
+		expect(email.subject).toBe('Late fee added for November 2026');
+		for (const part of [email.text, email.html]) {
+			expect(part).toContain('$75.00');
+			expect(part).toContain('$575.00');
+			expect(part).toContain('1 Main St, Terre Haute');
+			expect(part).toContain('https://example.test/payment');
+			expect(part).toContain('Lehman Family LLC');
+		}
+	});
+
+	it('reminders say "on <date>" seven days ahead and "today" on the due date', () => {
+		const base = {
+			address: '1 Main St',
+			what: 'Rent for November 2026',
+			amountCents: 150000,
+			dueDate: '2026-11-01',
+			link: 'https://example.test/payment'
+		};
+		expect(renderDueReminderEmail({ ...base, dueToday: false }).subject).toBe(
+			'Rent for November 2026 is due on November 1, 2026'
+		);
+		const today = renderDueReminderEmail({ ...base, dueToday: true });
+		expect(today.subject).toBe('Rent for November 2026 is due today');
+		expect(today.text).toContain('$1,500.00 is still to be paid');
+	});
+
+	it('escapes the address in the HTML', () => {
+		const email = renderDueReminderEmail({
+			address: '<b>1 Main</b>',
+			what: 'Security deposit',
+			amountCents: 100,
+			dueDate: '2026-11-15',
+			dueToday: false,
+			link: 'https://example.test/payment'
+		});
+		expect(email.html).not.toContain('<b>1 Main</b>');
+		expect(email.html).toContain('&lt;b&gt;1 Main&lt;/b&gt;');
 	});
 });

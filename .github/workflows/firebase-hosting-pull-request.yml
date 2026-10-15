@@ -22,6 +22,7 @@ jobs:
       RESEND_API_KEY: '${{ secrets.RESEND_API_KEY }}'
       STRIPE_API_KEY: '${{ secrets.STRIPE_API_KEY }}'
       STRIPE_ENDPOINT_SECRET: '${{ secrets.STRIPE_ENDPOINT_SECRET }}'
+      JOBS_SECRET: '${{ secrets.JOBS_SECRET }}'
       PUBLIC_FRONTEND_URL: '${{ vars.FRONTEND_URL }}'
     steps:
       - uses: actions/checkout@v3

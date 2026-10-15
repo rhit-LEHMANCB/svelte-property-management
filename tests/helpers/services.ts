@@ -44,6 +44,7 @@ const stripe = {
 };
 
 const sendPasswordResetEmail = vi.fn();
+const sendEmail = vi.fn();
 
 /** Stands in for the Firebase password check: only VALID_PASSWORD passes. */
 export const VALID_PASSWORD = 'right-password';
@@ -129,6 +130,7 @@ function reset() {
 		});
 
 	sendPasswordResetEmail.mockReset().mockResolvedValue(undefined);
+	sendEmail.mockReset().mockResolvedValue(undefined);
 	verifyPassword
 		.mockReset()
 		.mockImplementation(async (_email: string, password: string) =>
@@ -162,6 +164,7 @@ export const services = {
 	storage,
 	stripe,
 	sendPasswordResetEmail,
+	sendEmail,
 	verifyPassword,
 	reset
 };

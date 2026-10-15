@@ -97,3 +97,59 @@ ${link}
 Lehman Family LLC`
 	};
 };
+
+const money = (cents: number) =>
+	(cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+/** A late fee the daily billing job charged. */
+export type LateFeeNotice = {
+	address: string;
+	/** `November 2026` */
+	monthLabel: string;
+	feeCents: number;
+	totalOwedCents: number;
+	link: string;
+};
+
+export const renderLateFeeEmail = (notice: LateFeeNotice): EmailContent => {
+	const intro = `A late fee of ${money(notice.feeCents)} was added to your lease at ${notice.address} because the rent for ${notice.monthLabel} was not paid in full by the end of the grace period. Your balance is now ${money(notice.totalOwedCents)}.`;
+	return {
+		subject: `Late fee added for ${notice.monthLabel}`,
+		html: layout(`Late fee for ${notice.monthLabel}`, intro, 'Make a payment', notice.link),
+		text: `Late fee for ${notice.monthLabel}
+
+${intro}
+
+Pay online: ${notice.link}
+
+Lehman Family LLC`
+	};
+};
+
+/** A rent month or deposit coming due (in 7 days) or due today. */
+export type DueReminder = {
+	address: string;
+	/** `Rent for November 2026` or `Security deposit` */
+	what: string;
+	amountCents: number;
+	dueDate: string;
+	dueToday: boolean;
+	link: string;
+};
+
+export const renderDueReminderEmail = (reminder: DueReminder): EmailContent => {
+	const when = reminder.dueToday ? 'today' : `on ${longDate(reminder.dueDate)}`;
+	const subject = `${reminder.what} is due ${when}`;
+	const intro = `${reminder.what} for your lease at ${reminder.address} is due ${when}. ${money(reminder.amountCents)} is still to be paid.`;
+	return {
+		subject,
+		html: layout(subject, intro, 'Make a payment', reminder.link),
+		text: `${subject}
+
+${intro}
+
+Pay online: ${reminder.link}
+
+Lehman Family LLC`
+	};
+};
