@@ -23,6 +23,7 @@ export const TENANT = {
 	password: 'E2e-Tenant-Passw0rd',
 	firstName: 'Tom',
 	lastName: 'Tenant',
+	phoneNumber: '+15555550101',
 	stripeID: 'cus_e2e'
 };
 

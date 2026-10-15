@@ -55,7 +55,7 @@ export default async function globalSetup() {
 		email: TENANT.email,
 		firstName: TENANT.firstName,
 		lastName: TENANT.lastName,
-		phoneNumber: '+15555550101',
+		phoneNumber: TENANT.phoneNumber,
 		permissions: 'user',
 		stripeID: TENANT.stripeID
 	});
