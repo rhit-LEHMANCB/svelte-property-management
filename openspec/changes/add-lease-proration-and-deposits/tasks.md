@@ -30,11 +30,11 @@
 
 ## 5. Tenant pages
 
-- [ ] 5.1 Show owed, the rent, deposit and late-fee breakdown, credit and the earliest due date per lease on `/payment`, including upcoming leases that owe a deposit; verify a handler or load test for an upcoming lease with a deposit and for the breakdown
-- [ ] 5.2 Add the deposit, late-fee terms and credit to the tenant lease card, and a past-leases section for ended leases with a deposit (held or settlement with deductions); verify a load test that another tenant's lease is not shown
-- [ ] 5.3 Use "Lehman Family LLC" in any new user-facing copy and remove nothing about autopay; verify by grep that no new copy says "Lehman Family Realty" or "Lehman Realty"
+- [x] 5.1 Show owed, the rent, deposit and late-fee breakdown, credit and the earliest due date per lease on `/payment`, including upcoming leases that owe a deposit; verify a handler or load test for an upcoming lease with a deposit and for the breakdown
+- [x] 5.2 Add the deposit, late-fee terms and credit to the tenant lease card, and a past-leases section for ended leases with a deposit (held or settlement with deductions); verify a load test that another tenant's lease is not shown
+- [x] 5.3 Use "Lehman Family LLC" in any new user-facing copy and remove nothing about autopay; verify by grep that no new copy says "Lehman Family Realty" or "Lehman Realty"
 
 ## 6. Docs and specs housekeeping
 
-- [ ] 6.1 Document the billing model (proration, credit, late fees, deposit records) and migration 0003 in the README; verify the README section names the new documents and fields
+- [x] 6.1 Document the billing model (proration, credit, late fees, deposit records) and migration 0003 in the README; verify the README section names the new documents and fields
 - [ ] 6.2 Run `npm run lint`, `npm run check`, `npm test`, `npm run test:e2e` and `npm run build`; verify all pass

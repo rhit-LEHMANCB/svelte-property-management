@@ -857,10 +857,59 @@ describe('leases: Admin lease list (property edit page)', () => {
 				endDate: null,
 				status: 'current',
 				tenants: [{ id: 'tenant-1', name: 'Tom Tenant', email: 'tenant-1@example.com' }],
-				hasDocument: false
+				hasDocument: false,
+				billing: expect.objectContaining({ creditCents: 0, lateFees: [] })
 			},
 			expect.objectContaining({ id: 'ended', status: 'ended', rent: 1000 })
 		]);
+	});
+
+	it('Scenario: Billing details: late fee owed, credit and deposit held; an ended lease holding a deposit is to settle', async () => {
+		setup();
+		seedLease('current', {
+			tenantIds: ['tenant-1'],
+			startDate: '2025-01-01',
+			endDate: '2025-02-28',
+			rent: 1000,
+			deposit: { amount: 1000, dueDate: '2025-01-01' },
+			lateFee: 75,
+			graceDays: 5,
+			lateFeesFrom: '2025-01-01'
+		});
+		db.seed('leases/current/payment_history/2025', {
+			January: { transactions: [{ amount: 1000, date: '2025-01-02' }] },
+			February: { transactions: [{ amount: 1500, date: '2025-02-20' }] }
+		});
+		db.seed('leases/current/deposit/ledger', { paid: 1000 });
+
+		const result = await call(propertyEditLoad, {
+			userID: 'admin-1',
+			params: { propertyId: 'prop-1' }
+		});
+
+		expect(result.data.leases[0].billing).toEqual({
+			totalCents: 7500,
+			creditCents: 50000,
+			dueDate: '2025-02-07',
+			deposit: {
+				amountCents: 100000,
+				paidCents: 100000,
+				heldCents: 100000,
+				settled: false,
+				toSettle: true,
+				settlement: null
+			},
+			lateFees: [
+				{
+					month: '2025-02',
+					monthLabel: 'February 2025',
+					amountCents: 7500,
+					paidCents: 0,
+					owedCents: 7500,
+					waived: false
+				}
+			]
+		});
 	});
 
 	it('Scenario: Property with no leases has an empty list', async () => {

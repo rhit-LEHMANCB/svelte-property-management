@@ -18,6 +18,7 @@
 	import type { PhotoItem } from '../../../../../../app';
 	import EmptyState from '$lib/Components/DataList/EmptyState.svelte';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
+	import LeaseBilling from '$lib/Components/Leases/LeaseBilling.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -188,6 +189,13 @@
 										</ul>
 									{:else}
 										<p class="text-sm opacity-70">No tenants</p>
+									{/if}
+									{#if lease.billing}
+										<LeaseBilling
+											leaseId={lease.id}
+											billing={lease.billing}
+											ended={lease.status === 'ended'}
+										/>
 									{/if}
 								</div>
 								<a

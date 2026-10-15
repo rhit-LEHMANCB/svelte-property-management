@@ -3,7 +3,7 @@ import { load as adminPageLoad } from '../../src/routes/(authenticated)/admin/+p
 import { load as layoutLoad } from '../../src/routes/(authenticated)/+layout.server';
 import { load as homeLoad } from '../../src/routes/(authenticated)/+page.server';
 import { call } from '../helpers/callHandler';
-import { seedAdmin, seedLease, seedProperty, seedTenant } from '../helpers/seed';
+import { db, seedAdmin, seedLease, seedProperty, seedTenant } from '../helpers/seed';
 
 describe('access-control: tenant property context (authenticated layout)', () => {
 	it('Scenario: anonymous callers are rejected with 401', async () => {
@@ -233,6 +233,76 @@ describe('leases: Tenant lease card (dashboard load)', () => {
 			})
 		]);
 		expect(JSON.stringify(result.data)).not.toContain('t2@example.com');
+	});
+
+	it('Scenario: Deposit and late-fee terms are on the card; an ended lease with a settled deposit shows the settlement', async () => {
+		seedTenant('t1');
+		seedProperty('p1');
+		seedLease('l1', {
+			propertyId: 'p1',
+			tenantIds: ['t1'],
+			startDate: '2099-01-01',
+			deposit: { amount: 1000, dueDate: '2099-01-01' },
+			lateFee: 75,
+			graceDays: 5,
+			lateFeesFrom: '2026-01-01'
+		});
+		db.seed('leases/l1/deposit/ledger', { paid: 400 });
+		seedLease('old', {
+			propertyId: 'p1',
+			tenantIds: ['t1'],
+			startDate: '2020-01-01',
+			endDate: '2020-12-31',
+			deposit: { amount: 1000, dueDate: '2020-01-01' }
+		});
+		db.seed('leases/old/deposit/ledger', {
+			paid: 1000,
+			settlement: {
+				returned: 800,
+				deductions: [{ amount: 200, reason: 'Carpet cleaning' }],
+				recordedAt: '2021-01-05T00:00:00Z',
+				recordedBy: 'admin'
+			}
+		});
+		// An ended lease without a deposit is not shown.
+		seedLease('older', {
+			propertyId: 'p1',
+			tenantIds: ['t1'],
+			startDate: '2019-01-01',
+			endDate: '2019-12-31'
+		});
+
+		const result = await call(homeLoad, { userID: 't1' });
+
+		expect(result.data.leaseCards.map((c: { id: string }) => c.id)).toEqual(['l1', 'old']);
+		expect(result.data.leaseCards[0]).toMatchObject({
+			deposit: { amount: 1000, dueDate: '2099-01-01' },
+			lateFee: 75,
+			graceDays: 5,
+			billing: { deposit: { paidCents: 40000, heldCents: 40000 } }
+		});
+		expect(result.data.leaseCards[1].billing.deposit).toMatchObject({
+			settled: true,
+			settlement: { returned: 800, deductions: [{ amount: 200, reason: 'Carpet cleaning' }] }
+		});
+	});
+
+	it("Scenario: Another tenant's lease: its deposit and settlement are not shown", async () => {
+		seedTenant('t1');
+		seedTenant('t2');
+		seedProperty('p1');
+		seedLease('theirs', {
+			propertyId: 'p1',
+			tenantIds: ['t2'],
+			startDate: '2020-01-01',
+			endDate: '2020-12-31',
+			deposit: { amount: 1000, dueDate: '2020-01-01' }
+		});
+		db.seed('leases/theirs/deposit/ledger', { paid: 1000 });
+
+		const result = await call(homeLoad, { userID: 't1' });
+
+		expect(result.data.leaseCards).toEqual([]);
 	});
 
 	it('the layout does not load the other tenants (only the dashboard does)', async () => {

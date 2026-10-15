@@ -12,10 +12,11 @@ import {
 	type LeaseDocument
 } from './leaseDates';
 import { createTenantAccount, type CreatedAccount } from './users';
-import { depositRef } from './balance';
-import { toCents, type DepositLedger } from './billing';
+import { depositRef, loadLeaseLedger } from './balance';
+import { toCents, type DepositLedger, type Ledger } from './billing';
 import type {
 	EmailProblem,
+	LeaseBilling,
 	LeaseSummary,
 	OverlapSummary,
 	TenantLease,
@@ -68,15 +69,57 @@ export async function summarizeLease(
 	};
 }
 
-/** Every lease of a property, newest start date first. */
-export async function listPropertyLeases(propertyId: string): Promise<LeaseSummary[]> {
+/** The admin's view of what a lease owes and holds. */
+export function leaseBilling(ledger: Ledger): LeaseBilling {
+	const { settlement } = ledger.deposit;
+	return {
+		totalCents: ledger.totalCents,
+		creditCents: ledger.creditCents,
+		dueDate: ledger.dueDate,
+		deposit: {
+			amountCents: ledger.deposit.amountCents,
+			paidCents: ledger.deposit.paidCents,
+			heldCents: ledger.deposit.heldCents,
+			settled: ledger.deposit.settled,
+			toSettle: ledger.deposit.toSettle,
+			settlement: settlement
+				? {
+						returned: settlement.returned,
+						deductions: settlement.deductions,
+						recordedAt: settlement.recordedAt
+					}
+				: null
+		},
+		lateFees: ledger.lateFees.map((fee) => ({
+			month: fee.month.key,
+			monthLabel: `${fee.month.monthName} ${fee.month.year}`,
+			amountCents: fee.amountCents,
+			paidCents: fee.paidCents,
+			owedCents: fee.owedCents,
+			waived: fee.waived
+		}))
+	};
+}
+
+/** Every lease of a property, newest start date first, with what each owes and holds. */
+export async function listPropertyLeases(
+	propertyId: string,
+	now = new Date()
+): Promise<LeaseSummary[]> {
 	const snapshot = await leases()
 		.where('propertyId', '==', propertyId)
 		.orderBy('startDate', 'desc')
 		.get();
-	const today = businessToday();
+	const today = businessToday(now);
 	return Promise.all(
-		snapshot.docs.map((doc) => summarizeLease(doc.id, doc.data() as LeaseDoc, today))
+		snapshot.docs.map(async (doc) => {
+			const lease = doc.data() as LeaseDoc;
+			const [summary, ledger] = await Promise.all([
+				summarizeLease(doc.id, lease, today),
+				loadLeaseLedger(doc.id, lease, now)
+			]);
+			return { ...summary, billing: leaseBilling(ledger) };
+		})
 	);
 }
 

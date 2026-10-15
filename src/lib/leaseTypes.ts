@@ -21,6 +21,33 @@ export type LeaseStatus = 'upcoming' | 'current' | 'ended';
 
 export type TenantSummary = { id: string; name: string; email: string };
 
+/** What a lease owes and holds, for the admin lease list. Amounts in cents. */
+export type LeaseBilling = {
+	totalCents: number;
+	creditCents: number;
+	dueDate: string | null;
+	deposit: {
+		amountCents: number;
+		paidCents: number;
+		heldCents: number;
+		settled: boolean;
+		toSettle: boolean;
+		settlement: {
+			returned: number;
+			deductions: { amount: number; reason: string }[];
+			recordedAt: string;
+		} | null;
+	};
+	lateFees: {
+		month: string;
+		monthLabel: string;
+		amountCents: number;
+		paidCents: number;
+		owedCents: number;
+		waived: boolean;
+	}[];
+};
+
 export type LeaseSummary = {
 	id: string;
 	propertyId: string;
@@ -30,6 +57,7 @@ export type LeaseSummary = {
 	status: LeaseStatus;
 	tenants: TenantSummary[];
 	hasDocument: boolean;
+	billing?: LeaseBilling;
 };
 
 /** A lease as its tenant sees it on the dashboard and payment page. */
