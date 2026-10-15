@@ -1,7 +1,7 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 7 Production PR (QA cycle 3 passed 2026-10-15)
+- Stage: 7 done: production PR #157 updated and off hold, waiting for Gate B (human setup, verification and merge)
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
 - QA cycle: 3 of 3
