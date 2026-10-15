@@ -91,6 +91,31 @@ describe('billing-jobs: One run at a time, safe to repeat', () => {
 		expect(db.peek('_jobs/daily')).toMatchObject({ lockedUntil: null });
 	});
 
+	it("a run whose lock was taken over does not release the other run's lock", async () => {
+		setup();
+		setNow('2026-11-07');
+		const realTransaction = db.runTransaction.bind(db);
+		let taken = false;
+		db.runTransaction = (async (fn: Parameters<typeof db.runTransaction>[0]) => {
+			const result = await realTransaction(fn);
+			if (!taken && result === true) {
+				// Right after this run takes the lock, another run takes it over.
+				taken = true;
+				db.seed('_jobs/daily', { lockedUntil: '2026-11-07T11:20:00.000Z', lockedBy: 'other' });
+			}
+			return result;
+		}) as typeof db.runTransaction;
+		try {
+			await run();
+		} finally {
+			db.runTransaction = realTransaction;
+		}
+		expect(db.peek('_jobs/daily')).toEqual({
+			lockedUntil: '2026-11-07T11:20:00.000Z',
+			lockedBy: 'other'
+		});
+	});
+
 	it('Scenario: Run again the same day: no fee twice, no email twice', async () => {
 		setup();
 		setNow('2026-11-07');
@@ -311,6 +336,54 @@ describe('billing-jobs: Due-date reminders', () => {
 		setNow('2026-11-02');
 		await run();
 		expect(emails()).toEqual([]);
+	});
+
+	it('a claim never sent (its run died) is sent once it is older than the lock', async () => {
+		paidOctober();
+		db.seed('leases/lease-1/notices/rent-7d-2026-11-t1', {
+			notice: 'rent-7d-2026-11',
+			uid: 't1',
+			claimedAt: '2026-10-25T10:00:00.000Z'
+		});
+		setNow('2026-10-25');
+		await run();
+		expect(emails()).toHaveLength(2);
+		expect(db.peek('leases/lease-1/notices/rent-7d-2026-11-t1')).toMatchObject({
+			sentAt: expect.any(String)
+		});
+	});
+
+	it('a tenant with no email address is a warning, not an error', async () => {
+		paidOctober();
+		db.seed('users/t2', { firstName: 'No', lastName: 'Email', permissions: 'user' });
+		setNow('2026-10-25');
+		const result = await run();
+		expect(result.status).toBe(200);
+		expect(emails()).toEqual([
+			['t1@example.com', 'Rent for November 2026 is due on November 1, 2026']
+		]);
+		const record = db.peek('_jobs/daily/runs/2026-10-25') as { runs: { warnings: string[] }[] };
+		expect(record.runs[0].warnings).toEqual(['lease lease-1: tenant t2 has no email address']);
+	});
+
+	it('a lease deleted after its fees were charged gets no emails', async () => {
+		setup();
+		setNow('2026-11-07');
+		const realTransaction = db.runTransaction.bind(db);
+		db.runTransaction = (async (fn: Parameters<typeof db.runTransaction>[0]) => {
+			const result = await realTransaction(fn);
+			// An admin deletes the lease right after the job's charge transaction for it.
+			if (result && typeof result === 'object' && 'charged' in result) {
+				await db.doc('leases/lease-1').delete();
+			}
+			return result;
+		}) as typeof db.runTransaction;
+		try {
+			await run();
+		} finally {
+			db.runTransaction = realTransaction;
+		}
+		expect(services.sendEmail).not.toHaveBeenCalled();
 	});
 
 	it('a notice another run already claimed is not sent again', async () => {

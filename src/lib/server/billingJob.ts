@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { FieldValue, type DocumentReference } from 'firebase-admin/firestore';
 import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 import { adminDB } from './admin';
@@ -36,11 +37,13 @@ export type JobSummary = {
 	feesCharged: ChargedFee[];
 	emailsSent: { leaseId: string; notice: string; to: string }[];
 	errors: string[];
+	/** Things a retry cannot fix (a tenant with no email address); they do not fail the run. */
+	warnings: string[];
 };
 
 export type JobResult = { kind: 'busy' } | { kind: 'done'; summary: JobSummary };
 
-async function takeLock(now: Date, runBy: string): Promise<boolean> {
+async function takeLock(now: Date, token: string): Promise<boolean> {
 	return adminDB.runTransaction(async (tx) => {
 		const lock = (await tx.get(jobRef())).data() as { lockedUntil?: string } | undefined;
 		if (lock?.lockedUntil && lock.lockedUntil > now.toISOString()) return false;
@@ -48,7 +51,7 @@ async function takeLock(now: Date, runBy: string): Promise<boolean> {
 			jobRef(),
 			{
 				lockedUntil: new Date(now.getTime() + LOCK_MINUTES * 60_000).toISOString(),
-				lockedBy: runBy
+				lockedBy: token
 			},
 			{ merge: true }
 		);
@@ -56,13 +59,17 @@ async function takeLock(now: Date, runBy: string): Promise<boolean> {
 	});
 }
 
-const extendLock = () =>
-	jobRef().set(
-		{ lockedUntil: new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString() },
-		{ merge: true }
-	);
+/** Moves the lock's expiry (or clears it), only while this run still holds it. */
+const updateOwnLock = (token: string, lockedUntil: string | null) =>
+	adminDB.runTransaction(async (tx) => {
+		const lock = (await tx.get(jobRef())).data() as { lockedBy?: string } | undefined;
+		if (lock?.lockedBy === token) tx.set(jobRef(), { lockedUntil }, { merge: true });
+	});
 
-const releaseLock = () => jobRef().set({ lockedUntil: null }, { merge: true });
+const extendLock = (token: string) =>
+	updateOwnLock(token, new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString());
+
+const releaseLock = (token: string) => updateOwnLock(token, null);
 
 const monthLabel = (month: { monthName: string; year: number }) =>
 	`${month.monthName} ${month.year}`;
@@ -71,7 +78,15 @@ const monthLabel = (month: { monthName: string; year: number }) =>
 async function chargeLateFees(
 	leaseRef: DocumentReference,
 	now: Date
-): Promise<{ lease: LeaseDoc; ledger: Ledger; charged: ChargedFee[] } | undefined> {
+): Promise<
+	| {
+			lease: LeaseDoc;
+			ledger: Ledger;
+			charged: ChargedFee[];
+			lateFees: Record<string, LateFeeRecord>;
+	  }
+	| undefined
+> {
 	return adminDB.runTransaction(async (tx) => {
 		const lease = (await tx.get(leaseRef)).data() as LeaseDoc | undefined;
 		if (!lease) return undefined;
@@ -95,7 +110,7 @@ async function chargeLateFees(
 			charged.push({ leaseId: leaseRef.id, month: fee.month.key, amount: record.amount });
 		}
 		const ledger = charged.length ? computeLedger({ lease, ...records, lateFees, now }) : before;
-		return { lease, ledger, charged };
+		return { lease, ledger, charged, lateFees: lateFees as Record<string, LateFeeRecord> };
 	});
 }
 
@@ -172,7 +187,8 @@ function noticesFor(
 }
 
 export async function runDailyJob(now = new Date(), runBy = 'scheduler'): Promise<JobResult> {
-	if (!(await takeLock(now, runBy))) return { kind: 'busy' };
+	const token = `${runBy}:${randomUUID()}`;
+	if (!(await takeLock(now, token))) return { kind: 'busy' };
 	const summary: JobSummary = {
 		date: businessToday(now),
 		startedAt: now.toISOString(),
@@ -181,7 +197,8 @@ export async function runDailyJob(now = new Date(), runBy = 'scheduler'): Promis
 		leases: 0,
 		feesCharged: [],
 		emailsSent: [],
-		errors: []
+		errors: [],
+		warnings: []
 	};
 	try {
 		const leaseDocs = (await adminDB.collection('leases').get()).docs;
@@ -191,12 +208,12 @@ export async function runDailyJob(now = new Date(), runBy = 'scheduler'): Promis
 				if (!result) continue;
 				summary.leases++;
 				summary.feesCharged.push(...result.charged);
-				await sendNotices(doc.ref, result.lease, result.ledger, summary, now);
+				await sendNotices(doc.ref, result, summary, now);
 			} catch (err) {
 				summary.errors.push(`lease ${doc.id}: ${err instanceof Error ? err.message : String(err)}`);
 			}
 			// A long run keeps its lock, so a scheduler retry does not start a second run meanwhile.
-			await extendLock().catch(() => undefined);
+			await extendLock(token).catch(() => undefined);
 		}
 	} finally {
 		summary.finishedAt = new Date().toISOString();
@@ -207,7 +224,9 @@ export async function runDailyJob(now = new Date(), runBy = 'scheduler'): Promis
 			.doc(summary.date)
 			.set({ runs: FieldValue.arrayUnion(summary), lastRunAt: summary.finishedAt }, { merge: true })
 			.catch((err) => console.error('Could not store the daily job summary', err));
-		await releaseLock().catch((err) => console.error('Could not release the daily job lock', err));
+		await releaseLock(token).catch((err) =>
+			console.error('Could not release the daily job lock', err)
+		);
 	}
 	if (summary.errors.length > 0) {
 		console.error(`Daily billing job finished with errors: ${summary.errors.join('; ')}`);
@@ -215,26 +234,38 @@ export async function runDailyJob(now = new Date(), runBy = 'scheduler'): Promis
 	return { kind: 'done', summary };
 }
 
+/** A claimed notice that was never sent (the run died before sending) can be claimed again. */
+const isStaleClaim = (data: { sentAt?: string; claimedAt?: string }, now: Date) =>
+	!data.sentAt &&
+	(!data.claimedAt ||
+		data.claimedAt < new Date(now.getTime() - LOCK_MINUTES * 60_000).toISOString());
+
 /** Sends each tenant on the lease every notice due today that they have not been sent yet. */
 async function sendNotices(
 	leaseRef: DocumentReference,
-	lease: LeaseDoc,
-	ledger: Ledger,
+	charged: { lease: LeaseDoc; ledger: Ledger; lateFees: Record<string, LateFeeRecord> },
 	summary: JobSummary,
 	now: Date
 ) {
-	const [property, lateFeeDocs, sentDocs] = await Promise.all([
+	const { lease, ledger } = charged;
+	// Which notices are due does not depend on the address, so the reads below happen only when
+	// there is something to send.
+	if (noticesFor(lease, ledger, '', charged.lateFees).length === 0) return;
+	const [leaseNow, property, sentDocs] = await Promise.all([
+		leaseRef.get(),
 		adminDB.collection('properties').doc(lease.propertyId).get(),
-		leaseRef.collection('late_fees').get(),
 		leaseRef.collection('notices').get()
 	]);
-	const lateFeeRecords = Object.fromEntries(
-		lateFeeDocs.docs.map((d) => [d.id, d.data() as LateFeeRecord])
-	);
-	const notices = noticesFor(lease, ledger, propertyAddress(property.data()), lateFeeRecords);
-	if (notices.length === 0) return;
+	// The lease may have been deleted since its fees were charged.
+	if (!leaseNow.exists) return;
+	const notices = noticesFor(lease, ledger, propertyAddress(property.data()), charged.lateFees);
 
-	const sent = new Set(sentDocs.docs.map((d) => d.id));
+	const sent = new Set(
+		sentDocs.docs
+			.filter((d) => !isStaleClaim(d.data() as { sentAt?: string; claimedAt?: string }, now))
+			.map((d) => d.id)
+	);
+	const stale = new Set(sentDocs.docs.map((d) => d.id).filter((id) => !sent.has(id)));
 	const tenants = await Promise.all(
 		lease.tenantIds.map(async (uid) => ({
 			uid,
@@ -245,6 +276,9 @@ async function sendNotices(
 		summary.errors.push(
 			`lease ${leaseRef.id}: ${what}: ${err instanceof Error ? err.message : String(err)}`
 		);
+	for (const tenant of tenants.filter((t) => !t.email)) {
+		summary.warnings.push(`lease ${leaseRef.id}: tenant ${tenant.uid} has no email address`);
+	}
 	for (const notice of notices) {
 		for (const tenant of tenants) {
 			const id = `${notice.key}-${tenant.uid}`;
@@ -253,6 +287,7 @@ async function sendNotices(
 			// second run (an overlapping retry) can never send the same email twice.
 			const claim = leaseRef.collection('notices').doc(id);
 			try {
+				if (stale.has(id)) await claim.delete();
 				await claim.create({ notice: notice.key, uid: tenant.uid, claimedAt: now.toISOString() });
 			} catch {
 				continue;

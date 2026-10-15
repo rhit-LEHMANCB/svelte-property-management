@@ -1,9 +1,9 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 4 Review (amendment 1)
+- Stage: 5 Ship to develop (amendment 1)
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
-- Review round: 2 of 5
+- Review round: 3 of 5
 - QA cycle: 1 of 3
 - Started: 2026-10-15
 
@@ -127,6 +127,14 @@ Round 2 (amendment 1, 2026-10-15, fresh Explore/Sonnet reviewer): blockers 0, ma
 - minor, `JOBS_SECRET` missing from the e2e app env: fixed.
 - nit, 200 despite errors: changed to 500 when a run had errors, so Cloud Scheduler retries (the spec scenario says so).
 Local checks: lint, check, 594 tests, build; e2e lease-billing and payment specs, 17 passed.
+
+Round 3 (amendment 1, 2026-10-15, fresh Explore/Sonnet reviewer): blockers 0, majors 0, minors 4, nits 1. Exit after fixing; all fixed.
+- minor, a claim never sent was lost: fixed (a claim with no `sentAt`, older than the lock window, is claimed again; test added).
+- minor, extend and release did not check ownership: fixed (run token in `lockedBy`; transactional extend and release; test added).
+- minor, a tenant with no email was skipped silently: fixed (a `warnings` entry in the run summary, which does not fail the run, since a retry cannot fix it; test added).
+- minor, emails sent for a lease deleted after charging: fixed (the lease is re-checked before sending; test added).
+- nit, notice step re-read records for every lease: fixed (charged records passed along; the property, tenants and notices are read only when something is due).
+Local checks: lint, check, 598 tests, build.
 
 Implementation notes: the tenant refusal status in the two new admin routes is 401 (the codebase's admin guard), so the spec scenarios were aligned from 403 to 401.
 
