@@ -76,7 +76,7 @@ The system SHALL let an admin, on or after the day after a lease's end date, rec
 
 #### Scenario: Tenant tries to settle
 - **WHEN** a signed-in tenant sends a settlement request
-- **THEN** the response is 403 and nothing changes
+- **THEN** the response is 401, as for every admin-only action, and nothing changes
 
 #### Scenario: Deposit paid after settlement
 - **WHEN** a deposit payment is recorded on a lease whose deposit is already settled

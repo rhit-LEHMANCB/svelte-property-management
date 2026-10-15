@@ -98,4 +98,4 @@ The system SHALL let an admin waive one month's late fee on a lease, which remov
 
 #### Scenario: Tenant tries to waive
 - **WHEN** a signed-in tenant sends a waive request
-- **THEN** the response is 403 and nothing changes
+- **THEN** the response is 401, as for every admin-only action, and nothing changes
