@@ -1,7 +1,7 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 2 Propose (amendment 1) + preflight
+- Stage: 2 Amendment 1 proposed, waiting for Gate A
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 1 of 5
 - QA cycle: 1 of 3
@@ -93,6 +93,18 @@ Run 2026-10-15 on `claude/add-lease-proration-and-deposits` (develop merged in a
 | Local checks | OK: Node 22, `npm run lint`, `npm run check`, `npm test` (494 passed), `npm run build`, `npm run test:e2e` (Java present) |
 | Secrets and variables | None needed for this change |
 | Not available under MCP | Approving a PR's pending workflow runs (human step at wrap-up if needed) |
+
+### Preflight for amendment 1 (2026-10-15)
+
+| Check | Result |
+| --- | --- |
+| git commit and push | OK (pushed 2d0b6db) |
+| GitHub backend | GitHub MCP, as before |
+| Playwright, browsers, QA credentials | OK, unchanged: `.env.qa` mode 600 and gitignored; browser mapping in the scratchpad |
+| Dev deploy on develop | OK: run 95 (800f8fe) succeeded |
+| Local checks | OK at the last run; Java present |
+| `JOBS_SECRET` in the GitHub `develop` environment | Not added yet (cannot be checked with this access). Not needed for dev QA, which runs the job as an admin |
+| Cloud Scheduler on `lehman-realty-dev` | The Cloud Scheduler API is **disabled**, and no job exists. This is a human rollout step; the job is not needed for QA |
 
 ## Review rounds
 Stage 3 done 2026-10-15: all 21 tasks ticked. Local checks: lint, check, 567 unit/handler tests, build, `npm run test:e2e` 149 passed (new `tests/e2e/specs/lease-billing.spec.ts`).
