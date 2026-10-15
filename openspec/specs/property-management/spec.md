@@ -49,7 +49,7 @@ The system SHALL let an admin delete a property and everything that hangs off it
 
 #### Scenario: Cascade
 - **WHEN** a property is deleted
-- **THEN** its document, its maintenance requests, its `payment_history` subcollections and its storage files are removed
+- **THEN** its document, its maintenance requests, its `payment_history` subcollections, its leases with their `payment_history` and `recorded_invoices` subcollections, its storage files and its leases' documents are removed
 - **AND** the response is sent only after every removal has finished
 
 #### Scenario: Large property
@@ -68,12 +68,12 @@ The system SHALL list all properties to admins ordered by title.
 - **THEN** all properties appear ordered by `title`
 
 ### Requirement: Cleanup of tenant links on delete
-The system SHALL remove `junction_user_property` rows for a property when it is deleted.
+The system SHALL remove a property's leases, and any `junction_user_property` rows left from before leases, when the property is deleted.
 
 #### Scenario: Deleted property with tenants
-- **WHEN** a property with assigned tenants is deleted
-- **THEN** no junction row references it
-- **AND** those tenants can load the app without an error
+- **WHEN** a property with a current lease is deleted
+- **THEN** no lease or junction row references it
+- **AND** that lease's tenants can load the app without an error and are shown as having no property
 
 ## Known Gaps
 - Photo endpoints do not check that the property exists.

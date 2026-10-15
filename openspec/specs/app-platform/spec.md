@@ -39,10 +39,10 @@ The system SHALL show a success or error notification after submitting forms and
 - **THEN** an error message is shown and the entered values are kept
 
 ### Requirement: Menus, autocompletes, tabs and pagination keep working
-The system SHALL keep popup menus, autocomplete inputs, tab groups and paginated lists operable by mouse and keyboard, with the same options and results as before the upgrade.
+The system SHALL keep popup menus, any autocomplete inputs, tab groups and paginated lists operable by mouse and keyboard, with the same options and results as before the upgrade. Since leases take tenant emails, no autocomplete input remains; this applies to any that is added.
 
 #### Scenario: Autocomplete selection
-- **WHEN** an admin types in an autocomplete input (for example choosing a tenant or an address) and picks a suggestion
+- **WHEN** an admin types in an autocomplete input and picks a suggestion
 - **THEN** the chosen value fills the field and is submitted with the form
 
 #### Scenario: Paginated list
