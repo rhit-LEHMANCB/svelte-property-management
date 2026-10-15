@@ -1,0 +1,21 @@
+{
+ "properties": [
+  "gCp72oENBV5tyIgQLfY1",
+  "Dbqj4T31aYytM4b0Wovg",
+  "bcGBptGzNWg0H4WXTNeZ"
+ ],
+ "leases": [
+  {
+   "id": "AzyDrULTFogvDCWP18nP",
+   "propertyId": "gCp72oENBV5tyIgQLfY1"
+  },
+  {
+   "id": "cMbStS2LIUsbkinqemgt",
+   "propertyId": "Dbqj4T31aYytM4b0Wovg"
+  },
+  {
+   "id": "IopO2Aqo5Glp3aY5CVqX",
+   "propertyId": "bcGBptGzNWg0H4WXTNeZ"
+  }
+ ]
+}
