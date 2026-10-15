@@ -1,7 +1,7 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 1 Interview (amendment after Gate B: late fees move to a scheduled job; PR #157 on hold)
+- Stage: 2 Propose (amendment 1) + preflight
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 1 of 5
 - QA cycle: 1 of 3
@@ -47,7 +47,7 @@
 **Answers given.** Round 1: per-lease proration toggle (later changed by the user to always on); deposit due date per lease defaulting to the start date; refunds only recorded; existing leases migrated (later: prorated fully). Scope: late fees added, autopay moved to the next change. Late fee: flat per lease, default 5% of rent, once per month; grace per lease, default 5; one payment amount applied late fees → deposit → oldest rent; card fee on the whole payment; settlement itemized and must add up; overpaid months become credit; late fees only for months due after release.
 
 
-## Amendment 1 (2026-10-15, after Gate B was reached; approved: no)
+## Amendment 1 (2026-10-15, after Gate B was reached; approved: yes, 2026-10-15)
 
 The user chose to hold production PR #157 and move late fees to a daily scheduled job before release. Proration and deposits are unchanged.
 
