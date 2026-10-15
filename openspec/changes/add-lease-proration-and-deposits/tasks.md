@@ -38,3 +38,14 @@
 
 - [x] 6.1 Document the billing model (proration, credit, late fees, deposit records) and migration 0003 in the README; verify the README section names the new documents and fields
 - [x] 6.2 Run `npm run lint`, `npm run check`, `npm test`, `npm run test:e2e` and `npm run build`; verify all pass
+
+## 7. Amendment 1: late fees by the daily job, reminders, payable a week early
+
+- [ ] 7.1 Make a month's rent count and be payable from 7 days before its due date, the first month from start date − 7. Pin "now" in the handler and e2e tests that depend on the calendar. Verify unit tests for the payable-day scenarios (Oct 7 and Oct 8 for an Oct 15 start, Oct 25 for November) and that `npm test` passes on any day of the month
+- [ ] 7.2 Change the ledger so a late fee is owed only once its `late_fees` record has `chargedAt`. Keep the lateness rule as `lateMonths`. Make waiving refuse a month with no charged fee. Verify unit tests for before the run, after charging, paid late but before the run, and waive
+- [ ] 7.3 Add `runDailyJob(now)` in `src/lib/server/billingJob.ts`: a lock on `_jobs/daily`, a per-lease transaction that charges every late month without a record (catch-up), and a summary in `_jobs/daily/runs/{date}`. Verify handler tests for charging, a repeat run the same day, a missed day caught up, and overlapping runs (409)
+- [ ] 7.4 Add late-fee notice and rent and deposit reminder emails (templates and sending): one per tenant, sent records under `leases/{id}/notices`, notices retried after a failure, reminders only on their day and only while the amount is unpaid, none for ended leases. Verify template unit tests and handler tests for each scenario in the billing-jobs spec
+- [ ] 7.5 Add `POST /api/jobs/daily`: bearer `JOBS_SECRET` (constant-time compare) or a signed-in admin, otherwise 401. Add `JOBS_SECRET` to `.env.example`, the test env fixture and the deploy workflow env. Verify handler tests for the secret, admin, tenant, wrong secret and no secret configured
+- [ ] 7.6 Update the admin list, tenant card and `/payment` copy for job-charged fees, and update the e2e spec to charge a fee by running the job as admin. Verify `npm run test:e2e`
+- [ ] 7.7 Document the job in the README: what it does, how to create the Cloud Scheduler job per project (`gcloud scheduler jobs create http ...` with the secret header, 6:00 America/Indiana/Indianapolis), how to run it by hand, and how to read run summaries. Verify the documented command names the route, schedule, time zone and header
+- [ ] 7.8 Run `npm run lint`, `npm run check`, `npm test`, `npm run test:e2e` and `npm run build`; verify all pass

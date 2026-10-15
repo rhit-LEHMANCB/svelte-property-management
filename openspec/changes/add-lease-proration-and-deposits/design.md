@@ -14,7 +14,6 @@ Billing lives in two modules. `src/lib/server/payments.ts` enumerates months (`m
 - Existing data keeps working without a backfill of payment entries.
 
 **Non-Goals:**
-- No scheduled job: late fees are derived when the billing state is read, not written by a cron.
 - No change to the two-checkouts-before-the-webhook gap (still a Known Gap).
 - Autopay.
 
@@ -36,16 +35,23 @@ New module `src/lib/server/billing.ts` exports `computeLedger({ lease, histories
 ### 2. Proration on calendar-day strings
 Lease dates are `YYYY-MM-DD` calendar days, so day counts are computed from the strings with UTC `Date` arithmetic. That avoids any time-zone shift. Only "today" and the month of a payment use the business time zone, as now.
 
-For each month: covered days = from max(start, 1st) to min(end, last day), inclusive. Then `chargeCents = round(rentCents × days ÷ daysInMonth)`, which is exact for whole months. The first month's due date is the start date; later months are due on the 1st. A month enters the balance on its 1st, as today. An upcoming lease starting mid-month therefore shows its first month from the 1st, due on the start date.
+For each month: covered days = from max(start, 1st) to min(end, last day), inclusive. Then `chargeCents = round(rentCents × days ÷ daysInMonth)`, which is exact for whole months. The first month's due date is the start date; later months are due on the 1st. A month enters the balance, and becomes payable, 7 days before its due date, the day of its first reminder (amendment 1). The months in the balance are those from the start month whose payable day is on or before today, up to the end month.
 
-### 3. Late fees derived at read time, recorded only when touched
-Lease fields: `lateFee` (dollars), `graceDays`, `lateFeesFrom` (`YYYY-MM-DD`, set to the business date when a lease is created, and by the migration for existing leases).
+### 3. Late fees charged by the daily job (amendment 1)
+Lease fields: `lateFee` (dollars), `graceDays`, `lateFeesFrom` (`YYYY-MM-DD`). New leases get the business date they were created; the migration gives existing leases its run date.
 
-A month is late when its due date ≥ `lateFeesFrom`, its deadline (due date + grace days) is before today, and what was paid toward it with transaction `date` on or before the deadline (business time zone), plus credit applied to it, is less than its charge. Credit counts as on time. Its late fee is then due on deadline + 1 day.
+A month is **late** when all of these hold:
+- its due date is on or after `lateFeesFrom`;
+- its deadline (due date + grace days) is before today;
+- what was paid toward it with a transaction `date` on or before the deadline (business time zone), plus credit applied to it, is less than its charge.
 
-Records go in `leases/{id}/late_fees/{YYYY-MM}`: `{ amount, paid, transactions, waivedAt?, waivedBy? }`, written only when a fee is paid or waived. `amount` is fixed at the first write, from the lease's late fee at that moment. Before any write, the lease's current `lateFee` is used. A later change to the lease's fee therefore cannot make a paid fee overpaid. A waiver sets `waivedAt`/`waivedBy`, and the unpaid part stops being owed.
+Credit counts as on time.
 
-*Alternative:* write fees with a daily job. Rejected: there is no scheduler in this app, and adding one belongs with autopay.
+`computeLedger` still works out which months are late (`lateMonths`), but it **owes** a fee only when `late_fees/{YYYY-MM}` exists with `chargedAt`. The record is `{ amount, chargedAt, chargedBy: 'daily-job', paid, transactions, waivedAt?, waivedBy? }`. The daily job writes it, with `amount` taken from the lease's late fee at that moment, and its due date is deadline + 1 day. Waive and payments work only on a charged record.
+
+Because the job charges every late month without a record, a missed day is caught up on the next run. The fee keeps its own due date.
+
+*Alternative (the approved plan before amendment 1):* owe the fee as soon as the deadline passes, without a stored record. Changed at the user's request, so that charging, notices and reminders all live in one scheduled job, which autopay will join next.
 
 ### 4. Deposit terms on the lease, payments in one ledger document
 Lease field `deposit: { amount, dueDate } | null`. Payments and settlement live in `leases/{id}/deposit/ledger`: `{ paid, transactions: [{ date, amount, invoiceId }], settlement: { returned, deductions: [{ amount, reason }], recordedAt, recordedBy } | null }`.
@@ -71,6 +77,28 @@ Both follow the `getAdminUserDataOrError` pattern in `src/routes/api/lease/[leas
 ### 8. Migration `0003-lease-billing-terms`
 For each lease without a numeric `lateFee`, it sets `deposit: null`, `lateFee: round(rent × 0.05, 2)`, `graceDays: 5` and `lateFeesFrom: <business date of the run>`. Leases that already have the fields are skipped, so a re-run changes nothing. The undo is to delete those four fields from leases recorded in the summary, after redeploying the previous app version.
 
+### 9. The daily billing job (amendment 1)
+**Route.** `POST /api/jobs/daily` (`src/routes/api/jobs/daily/+server.ts`).
+- It is authorized by `Authorization: Bearer <JOBS_SECRET>`, compared in constant time, or by a signed-in admin.
+- `JOBS_SECRET` comes from `$env/static/private`, like the other secrets. The deploy workflow passes it from the GitHub environment, and an empty value disables bearer access.
+- Cloud Scheduler sends the header at `0 6 * * *` in America/Indiana/Indianapolis, with a 10-minute deadline and retries.
+
+**Run.** `runDailyJob(now)` in `src/lib/server/billingJob.ts`:
+1. **Take a lock** on `_jobs/daily` with a transaction, holding `lockedUntil` for 10 minutes. A held lock answers 409. The lock is released at the end.
+2. **For each lease that is not ended, or that still owes money,** load its ledger.
+   - In a transaction per lease, re-read and create the `late_fees` record for every late month without one.
+   - Then work out which emails are due:
+     - a late-fee notice for every charged fee without a sent notice;
+     - a rent reminder for each month whose payable day or due day is today and that still owes;
+     - a deposit reminder on the same two days.
+3. **Send each email per tenant on the lease** (tenant emails come from `users/{uid}`). After a successful send, write `leases/{id}/notices/{type}-{key}-{uid}`. A sent record is never re-sent. A failed send is retried on the next run for late-fee notices. Reminders are only ever sent on their own day.
+4. **Write the summary** to `_jobs/daily/runs/{YYYY-MM-DD}` (merged on a re-run): fees charged, emails sent, errors, start and end times.
+
+It is safe to repeat: fee records are created only when missing, inside a transaction, and notices are keyed by type, month and tenant.
+
+### 10. Email templates
+`email-templates.ts` gains `renderLateFeeEmail` and `renderRentReminderEmail`, in the same style and from address as today (Lehman Family LLC). Each carries the amount, due date, address and a link to `${PUBLIC_FRONTEND_URL}/payment`. Each send goes through the existing `sendEmail`.
+
 ## Risks / Trade-offs
 
 - [Existing mid-month leases change balance on deploy] → Intended (interview). The QA and human checklist cover a recomputed lease. Credit is shown, not lost.
@@ -78,9 +106,17 @@ For each lease without a numeric `lateFee`, it sets `deposit: null`, `lateFee: r
 - [Credit counts as on time even when it comes from a later overpaid month] → Rare (payments go oldest first). Accepted to keep one simple rule.
 - [Legacy entries without `transactions`] → Fallback to `rent − remainingBalance`, with a unit test. The add-leases migration copied entries with their transactions, so this is a defensive path.
 - [Checkout split can differ from what the webhook records, if state changed in between] → The webhook is authoritative. Stripe line names describe the intent at checkout time. Documented in the spec scenario.
+- [The scheduler is not set up, or the secret is wrong] → No fees and no emails, failing safe. The run summary is missing for that day, and the README tells how to check it. An admin can run the job by hand.
+- [Email provider outage] → Late-fee notices are retried on the next run. A missed day's reminders are lost, by design.
 - [Ledger computation reads more documents per balance (late_fees, deposit)] → Two extra reads per lease (a collection query and one document). Fine at this app's scale.
 
 ## Migration Plan
+
+0. Before the job can run in an environment, a person:
+   - adds the `JOBS_SECRET` secret to that GitHub environment;
+   - creates the Cloud Scheduler job with the documented `gcloud scheduler jobs create http ...` command, which sends the secret as a header.
+
+   Without these, no fees are charged and no emails are sent there.
 
 1. Deploy runs migration `0003` after rules and before hosting (existing workflow). It needs the existing backup schedule only.
 2. Rollback: follow `0003`'s undo steps, then redeploy the previous version. The previous code ignores the new fields and subcollections. Deposit and late-fee payments recorded in the meantime would read as nothing to the old code, and would need recording by hand from the `deposit` and `late_fees` documents.
