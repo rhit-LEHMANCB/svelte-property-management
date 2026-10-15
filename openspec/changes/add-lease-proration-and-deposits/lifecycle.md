@@ -1,7 +1,7 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 7 done: production PR #157 open, waiting for Gate B (human verification and merge)
+- Stage: 1 Interview (amendment after Gate B: late fees move to a scheduled job; PR #157 on hold)
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 1 of 5
 - QA cycle: 1 of 3
@@ -45,6 +45,33 @@
 **Rollout.** No secrets to add. The migration runs in the deploy workflow. Stripe Checkout line names change ("Security Deposit", "Late Fee" are new).
 
 **Answers given.** Round 1: per-lease proration toggle (later changed by the user to always on); deposit due date per lease defaulting to the start date; refunds only recorded; existing leases migrated (later: prorated fully). Scope: late fees added, autopay moved to the next change. Late fee: flat per lease, default 5% of rent, once per month; grace per lease, default 5; one payment amount applied late fees → deposit → oldest rent; card fee on the whole payment; settlement itemized and must add up; overpaid months become credit; late fees only for months due after release.
+
+
+## Amendment 1 (2026-10-15, after Gate B was reached; approved: no)
+
+The user chose to hold production PR #157 and move late fees to a daily scheduled job before release. Proration and deposits are unchanged.
+
+**Decisions**
+- **Trigger.** Google Cloud Scheduler calls a protected app route, `POST /api/jobs/daily`, at 6:00 America/Indiana/Indianapolis every day, in each Firebase project (dev and production).
+- **Job scope.**
+  - It charges late fees by writing a record for each month that became late.
+  - It emails a late-fee notice when it charges a fee.
+  - It emails due-date reminders 3 days before and on the due day, for rent and for deposits, only while the amount is still unpaid.
+  - Autopay stays in the next change and will use the same job.
+- **Missed runs.** The next run catches up on fees: every late month without a recorded fee is charged, with its original due date. Reminders are only sent on their own days, so a missed day's reminders are not resent.
+- **Recipients.** Every tenant on the lease gets their own email. No admin emails. Tenants cannot opt out.
+- **Lateness rule unchanged.** A month is late if less than its rent was paid, counting credit, by the end of its due date plus the grace days, and only from the late-fee start date on. Paying afterwards does not remove a fee. Waive works as before.
+
+**What changes from the approved plan**
+- The balance no longer works out late fees itself. A fee is owed only once the job has recorded it (`late_fees/{YYYY-MM}` with `chargedAt`). Between the end of the grace period and the next run, nothing is owed.
+- Emails are sent at most once each. A record per lease, notice type and month prevents a second send if the job runs again.
+
+**Assumptions** (not asked)
+1. The route accepts either `Authorization: Bearer <JOBS_SECRET>` (Cloud Scheduler) or a signed-in admin. That lets an admin, or QA on the dev site, run the job on demand. Anyone else gets 401.
+2. Only one run can happen at a time (a lock), and each run writes a summary to `_jobs/daily/runs/{date}`. A run that fails part way is safe to repeat.
+3. Emails come from Lehman Family LLC through the existing email provider, with the amount, the due date and a link to `/payment`. A failed email is logged and retried on the next run, because its sent record is written only after a successful send.
+4. Rollout: a new private secret `JOBS_SECRET` goes in the GitHub `develop` and `production` environments. A Cloud Scheduler job is created in each project, which is a human step with a documented `gcloud` command. Until the scheduler exists, no fees are charged and no emails go out.
+5. PR #157 stays open and on hold. Its head is `develop`, so it picks up the rework once that is merged to `develop`. The QA and checklist are then redone.
 
 ## Gate A
 Approved: yes, 2026-10-15 (by the user in session, after the proposal and preflight were presented)
