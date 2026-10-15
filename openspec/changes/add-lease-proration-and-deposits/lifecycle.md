@@ -56,8 +56,9 @@ The user chose to hold production PR #157 and move late fees to a daily schedule
 - **Job scope.**
   - It charges late fees by writing a record for each month that became late.
   - It emails a late-fee notice when it charges a fee.
-  - It emails due-date reminders 3 days before and on the due day, for rent and for deposits, only while the amount is still unpaid.
+  - It emails due-date reminders **7 days before and on the due day**, for rent and for deposits, only while the amount is still unpaid.
   - Autopay stays in the next change and will use the same job.
+- **Payable from the first reminder.** A month's rent counts in the balance, and can be paid, from 7 days before its due date (for example, from October 25 for November 1). For a lease starting October 15, the first month is payable from October 8. The due date and the late-fee rule do not change. A deposit is still payable as soon as the lease is saved.
 - **Missed runs.** The next run catches up on fees: every late month without a recorded fee is charged, with its original due date. Reminders are only sent on their own days, so a missed day's reminders are not resent.
 - **Recipients.** Every tenant on the lease gets their own email. No admin emails. Tenants cannot opt out.
 - **Lateness rule unchanged.** A month is late if less than its rent was paid, counting credit, by the end of its due date plus the grace days, and only from the late-fee start date on. Paying afterwards does not remove a fee. Waive works as before.
