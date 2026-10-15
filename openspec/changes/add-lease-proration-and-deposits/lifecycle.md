@@ -1,7 +1,7 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 3 Implement (amendment 1)
+- Stage: 4 Review (amendment 1)
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 1 of 5
 - QA cycle: 1 of 3
@@ -116,6 +116,8 @@ Round 1 (2026-10-15, fresh Explore/Sonnet reviewer): blockers 0, majors 0, minor
 - minor, admin list loads a ledger per lease: not changed. Reason: every lease, ended ones included, can owe rent or hold a deposit that the list must show; the cost is three reads per lease, which the design accepts at this app's scale.
 - nit, unbounded deductions: fixed (at most 50; test added).
 Local checks after the fixes: lint, check, 564 tests, build.
+
+Amendment 1, stage 3 done 2026-10-15: tasks 7.1 to 7.8 ticked. Local checks: lint, check, 592 vitest tests (date-sensitive rent-payment tests pinned; probed at 2026-10-28 and 2027-01-01), build, `npm run test:e2e` 150 passed (balance expectations follow the 7-day window). `.env` and both workflows gained `JOBS_SECRET`.
 
 Implementation notes: the tenant refusal status in the two new admin routes is 401 (the codebase's admin guard), so the spec scenarios were aligned from 403 to 401.
 

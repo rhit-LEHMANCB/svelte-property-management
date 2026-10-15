@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ADMIN, FAKE_STRIPE_URL, LEASE_ID, PROPERTY, TENANT } from '../support/constants';
 import { adminAuth, adminDb } from '../support/admin';
-import { signIn } from '../support/helpers';
+import { dollarsPattern, nextMonthPayable, signIn } from '../support/helpers';
 
 type Recorded = { path: string; body: Record<string, string> };
 const recorded = async () =>
@@ -66,7 +66,11 @@ test.describe('rent-payments', () => {
 		await page.goto('/payment');
 		await page.waitForLoadState('networkidle');
 
-		await expect(page.getByText(/You have a balance of \$1,000\.00 due on/)).toBeVisible();
+		// One month of rent, two once next month is payable (from 7 days before the 1st).
+		const owed = nextMonthPayable() ? 2000 : 1000;
+		await expect(
+			page.getByText(new RegExp(`You have a balance of ${dollarsPattern(owed)} due on`))
+		).toBeVisible();
 	});
 
 	test('Scenario: the server refuses an amount above the balance and creates no session', async ({
@@ -260,7 +264,9 @@ test.describe.serial('rent-payments: one balance per lease', () => {
 		const current = page.locator(`[data-lease="${CURRENT}"]`);
 		await expect(current).toContainText('22 New Rd, Terre Haute');
 		await expect(current).toContainText('current');
-		await expect(current).toContainText('You have a balance of $500.00');
+		await expect(current).toContainText(
+			nextMonthPayable() ? 'You have a balance of $1,000.00' : 'You have a balance of $500.00'
+		);
 		await expect(
 			page.getByRole('button', { name: 'Make a Payment for 20 Old Rd, Terre Haute' })
 		).toBeEnabled();
@@ -270,6 +276,7 @@ test.describe.serial('rent-payments: one balance per lease', () => {
 		page
 	}) => {
 		await markPaid(CURRENT, monthDay(0));
+		if (nextMonthPayable()) await markPaid(CURRENT, monthDay(1));
 		await markPaid(ENDED, monthDay(-2));
 		await markPaid(ENDED, monthDay(-1));
 		await signIn(page, PAYER);
