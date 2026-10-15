@@ -1,7 +1,8 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 2 Propose + preflight
+- Stage: 2 Proposal and preflight done, waiting for Gate A
+- GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-15
@@ -50,7 +51,20 @@ Approved: no
 Accepted preflight gaps: none
 
 ## Preflight
-(table of checks and results, from stage 2)
+Run 2026-10-15 on `claude/add-lease-proration-and-deposits` (develop merged in at 0efda52, which has the add-leases archive).
+
+| Check | Result |
+| --- | --- |
+| git commit and push | OK: author `Claude <noreply@anthropic.com>`; branch pushed to origin |
+| GitHub backend | GitHub MCP. `gh` fails (invalid GH_TOKEN); `get_me` returns rhit-LEHMANCB |
+| Merge permission | Not tested (expected to work, per skill) |
+| Playwright `qa` project | OK: `playwright.config.ts` has it |
+| Browsers | Pre-installed Chromium is build 1194 and Playwright 1.63 expects 1243. Mapped through a scratchpad `PLAYWRIGHT_BROWSERS_PATH` (no download); `npm run test:e2e` 145 passed |
+| QA credentials | OK: `.env.qa` pulled from 1Password with `scripts/pull-env.sh`, mode 600, gitignored and untracked; all four QA_* variables set (values not printed) |
+| Dev deploy on develop | OK: run 92 (cb865b6) succeeded. The archive merge 0efda52 (docs only) was pushed by the Actions token and started no deploy |
+| Local checks | OK: Node 22, `npm run lint`, `npm run check`, `npm test` (494 passed), `npm run build`, `npm run test:e2e` (Java present) |
+| Secrets and variables | None needed for this change |
+| Not available under MCP | Approving a PR's pending workflow runs (human step at wrap-up if needed) |
 
 ## Review rounds
 (none yet; one line per round: blockers, majors, minors, nits, fixed, rejected with reason)
