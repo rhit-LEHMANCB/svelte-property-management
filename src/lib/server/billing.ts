@@ -53,7 +53,6 @@ export type LeaseTerms = Pick<
 >;
 
 export const toCents = (dollars: number) => Math.round(dollars * 100);
-export const toDollars = (cents: number) => cents / 100;
 
 export { defaultLateFee } from '../lateFee';
 
@@ -204,16 +203,6 @@ export type LedgerInput = {
 	now: Date;
 };
 
-/** The years whose `payment_history` documents a ledger needs: every month owed, and the start month's. */
-export function ledgerYears(lease: Pick<LeaseTerms, 'startDate' | 'endDate'>, now: Date) {
-	const months = monthsOwed(
-		monthOf(lease.startDate),
-		now,
-		lease.endDate ? monthOf(lease.endDate) : null
-	);
-	return [...new Set([lease.startDate.slice(0, 4), ...months.map((m) => String(m.year))])];
-}
-
 export function computeLedger(input: LedgerInput): Ledger {
 	const { lease, histories, now } = input;
 	const today = businessToday(now);
@@ -245,7 +234,9 @@ export function computeLedger(input: LedgerInput): Ledger {
 			const index = MONTH_NAMES.indexOf(monthName);
 			if (index < 0) continue;
 			const key = `${year}-${String(index + 1).padStart(2, '0')}`;
-			if (key < startMonth || owedKeys.has(key)) continue;
+			// Months not owed (before the start, after the end, or not yet due) owe nothing, so
+			// whatever was recorded for them is credit.
+			if (owedKeys.has(key)) continue;
 			pool += monthPaidCents(entry, rentCents);
 		}
 	}

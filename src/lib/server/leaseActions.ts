@@ -4,6 +4,8 @@ import { depositRef, loadLedgerRecords } from './balance';
 import { computeLedger, toCents, type Deduction, type Settlement } from './billing';
 import { leaseStatus, type LeaseDoc } from './leaseDates';
 
+const MAX_DEDUCTIONS = 50;
+
 const MONTH_KEY = /^20\d{2}-(0[1-9]|1[0-2])$/;
 
 const readerFor = (tx: Transaction) => ({
@@ -26,7 +28,7 @@ export async function waiveLateFee(
 	return adminDB.runTransaction(async (tx) => {
 		const lease = (await tx.get(leaseRef)).data() as LeaseDoc | undefined;
 		if (!lease) return 'missing-lease';
-		const records = await loadLedgerRecords(leaseRef, lease, now, readerFor(tx));
+		const records = await loadLedgerRecords(leaseRef, readerFor(tx));
 		const fee = computeLedger({ lease, ...records, now }).lateFees.find(
 			(f) => f.month.key === month
 		);
@@ -79,6 +81,9 @@ export async function settleDeposit(
 	}
 	const rawDeductions = Array.isArray(input.deductions) ? input.deductions : null;
 	if (!rawDeductions) errors.total = 'Deductions must be a list.';
+	else if (rawDeductions.length > MAX_DEDUCTIONS) {
+		errors.total = `A settlement can have at most ${MAX_DEDUCTIONS} deductions.`;
+	}
 	const deductions: Deduction[] = [];
 	(rawDeductions ?? []).forEach((raw, index) => {
 		const { amount, reason } = (raw ?? {}) as { amount?: unknown; reason?: unknown };
@@ -100,7 +105,7 @@ export async function settleDeposit(
 	return adminDB.runTransaction(async (tx): Promise<SettleResult> => {
 		const lease = (await tx.get(leaseRef)).data() as LeaseDoc | undefined;
 		if (!lease) return { kind: 'missing-lease' };
-		const records = await loadLedgerRecords(leaseRef, lease, now, readerFor(tx));
+		const records = await loadLedgerRecords(leaseRef, readerFor(tx));
 		const ledger = computeLedger({ lease, ...records, now });
 		if (leaseStatus(lease, ledger.today) !== 'ended') return { kind: 'not-ended' };
 

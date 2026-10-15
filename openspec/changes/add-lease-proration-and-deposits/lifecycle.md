@@ -1,9 +1,9 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 4 Review (round 1 starting)
+- Stage: 5 Ship to develop
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
-- Review round: 0 of 5
+- Review round: 1 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-15
 
@@ -68,6 +68,13 @@ Run 2026-10-15 on `claude/add-lease-proration-and-deposits` (develop merged in a
 
 ## Review rounds
 Stage 3 done 2026-10-15: all 21 tasks ticked. Local checks: lint, check, 567 unit/handler tests, build, `npm run test:e2e` 149 passed (new `tests/e2e/specs/lease-billing.spec.ts`).
+Round 1 (2026-10-15, fresh Explore/Sonnet reviewer): blockers 0, majors 0, minors 3, nits 1. Exit after fixing.
+- minor, dead `allocatePayment`/`toDollars`: fixed (removed with their tests; `computeBalance` kept, commented as migration 0001's).
+- minor, credit ignored payments in unloaded years or before the start month: fixed (the ledger reads every `payment_history` year and counts any month not owed as credit; unit test added).
+- minor, admin list loads a ledger per lease: not changed. Reason: every lease, ended ones included, can owe rent or hold a deposit that the list must show; the cost is three reads per lease, which the design accepts at this app's scale.
+- nit, unbounded deductions: fixed (at most 50; test added).
+Local checks after the fixes: lint, check, 564 tests, build.
+
 Implementation notes: the tenant refusal status in the two new admin routes is 401 (the codebase's admin guard), so the spec scenarios were aligned from 403 to 401.
 
 ## Out-of-scope observations

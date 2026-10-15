@@ -6,7 +6,6 @@ import {
 	computeLedger,
 	dayOf,
 	defaultLateFee,
-	ledgerYears,
 	monthCharge,
 	type LeaseTerms
 } from '../../src/lib/server/billing';
@@ -144,6 +143,15 @@ describe('lease-billing: Credit from overpaid months', () => {
 			now: on('2026-10-20')
 		});
 		expect(ledger.creditCents).toBe(10000);
+	});
+
+	it('money recorded for a month the lease no longer covers (start moved later) is credit', () => {
+		const ledger = computeLedger({
+			lease: lease({ startDate: '2026-11-01', endDate: null }),
+			histories: { '2026': { October: { transactions: [{ amount: 1500 }] } } },
+			now: on('2026-11-20')
+		});
+		expect(ledger.rent[0]).toMatchObject({ creditAppliedCents: 150000, owedCents: 0 });
 	});
 
 	it('a legacy entry without transactions counts as the rent minus its remaining balance', () => {
@@ -399,15 +407,5 @@ describe('helpers', () => {
 		expect(dayOf(new Date('2026-04-01T03:30:00Z'))).toBe('2026-03-31');
 		expect(dayOf('2026-04-01T03:30:00Z')).toBe('2026-04-01');
 		expect(dayOf(undefined)).toBeUndefined();
-	});
-
-	it('ledgerYears includes the start year even before rent is owed', () => {
-		expect(ledgerYears({ startDate: '2027-01-10', endDate: null }, on('2026-12-20'))).toEqual([
-			'2027'
-		]);
-		expect(ledgerYears({ startDate: '2026-11-10', endDate: null }, on('2027-01-20'))).toEqual([
-			'2026',
-			'2027'
-		]);
 	});
 });

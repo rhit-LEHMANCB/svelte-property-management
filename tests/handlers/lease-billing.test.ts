@@ -117,6 +117,10 @@ describe('security-deposits: Settle a deposit (PUT /api/lease/{id}/deposit/settl
 				.errors.deductions
 		).toBeDefined();
 		expect((await settleAs('admin-1', 'nonsense')).status).toBe(400);
+		const many = Array.from({ length: 51 }, () => ({ amount: 1, reason: 'x' }));
+		expect((await settleAs('admin-1', { returned: 949, deductions: many })).json.errors.total).toBe(
+			'A settlement can have at most 50 deductions.'
+		);
 	});
 
 	it('Scenario: Lease not ended: 409 and nothing saved', async () => {

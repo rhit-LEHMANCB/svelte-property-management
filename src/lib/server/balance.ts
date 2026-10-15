@@ -7,7 +7,6 @@ import type {
 import { adminDB } from './admin';
 import {
 	computeLedger,
-	ledgerYears,
 	type DepositLedger,
 	type HistoryYear,
 	type LateFeeRecord,
@@ -42,19 +41,18 @@ export type LedgerRecords = {
  */
 export async function loadLedgerRecords(
 	leaseRef: DocumentReference,
-	lease: Pick<LeaseTerms, 'startDate' | 'endDate'>,
-	now: Date,
 	read: LedgerReader = directReader
 ): Promise<LedgerRecords> {
-	const years = ledgerYears(lease, now);
+	// Every year document: money recorded for a month the lease no longer covers (after a date
+	// change) still counts, as credit.
 	const [historyDocs, lateFeeDocs, deposit] = await Promise.all([
-		Promise.all(years.map((year) => read.doc(leaseRef.collection('payment_history').doc(year)))),
+		read.collection(leaseRef.collection('payment_history')),
 		read.collection(leaseRef.collection('late_fees')),
 		read.doc(depositRef(leaseRef))
 	]);
 	return {
 		histories: Object.fromEntries(
-			years.map((year, index) => [year, historyDocs[index].data() as HistoryYear])
+			historyDocs.docs.map((doc) => [doc.id, doc.data() as HistoryYear])
 		),
 		lateFees: Object.fromEntries(
 			lateFeeDocs.docs.map((doc) => [doc.id, doc.data() as LateFeeRecord])
@@ -69,6 +67,6 @@ export async function loadLeaseLedger(
 	lease: LeaseTerms,
 	now = new Date()
 ): Promise<Ledger> {
-	const records = await loadLedgerRecords(adminDB.collection('leases').doc(leaseId), lease, now);
+	const records = await loadLedgerRecords(adminDB.collection('leases').doc(leaseId));
 	return computeLedger({ lease, ...records, now });
 }

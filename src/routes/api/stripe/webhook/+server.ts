@@ -143,7 +143,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					// The payment goes to late fees, then the deposit, then the oldest unpaid rent, against
 					// what the lease owed when the invoice was created.
 					const now = eventDate.toDate();
-					const records = await loadLedgerRecords(leaseRef, lease, now, {
+					const records = await loadLedgerRecords(leaseRef, {
 						doc: (ref) => tx.get(ref),
 						collection: (ref) => tx.get(ref)
 					});
