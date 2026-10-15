@@ -1,13 +1,13 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 1 Interview (summary shown, waiting for confirmation)
+- Stage: 2 Propose + preflight
 - Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-15
 
 ## Interview summary
-(approved: no; shown 2026-10-15)
+(approved: yes, 2026-10-15)
 
 **Goal.** Bill leases fairly for partial months, collect and account for security deposits, and charge late fees, all inside the existing lease balance and Stripe Checkout flow. Autopay is the next change, not this one.
 
