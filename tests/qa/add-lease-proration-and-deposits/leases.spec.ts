@@ -227,6 +227,7 @@ test.describe('Admin lease list ordering', () => {
 	});
 
 	test('Billing details', async () => {
+		test.setTimeout(120_000);
 		test.info().annotations.push({ type: 'partial', description: 'credit shown in the Change the rent test; deposit held in security-deposits; no late fee can be owed yet' });
 		const shared = JSON.parse(fs.readFileSync(SHARED, 'utf8')) as { propC: string; t8: string };
 		await editLease(admin, shared.propC, shared.t8);

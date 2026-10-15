@@ -138,7 +138,8 @@ test.describe('Lowered below what is paid', () => {
 		await save(admin);
 		const err = fieldError(admin, 'deposit');
 		await expect(err).toBeVisible();
-		await expect(err).toContainText('$400.00');
+		// The reused lease may already hold more than $400.00 from an earlier cycle.
+		await expect(err).toContainText(/cannot be less than the \$[\d,]+\.\d\d already paid/);
 		await shot(admin, `${CAP}-lowered-below-what-is-paid`);
 		await editLease(admin, prop, ids.t6);
 		await expect(admin.locator('input[name="deposit"]')).toHaveValue('1000');

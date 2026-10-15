@@ -163,7 +163,8 @@ test.describe('Credit from overpaid months', () => {
 		await openLeases(admin, propC);
 		const text = await entryText(admin, '2026-04-15');
 		expect(text).toContain('Owed $0.00');
-		expect(text).toContain('Credit $466.67');
+		// $466.67 at rent 1000; $360.00 after the leases spec raised the rent to 1200 (paid 1000 - 16/30 x 1200)
+		expect(text).toMatch(/Credit \$(466\.67|360\.00)/);
 		await shot(admin, `${CAP}-credit-larger-than-what-is-owed`);
 	});
 });
