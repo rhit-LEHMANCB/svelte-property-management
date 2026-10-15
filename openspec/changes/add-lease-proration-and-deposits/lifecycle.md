@@ -1,7 +1,7 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 6 QA cycle 3 running (amendment 1)
+- Stage: 7 Production PR (QA cycle 3 passed 2026-10-15)
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
 - QA cycle: 3 of 3
@@ -145,8 +145,19 @@ No app bug. Evidence is on the `qa-evidence` branch (commit b34ddbb).
 - **Test bugs** (state left from cycle 1): `rent-payments.spec.ts` setup hit an overlap with the cycle 1 lease; `security-deposits` "Before settlement" reused a lease that was already settled. Triage: a fresh QA agent corrects the scripts (cycle 3).
 - 7 job runs sent 0 emails and charged 0 fees on the dev project.
 
+### QA cycle 3 (amendment 1, 2026-10-15, on 7d1b3dc): PASS
+0 failing scenarios, 0 app bugs. Evidence is on the `qa-evidence` branch (commit d5085ff).
+- **Test bugs fixed:** each run now creates its own 2021-dated qa- lease, the deposit spec no longer reuses a settled lease, the test waits after Stripe's Back link, and the job-call budget is respected.
+- **rent-payments:** 15 pass. Stripe test checkout went through the dev webhook, and a $1,700 payment was recorded as $500 deposit and $1,200 rent.
+- **security-deposits:** 16 pass.
+- **billing-jobs:** the admin run, 401s, summary, run again, ended lease, and **overlapping calls (200 and 409)** pass.
+- **Regression:** lease-billing 13, leases 19, data-migrations, and the top-level pages all pass.
+- **Not verified** (needs a current or future lease for a tenant, a second tenant, the job secret, or a real inbox): reminders, charging a fee and its notice, waive success, the 7-day payable window, upcoming leases, and the webhook edge cases. These are the top human tests.
+- 3 job calls this cycle, 0 emails, 0 fees.
+
 ## Out-of-scope observations
 - Medium: deleting a property deletes its leases even when they have recorded payments (QA saw a lease with a $400 deposit payment vanish with its `qa-` property). This bypasses the lease delete rule. Existing behavior, not from this change.
+- Low: after Stripe Checkout's "Back" link, `/payment` is blank for a few seconds before the balance appears (QA cycle 3). It is not established whether the app or the redirect causes it.
 - Low: the edit-lease page always says "A lease with recorded payments cannot be deleted..." even when the lease has none. Existing copy.
 
 ## QA report
@@ -193,19 +204,25 @@ Left on the dev site (cannot be deleted because they have payments):
 All other qa- data was removed.
 
 ## Verification checklist for the human
-Ranked by risk. Production-only risks come first.
 
-1. **Migration 0003 on production** (high). The deploy runs `0003-lease-billing-terms` before hosting. Check the deploy log shows the restore point and the leases updated. Then open a few leases: no deposit, late fee 5% of rent, 5 grace days. A lease that started mid-month and paid a full first month now shows **credit**. Balances of mid-month leases change by design.
-2. **Late fee end to end** (high; could not happen on dev yet). As admin, create a lease for a tenant with no other lease, starting the 1st of next month, rent 1500, late fee 75, grace 5. On the 7th, the admin list and `/payment` show a $75.00 late fee. Paying the rent later does not remove it. **Waive** removes an unpaid fee. Checkout with a fee owed shows "Late Fee" first.
-3. **Upcoming lease with a deposit** (high). Create a lease starting mid-next-month with a $1,000 deposit. As the tenant, `/payment` lists it with $1,000.00 owed, due on the start date, before move-in. Pay $400 with a test card: the card shows $400 paid and held. Deleting the lease returns 409. The first month is prorated and due on the start date.
-4. **Stripe** (high). Production still uses a Stripe test-mode key (Known Gap). The new Checkout lines "Security Deposit" and "Late Fee" appear there. The webhook endpoint is unchanged, so no Stripe dashboard change is needed. When going live, check the line names and the 2.9% + $0.30 fee on the whole amount.
-5. **Settlement guard and privacy** (medium). Settling the deposit of a current lease returns 409. A second tenant's dashboard shows nothing from another tenant's lease.
-6. **Webhook edge cases in Stripe test mode** (medium). Resend a delivered `invoice.payment_succeeded` event: nothing is recorded twice. An old-format invoice (rent and fee only) goes entirely to rent.
-7. **Add or remove tenants on a lease** (medium). Adding an email creates an account and sends a welcome email from Lehman Family LLC. A removed tenant keeps their account.
-8. **Phone layout** (low). At about 390 px wide, check the lease form (deposit and late-fee fields), the admin lease list with the settle form, the tenant dashboard and `/payment`.
-9. **Lease document** (low). Attach a PDF, open it as the tenant, and delete a lease that has a document.
+Ranked by risk. Production-only setup comes first.
 
-No environment variables or secrets were added. The production database must keep its backup schedule, or the migration refuses to run. Also clean up the three `qa-billing-*` properties on the dev site if they are not wanted.
+1. **Daily job setup (high, required before late fees or emails work in production).**
+   - Generate a secret and add it as `JOBS_SECRET` in the GitHub `production` (and `develop`) environment and in the 1Password `.env` item. Every `.env` needs the line, even empty, or the build fails.
+   - Enable the Cloud Scheduler API and create the `daily-billing` job with the README command: 6:00 America/Indiana/Indianapolis, a bearer header, and the site's `/api/jobs/daily`.
+   - Run it once with `gcloud scheduler jobs run`. Expect 200 and a `_jobs/daily/runs/{today}` record.
+2. **Migration 0003 on production (high).** The deploy log shows the restore point and the leases updated. Leases have no deposit, a 5% late fee, 5 grace days and a late-fee start date of the deploy day. A lease that started mid-month and paid a full first month shows credit. The database must keep its backup schedule, or the migration refuses to run.
+3. **Late fee end to end (high; not reachable in QA).**
+   - On dev, create a lease for a tenant with no other lease, with the first month due a few days out and grace 0. Leave it unpaid.
+   - After the grace period, run the job as an admin: one fee is charged and every tenant gets a late-fee email from Lehman Family LLC. A re-run changes nothing.
+   - Checkout shows a "Late Fee" line first. **Waive** removes an unpaid fee.
+4. **Reminders (high; not reachable in QA).** Rent due in 7 days and a deposit due that day: one reminder per tenant on that day and on the due day, none once paid, none for ended leases. Rent shows on `/payment` from 7 days before its due date.
+5. **Upcoming lease with a deposit (medium).** It is listed on `/payment` and payable before move-in. A partial payment shows as held. Deleting the lease returns 409.
+6. **Stripe (medium).** Production still uses a test-mode key (Known Gap). Check the "Security Deposit" and "Late Fee" Checkout lines and that the webhook records each part.
+7. **Privacy and shared leases (medium).** Two tenants on one lease both get emails and see the shared balance. Another tenant sees none of it.
+8. **Phone layout (low).** The lease form, the admin list with the settle form, the dashboard and `/payment` at about 390 px.
+9. **Blank `/payment` after Stripe Back (low).** Judge whether the few-second blank page matters.
 
+No other secrets or variables are needed. Several `qa-` properties with test payments remain on the dev site and can be removed by hand.
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
