@@ -1,7 +1,7 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 3 Implement
+- Stage: 4 Review (round 1 starting)
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 0 of 5
 - QA cycle: 0 of 3
@@ -67,7 +67,8 @@ Run 2026-10-15 on `claude/add-lease-proration-and-deposits` (develop merged in a
 | Not available under MCP | Approving a PR's pending workflow runs (human step at wrap-up if needed) |
 
 ## Review rounds
-(none yet; one line per round: blockers, majors, minors, nits, fixed, rejected with reason)
+Stage 3 done 2026-10-15: all 21 tasks ticked. Local checks: lint, check, 567 unit/handler tests, build, `npm run test:e2e` 149 passed (new `tests/e2e/specs/lease-billing.spec.ts`).
+Implementation notes: the tenant refusal status in the two new admin routes is 401 (the codebase's admin guard), so the spec scenarios were aligned from 403 to 401.
 
 ## Out-of-scope observations
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)

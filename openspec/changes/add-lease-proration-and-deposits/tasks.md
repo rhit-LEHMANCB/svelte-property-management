@@ -37,4 +37,4 @@
 ## 6. Docs and specs housekeeping
 
 - [x] 6.1 Document the billing model (proration, credit, late fees, deposit records) and migration 0003 in the README; verify the README section names the new documents and fields
-- [ ] 6.2 Run `npm run lint`, `npm run check`, `npm test`, `npm run test:e2e` and `npm run build`; verify all pass
+- [x] 6.2 Run `npm run lint`, `npm run check`, `npm test`, `npm run test:e2e` and `npm run build`; verify all pass
