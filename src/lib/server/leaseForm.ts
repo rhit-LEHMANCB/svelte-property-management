@@ -1,9 +1,10 @@
 import { fail, isHttpError, redirect, type RequestEvent } from '@sveltejs/kit';
-import { message, superValidate, type SuperValidated } from 'sveltekit-superforms/server';
+import { message, setError, superValidate, type SuperValidated } from 'sveltekit-superforms/server';
 import { zod4 as zod } from 'sveltekit-superforms/adapters';
 import { leaseSchema, type LeaseInput } from '$lib/schemas';
 import { getAdminUserDataOrError, getUserIdOrError } from './authHelpers';
 import { saveLease } from './leases';
+import { defaultLateFee } from '$lib/lateFee';
 import type { LeaseFormMessage } from '$lib/leaseTypes';
 
 export type { LeaseFormMessage };
@@ -54,6 +55,12 @@ export async function leaseFormAction(
 			return message(form, { type: 'overlap', overlapping: result.overlapping }, { status: 409 });
 		case 'documentError':
 			return message(form, { type: 'document', text: result.message }, { status: 400 });
+		case 'depositBelowPaid':
+			return setError(
+				form,
+				'deposit',
+				`The deposit cannot be less than the ${currency.format(result.paid)} already paid.`
+			);
 		case 'saved':
 			if (result.emailFailures.length > 0) {
 				return message(form, {
@@ -66,6 +73,8 @@ export async function leaseFormAction(
 	}
 }
 
+const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
 export async function emptyLeaseForm(initial: Partial<LeaseInput>) {
 	return superValidate<LeaseInput, LeaseFormMessage>(
 		{
@@ -73,6 +82,10 @@ export async function emptyLeaseForm(initial: Partial<LeaseInput>) {
 			startDate: '',
 			endDate: '',
 			emails: [''],
+			deposit: undefined,
+			depositDueDate: '',
+			lateFee: initial.rent !== undefined ? defaultLateFee(initial.rent) : undefined,
+			graceDays: 5,
 			confirmOverlap: false,
 			...initial
 		},

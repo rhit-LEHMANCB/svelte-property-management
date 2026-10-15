@@ -55,8 +55,7 @@ export type LeaseTerms = Pick<
 export const toCents = (dollars: number) => Math.round(dollars * 100);
 export const toDollars = (cents: number) => cents / 100;
 
-/** The default late fee for a rent: 5%, rounded to the cent, in dollars. */
-export const defaultLateFee = (rent: number) => toDollars(Math.round(toCents(rent) * 0.05));
+export { defaultLateFee } from '../lateFee';
 
 // ---- calendar days ----------------------------------------------------------------------------
 

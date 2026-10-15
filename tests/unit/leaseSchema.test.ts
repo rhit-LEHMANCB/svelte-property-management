@@ -7,6 +7,8 @@ const valid = {
 	startDate: '2026-11-01',
 	endDate: '',
 	emails: ['tenant@example.com'],
+	lateFee: 62.5,
+	graceDays: 5,
 	confirmOverlap: false
 };
 const issues = (input: object) => {
@@ -84,5 +86,48 @@ describe('isIsoDate', () => {
 		expect(isIsoDate('2027-02-29')).toBe(false);
 		expect(isIsoDate('2026-13-01')).toBe(false);
 		expect(isIsoDate('2026-1-01')).toBe(false);
+	});
+});
+
+describe('lease-billing and security-deposits: lease terms', () => {
+	it('Scenario: Valid terms (deposit optional, due date optional)', () => {
+		expect(
+			issues({ deposit: 1000, depositDueDate: '2026-10-20', lateFee: 75, graceDays: 5 })
+		).toEqual([]);
+		expect(issues({ deposit: undefined, depositDueDate: '', lateFee: 0, graceDays: 0 })).toEqual(
+			[]
+		);
+		expect(issues({ graceDays: 31 })).toEqual([]);
+	});
+
+	it('Scenario: Invalid deposit: 0 or less, or more than two decimals', () => {
+		expect(issues({ deposit: 0 })).toEqual([
+			{ path: ['deposit'], message: 'Deposit must be greater than 0' }
+		]);
+		expect(issues({ deposit: -5 })).toEqual([
+			{ path: ['deposit'], message: 'Deposit must be greater than 0' }
+		]);
+		expect(issues({ deposit: 10.005 })).toEqual([
+			{ path: ['deposit'], message: 'Deposit can have at most two decimal places' }
+		]);
+		expect(issues({ depositDueDate: '2026-02-30' })[0].path).toEqual(['depositDueDate']);
+	});
+
+	it('Scenario: Invalid terms: negative or fractional-cent late fee, grace days not a whole number from 0 to 31', () => {
+		expect(issues({ lateFee: -1 })).toEqual([
+			{ path: ['lateFee'], message: 'Late fee cannot be negative' }
+		]);
+		expect(issues({ lateFee: 1.234 })).toEqual([
+			{ path: ['lateFee'], message: 'Late fee can have at most two decimal places' }
+		]);
+		expect(issues({ graceDays: 32 })).toEqual([
+			{ path: ['graceDays'], message: 'Grace days must be from 0 to 31' }
+		]);
+		expect(issues({ graceDays: -1 })).toEqual([
+			{ path: ['graceDays'], message: 'Grace days must be from 0 to 31' }
+		]);
+		expect(issues({ graceDays: 2.5 })).toEqual([
+			{ path: ['graceDays'], message: 'Grace days must be a whole number' }
+		]);
 	});
 });

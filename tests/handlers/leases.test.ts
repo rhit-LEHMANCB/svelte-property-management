@@ -28,6 +28,10 @@ function leaseForm(fields: {
 	emails?: string[];
 	confirmOverlap?: boolean;
 	document?: Blob & { name?: string };
+	deposit?: string;
+	depositDueDate?: string;
+	lateFee?: string;
+	graceDays?: string;
 }) {
 	const fd = new FormData();
 	fd.append('rent', fields.rent ?? '1250');
@@ -36,6 +40,10 @@ function leaseForm(fields: {
 	for (const email of fields.emails ?? ['tenant-1@example.com']) fd.append('emails', email);
 	if (fields.confirmOverlap) fd.append('confirmOverlap', 'true');
 	if (fields.document) fd.append('document', fields.document);
+	fd.append('deposit', fields.deposit ?? '');
+	fd.append('depositDueDate', fields.depositDueDate ?? '');
+	fd.append('lateFee', fields.lateFee ?? '62.50');
+	fd.append('graceDays', fields.graceDays ?? '5');
 	return fd;
 }
 
@@ -77,8 +85,54 @@ describe('leases: Lease record and Create a lease', () => {
 			rent: 1250,
 			startDate: '2026-11-01',
 			endDate: null,
-			document: null
+			document: null,
+			deposit: null,
+			lateFee: 62.5,
+			graceDays: 5,
+			lateFeesFrom: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)
 		});
+	});
+
+	it('Scenario: Deposit with default due date; a chosen due date is kept', async () => {
+		setup();
+		await create(leaseForm({ deposit: '1000' }));
+		expect((await leases())[0].data().deposit).toEqual({ amount: 1000, dueDate: '2026-11-01' });
+
+		db.reset();
+		setup();
+		await create(leaseForm({ deposit: '1000', depositDueDate: '2026-10-20' }));
+		expect((await leases())[0].data().deposit).toEqual({ amount: 1000, dueDate: '2026-10-20' });
+	});
+
+	it('Scenario: Invalid terms: nothing is saved and the fields have the errors', async () => {
+		setup();
+		const result = await create(leaseForm({ deposit: '0', lateFee: '-1', graceDays: '40' }));
+		expect(result.status).toBe(400);
+		expect(result.data.form.errors).toMatchObject({
+			deposit: ['Deposit must be greater than 0'],
+			lateFee: ['Late fee cannot be negative'],
+			graceDays: ['Grace days must be from 0 to 31']
+		});
+		expect(await leases()).toHaveLength(0);
+	});
+
+	it('the late-fee start date is the day the lease is created, and an edit keeps it', async () => {
+		setup();
+		seedLease('lease-1', {
+			tenantIds: ['tenant-1'],
+			startDate: '2026-01-01',
+			lateFee: 60,
+			graceDays: 5,
+			lateFeesFrom: '2026-03-04'
+		});
+		await edit('lease-1', leaseForm({ startDate: '2026-01-01', lateFee: '80' }));
+		expect(db.peek('leases/lease-1')).toMatchObject({ lateFee: 80, lateFeesFrom: '2026-03-04' });
+	});
+
+	it('Scenario: Prefilled late fee and grace days: 5% of the property rent and 5', async () => {
+		setup();
+		const result = await call(newLoad, { userID: 'admin-1', params: { propertyId: 'prop-1' } });
+		expect(result.data.form.data).toMatchObject({ lateFee: 60, graceDays: 5, deposit: undefined });
 	});
 
 	it('Scenario: Invalid fields: nothing is saved and the field has the error', async () => {
@@ -425,6 +479,32 @@ describe('leases: Edit a lease', () => {
 		});
 	});
 
+	it('Scenario: Lowered below what is paid: nothing is saved and the deposit field says why', async () => {
+		setupLease();
+		db.seed('leases/lease-1', {
+			...(db.peek('leases/lease-1') as object),
+			deposit: { amount: 1000, dueDate: '2026-01-01' }
+		});
+		db.seed('leases/lease-1/deposit/ledger', { paid: 600, transactions: [] });
+		const form = (deposit: string) =>
+			leaseForm({
+				startDate: '2026-01-01',
+				deposit,
+				emails: ['tenant-1@example.com', 'tenant-2@example.com']
+			});
+
+		const result = await edit('lease-1', form('500'));
+		expect(result.status).toBe(400);
+		expect(result.data.form.errors.deposit).toEqual([
+			'The deposit cannot be less than the $600.00 already paid.'
+		]);
+		expect(db.peek('leases/lease-1')).toMatchObject({ deposit: { amount: 1000 } });
+		// Removing the deposit is lowering it to nothing.
+		expect((await edit('lease-1', form(''))).status).toBe(400);
+		expect((await edit('lease-1', form('600'))).redirect).toBeDefined();
+		expect(db.peek('leases/lease-1')).toMatchObject({ deposit: { amount: 600 } });
+	});
+
 	it('editing a lease does not count the lease itself as a conflict or an overlap', async () => {
 		setupLease();
 		const result = await edit(
@@ -678,6 +758,27 @@ describe('leases: Delete a lease (DELETE /api/lease/{id})', () => {
 		expect(result.status).toBe(409);
 		expect(result.error).toMatch(/Set an end date instead/);
 		expect(db.peek('leases/lease-1')).toBeDefined();
+	});
+
+	it('Scenario: Has only a deposit payment: 409 and nothing removed', async () => {
+		setup();
+		seedLease('lease-1', { tenantIds: ['tenant-1'], startDate: '2030-01-01' });
+		db.seed('leases/lease-1/deposit/ledger', { paid: 100, transactions: [] });
+		expect((await remove('admin-1')).status).toBe(409);
+		expect(db.peek('leases/lease-1')).toBeDefined();
+	});
+
+	it('a paid late fee blocks the delete; waived ones and an empty deposit ledger are removed with the lease', async () => {
+		setup();
+		seedLease('lease-1', { tenantIds: ['tenant-1'], startDate: '2030-01-01' });
+		db.seed('leases/lease-1/late_fees/2030-01', { amount: 50, paid: 50 });
+		expect((await remove('admin-1')).status).toBe(409);
+
+		db.seed('leases/lease-1/late_fees/2030-01', { amount: 50, paid: 0, waivedAt: 'x' });
+		db.seed('leases/lease-1/deposit/ledger', { paid: 0 });
+		expect((await remove('admin-1')).status).toBe(200);
+		expect(db.peek('leases/lease-1/late_fees/2030-01')).toBeUndefined();
+		expect(db.peek('leases/lease-1/deposit/ledger')).toBeUndefined();
 	});
 
 	it('a payment recorded while deleting blocks the delete (check and delete are one transaction)', async () => {

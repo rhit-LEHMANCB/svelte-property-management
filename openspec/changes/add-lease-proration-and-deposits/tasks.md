@@ -21,9 +21,9 @@
 
 ## 4. Leases: form, delete, admin actions
 
-- [ ] 4.1 Add deposit amount, deposit due date (default start date), late fee and grace days to `leaseForm.ts` validation and the create and edit pages, with the late fee following 5% of the rent until edited, and refuse lowering the deposit below what is paid; verify `tests/handlers/leases.test.ts` cases for valid terms, invalid terms and a lowered deposit
-- [ ] 4.2 Set `lateFeesFrom` to the business date when a lease is created; verify a handler test
-- [ ] 4.3 Make `deleteLease` refuse when `late_fees` or `deposit/ledger` has a payment; verify a handler test for a deposit-only payment returning 409
+- [x] 4.1 Add deposit amount, deposit due date (default start date), late fee and grace days to `leaseForm.ts` validation and the create and edit pages, with the late fee following 5% of the rent until edited, and refuse lowering the deposit below what is paid; verify `tests/handlers/leases.test.ts` cases for valid terms, invalid terms and a lowered deposit
+- [x] 4.2 Set `lateFeesFrom` to the business date when a lease is created; verify a handler test
+- [x] 4.3 Make `deleteLease` refuse when `late_fees` or `deposit/ledger` has a payment; verify a handler test for a deposit-only payment returning 409
 - [ ] 4.4 Add `POST /api/lease/[leaseId]/late-fees/[month]/waive` (admin only, transactional); verify handler tests for waive, tenant 403 and unknown month 404
 - [ ] 4.5 Add `PUT /api/lease/[leaseId]/deposit/settlement` (admin only, after end date, amounts must add up, reasons required, replaces an earlier settlement); verify handler tests for settled, mismatch, missing reason, lease not ended 409, correction and tenant 403
 - [ ] 4.6 Show balance, credit, deposit state ("Deposit to settle"), late fees with a Waive button, and a settle-deposit form on the admin Leases tab; verify `npm run check` and a manual check in the dev server

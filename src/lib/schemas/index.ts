@@ -135,6 +135,8 @@ export const NO_TENANTS_MESSAGE = 'A lease needs at least one tenant.';
 const inBillingYears = (date: string) => /^20\d{2}-/.test(date);
 const YEAR_MESSAGE = 'Please enter a year from 2000 to 2099';
 
+const wholeCents = (value: number) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-6;
+
 export const leaseSchema = z
 	.object({
 		rent: z
@@ -142,10 +144,7 @@ export const leaseSchema = z
 				error: (issue) => (issue.input === undefined ? 'Required' : 'Rent must be a number')
 			})
 			.positive('Rent must be greater than 0')
-			.refine(
-				(rent) => Math.abs(rent * 100 - Math.round(rent * 100)) < 1e-6,
-				'Rent can have at most two decimal places'
-			),
+			.refine(wholeCents, 'Rent can have at most two decimal places'),
 		startDate: z
 			.string()
 			.min(1, 'Please select a start date')
@@ -174,6 +173,31 @@ export const leaseSchema = z
 				}
 			});
 		}),
+		// Empty means no deposit.
+		deposit: z
+			.number({ error: 'Deposit must be a number' })
+			.positive('Deposit must be greater than 0')
+			.refine(wholeCents, 'Deposit can have at most two decimal places')
+			.optional(),
+		// Empty means the start date.
+		depositDueDate: z
+			.string()
+			.refine((v) => v === '' || isIsoDate(v), 'Please enter a date in the correct format')
+			.refine((v) => v === '' || inBillingYears(v), YEAR_MESSAGE)
+			.default(''),
+		lateFee: z
+			.number({
+				error: (issue) => (issue.input === undefined ? 'Required' : 'Late fee must be a number')
+			})
+			.min(0, 'Late fee cannot be negative')
+			.refine(wholeCents, 'Late fee can have at most two decimal places'),
+		graceDays: z
+			.number({
+				error: (issue) => (issue.input === undefined ? 'Required' : 'Grace days must be a number')
+			})
+			.int('Grace days must be a whole number')
+			.min(0, 'Grace days must be from 0 to 31')
+			.max(31, 'Grace days must be from 0 to 31'),
 		// Set when the admin chose "Save anyway" after an overlap warning.
 		confirmOverlap: z.boolean().default(false)
 	})
