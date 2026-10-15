@@ -49,7 +49,7 @@ The system SHALL let an admin delete a property and everything that hangs off it
 
 #### Scenario: Cascade
 - **WHEN** a property is deleted
-- **THEN** its document, its maintenance requests, its `payment_history` subcollections and its storage files are removed
+- **THEN** its document, its maintenance requests, its `payment_history` subcollections, its leases with their `payment_history` and `recorded_invoices` subcollections, its storage files and its leases' documents are removed
 - **AND** the response is sent only after every removal has finished
 
 #### Scenario: Large property
@@ -68,12 +68,28 @@ The system SHALL list all properties to admins ordered by title.
 - **THEN** all properties appear ordered by `title`
 
 ### Requirement: Cleanup of tenant links on delete
-The system SHALL remove `junction_user_property` rows for a property when it is deleted.
+The system SHALL remove a property's leases, and any `junction_user_property` rows left from before leases, when the property is deleted.
 
 #### Scenario: Deleted property with tenants
-- **WHEN** a property with assigned tenants is deleted
-- **THEN** no junction row references it
-- **AND** those tenants can load the app without an error
+- **WHEN** a property with a current lease is deleted
+- **THEN** no lease or junction row references it
+- **AND** that lease's tenants can load the app without an error and are shown as having no property
+
+### Requirement: Manual address entry
+The system SHALL have admins enter a property's address by hand in the Street Address, Apartment Info, City, State and Zip fields of the property form. The form SHALL NOT offer an address lookup and SHALL NOT load a third-party maps or places service.
+
+#### Scenario: Form fields
+- **WHEN** an admin opens the add property page or the edit page of an existing property
+- **THEN** the Street Address, Apartment Info, City, State and Zip fields are shown
+- **AND** no Address Lookup field is shown
+
+#### Scenario: Typed address is saved
+- **WHEN** an admin types a valid address into those fields and saves
+- **THEN** the property is saved with exactly the typed address
+
+#### Scenario: No third-party lookup requests
+- **WHEN** the property form loads and the admin fills it in
+- **THEN** the browser makes no request to `maps.googleapis.com`
 
 ## Known Gaps
 - Photo endpoints do not check that the property exists.

@@ -42,7 +42,7 @@ The system SHALL show a success or error notification after submitting forms and
 The system SHALL keep popup menus, autocomplete inputs, tab groups and paginated lists operable by mouse and keyboard, with the same options and results as before the upgrade.
 
 #### Scenario: Autocomplete selection
-- **WHEN** an admin types in an autocomplete input (for example choosing a tenant or an address) and picks a suggestion
+- **WHEN** an admin types in an autocomplete input (for example choosing a tenant) and picks a suggestion
 - **THEN** the chosen value fills the field and is submitted with the form
 
 #### Scenario: Paginated list
