@@ -3,7 +3,7 @@
 - Branch: `claude/add-lease-proration-and-deposits`
 - Stage: 4 Review (amendment 1)
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
-- Review round: 1 of 5
+- Review round: 2 of 5
 - QA cycle: 1 of 3
 - Started: 2026-10-15
 
@@ -118,6 +118,15 @@ Round 1 (2026-10-15, fresh Explore/Sonnet reviewer): blockers 0, majors 0, minor
 Local checks after the fixes: lint, check, 564 tests, build.
 
 Amendment 1, stage 3 done 2026-10-15: tasks 7.1 to 7.8 ticked. Local checks: lint, check, 592 vitest tests (date-sensitive rent-payment tests pinned; probed at 2026-10-28 and 2027-01-01), build, `npm run test:e2e` 150 passed (balance expectations follow the 7-day window). `.env` and both workflows gained `JOBS_SECRET`.
+
+Round 2 (amendment 1, 2026-10-15, fresh Explore/Sonnet reviewer): blockers 0, majors 1, minors 4, nits 1. All fixed; round 3 required.
+- major, the ended-lease reminder test could not fail: fixed (now an ended lease with a deposit due on the run day; mutation-checked).
+- minor, no test that a missed reminder day is not sent later: added.
+- minor, a failed sent-record write could cause a duplicate email: fixed (each notice is claimed with `create()` before sending and released if the send fails).
+- minor, the lock could expire during a long run: fixed (extended after each lease; the claim also prevents duplicate sends). Known edge: a run that dies between claiming and sending leaves that notice unsent.
+- minor, `JOBS_SECRET` missing from the e2e app env: fixed.
+- nit, 200 despite errors: changed to 500 when a run had errors, so Cloud Scheduler retries (the spec scenario says so).
+Local checks: lint, check, 594 tests, build; e2e lease-billing and payment specs, 17 passed.
 
 Implementation notes: the tenant refusal status in the two new admin routes is 401 (the codebase's admin guard), so the spec scenarios were aligned from 403 to 401.
 

@@ -28,6 +28,10 @@ The system SHALL run the billing job once a day at 6:00 America/Indiana/Indianap
 ### Requirement: One run at a time, safe to repeat
 The system SHALL let only one run proceed at a time and SHALL make a repeated run on the same day change nothing that the earlier run already did. Each run SHALL store a summary of what it charged and sent.
 
+#### Scenario: Overlapping runs never send twice
+- **WHEN** two runs reach the same notice for the same tenant
+- **THEN** only one of them sends it
+
 #### Scenario: Overlapping calls
 - **WHEN** a second call arrives while a run is in progress
 - **THEN** the second call is answered 409 and does nothing
@@ -49,7 +53,7 @@ The system SHALL email each tenant on a lease, once, when the job charges a late
 
 #### Scenario: Email fails
 - **WHEN** sending one tenant's email fails
-- **THEN** the failure is recorded in the run summary, and the next run sends it again; the fee itself stays charged once
+- **THEN** the failure is recorded in the run summary, the response is 500 so Cloud Scheduler retries, and a later run sends it again; the fee itself stays charged once
 
 ### Requirement: Due-date reminders
 The system SHALL email each tenant on a lease a reminder 7 days before, and on, the due date of each rent month and of the deposit, when that amount is not yet paid in full. A reminder is sent only on its day; a reminder for a day with no run is not sent later.

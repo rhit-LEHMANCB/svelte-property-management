@@ -30,11 +30,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const result = await runDailyJob(new Date(), runBy);
 	if (result.kind === 'busy') throw error(409, 'The daily job is already running.');
 	const { summary } = result;
-	return json({
-		date: summary.date,
-		leases: summary.leases,
-		feesCharged: summary.feesCharged.length,
-		emailsSent: summary.emailsSent.length,
-		errors: summary.errors.length
-	});
+	// Errors answer 500, so Cloud Scheduler retries; a retry repeats nothing that already succeeded.
+	return json(
+		{
+			date: summary.date,
+			leases: summary.leases,
+			feesCharged: summary.feesCharged.length,
+			emailsSent: summary.emailsSent.length,
+			errors: summary.errors.length
+		},
+		{ status: summary.errors.length > 0 ? 500 : 200 }
+	);
 };

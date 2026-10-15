@@ -193,6 +193,8 @@ describe('billing-jobs: Late-fee notice', () => {
 			if (m.to === 't1@example.com') throw new Error('Email delivery failed: boom');
 		});
 		const first = await run();
+		// Errors answer 500, so Cloud Scheduler retries.
+		expect(first.status).toBe(500);
 		expect(first.json).toMatchObject({ emailsSent: 1, errors: 1 });
 		expect(db.peek('leases/lease-1/notices/late-fee-2026-11-t1')).toBeUndefined();
 
@@ -283,11 +285,45 @@ describe('billing-jobs: Due-date reminders', () => {
 		);
 	});
 
-	it('Scenario: Ended lease: no reminders', async () => {
-		setup({ startDate: '2026-01-01', endDate: '2026-03-31' });
-		db.seed('leases/lease-1/payment_history/2026', {});
-		setNow('2026-11-01');
+	it('Scenario: Ended lease: no reminders, even for an amount due that day', async () => {
+		// The lease ended 2026-10-31 and its unpaid deposit is due 2026-11-08, the run day.
+		setup({
+			startDate: '2026-10-01',
+			endDate: '2026-10-31',
+			deposit: { amount: 1000, dueDate: '2026-11-08' }
+		});
+		setNow('2026-11-08');
 		await run();
 		expect(emails().filter(([, s]) => !s.startsWith('Late fee'))).toEqual([]);
+
+		// The same deposit on a lease that has not ended is reminded, so the check above matters.
+		db.reset();
+		services.sendEmail.mockClear();
+		setup({ startDate: '2026-10-01', deposit: { amount: 1000, dueDate: '2026-11-08' } });
+		await run();
+		expect(emails()).toContainEqual(['t1@example.com', 'Security deposit is due today']);
+	});
+
+	it('a reminder for a day with no run is not sent later', async () => {
+		paidOctober();
+		setNow('2026-10-26');
+		await run();
+		setNow('2026-11-02');
+		await run();
+		expect(emails()).toEqual([]);
+	});
+
+	it('a notice another run already claimed is not sent again', async () => {
+		paidOctober();
+		db.seed('leases/lease-1/notices/rent-7d-2026-11-t1', {
+			notice: 'rent-7d-2026-11',
+			uid: 't1',
+			claimedAt: '2026-10-25T11:00:00.000Z'
+		});
+		setNow('2026-10-25');
+		await run();
+		expect(emails()).toEqual([
+			['t2@example.com', 'Rent for November 2026 is due on November 1, 2026']
+		]);
 	});
 });

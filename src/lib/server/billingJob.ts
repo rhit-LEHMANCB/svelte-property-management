@@ -56,6 +56,12 @@ async function takeLock(now: Date, runBy: string): Promise<boolean> {
 	});
 }
 
+const extendLock = () =>
+	jobRef().set(
+		{ lockedUntil: new Date(Date.now() + LOCK_MINUTES * 60_000).toISOString() },
+		{ merge: true }
+	);
+
 const releaseLock = () => jobRef().set({ lockedUntil: null }, { merge: true });
 
 const monthLabel = (month: { monthName: string; year: number }) =>
@@ -185,10 +191,12 @@ export async function runDailyJob(now = new Date(), runBy = 'scheduler'): Promis
 				if (!result) continue;
 				summary.leases++;
 				summary.feesCharged.push(...result.charged);
-				await sendNotices(doc.ref, result.lease, result.ledger, summary);
+				await sendNotices(doc.ref, result.lease, result.ledger, summary, now);
 			} catch (err) {
 				summary.errors.push(`lease ${doc.id}: ${err instanceof Error ? err.message : String(err)}`);
 			}
+			// A long run keeps its lock, so a scheduler retry does not start a second run meanwhile.
+			await extendLock().catch(() => undefined);
 		}
 	} finally {
 		summary.finishedAt = new Date().toISOString();
@@ -212,7 +220,8 @@ async function sendNotices(
 	leaseRef: DocumentReference,
 	lease: LeaseDoc,
 	ledger: Ledger,
-	summary: JobSummary
+	summary: JobSummary,
+	now: Date
 ) {
 	const [property, lateFeeDocs, sentDocs] = await Promise.all([
 		adminDB.collection('properties').doc(lease.propertyId).get(),
@@ -232,22 +241,33 @@ async function sendNotices(
 			email: (await adminDB.collection('users').doc(uid).get()).data()?.email as string | undefined
 		}))
 	);
+	const fail = (what: string, err: unknown) =>
+		summary.errors.push(
+			`lease ${leaseRef.id}: ${what}: ${err instanceof Error ? err.message : String(err)}`
+		);
 	for (const notice of notices) {
 		for (const tenant of tenants) {
 			const id = `${notice.key}-${tenant.uid}`;
 			if (sent.has(id) || !tenant.email) continue;
+			// Claim the notice before sending: `create` fails if another run already claimed it, so a
+			// second run (an overlapping retry) can never send the same email twice.
+			const claim = leaseRef.collection('notices').doc(id);
+			try {
+				await claim.create({ notice: notice.key, uid: tenant.uid, claimedAt: now.toISOString() });
+			} catch {
+				continue;
+			}
 			try {
 				await sendEmail({ to: tenant.email, ...notice.content });
 			} catch (err) {
-				summary.errors.push(
-					`lease ${leaseRef.id}: ${notice.key} to ${tenant.uid}: ${err instanceof Error ? err.message : String(err)}`
-				);
+				fail(`${notice.key} to ${tenant.uid}`, err);
+				// Unclaimed again, so the next run retries it.
+				await claim.delete().catch((e) => fail(`releasing ${id}`, e));
 				continue;
 			}
-			await leaseRef
-				.collection('notices')
-				.doc(id)
-				.set({ notice: notice.key, uid: tenant.uid, sentAt: new Date().toISOString() });
+			await claim
+				.set({ sentAt: new Date().toISOString() }, { merge: true })
+				.catch((e) => fail(`recording ${id}`, e));
 			summary.emailsSent.push({ leaseId: leaseRef.id, notice: notice.key, to: tenant.uid });
 		}
 	}
