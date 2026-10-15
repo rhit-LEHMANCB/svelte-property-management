@@ -96,47 +96,10 @@ function monthOwedCents(rent: number, histories: Record<string, YearHistory>, m:
 		: Math.round(rent * 100);
 }
 
-export type Allocation = { month: MonthKey; cents: number; hasEntry: boolean };
-
 /**
- * Splits a payment across the months owed, oldest first, so that paying a carried-over balance
- * clears the old months and not only the current one. Anything beyond what is owed (the checkout
- * cap normally prevents it) goes to the last month owed.
- */
-export function allocatePayment(input: {
-	rent: number;
-	startMonth?: string;
-	endMonth?: string | null;
-	histories: Record<string, YearHistory>;
-	now: Date;
-	amountCents: number;
-}): Allocation[] {
-	const owed = monthsOwed(input.startMonth, input.now, input.endMonth);
-	// Nothing is owed yet (the checkout cap normally prevents paying then): record it in this month.
-	const months = owed.length > 0 ? owed : [getMonthKey(input.now)];
-	// Same test as `monthOwedCents`: an entry without a numeric remainder is treated as absent.
-	const hasEntry = (m: MonthKey) =>
-		typeof input.histories[String(m.year)]?.[m.monthName]?.remainingBalance === 'number';
-	const result: Allocation[] = [];
-	let left = input.amountCents;
-	for (const m of months) {
-		if (left <= 0) break;
-		const cents = Math.min(left, monthOwedCents(input.rent, input.histories, m));
-		if (cents > 0) {
-			result.push({ month: m, cents, hasEntry: hasEntry(m) });
-			left -= cents;
-		}
-	}
-	if (left > 0) {
-		const current = months[months.length - 1];
-		const existing = result.find((a) => a.month.key === current.key);
-		if (existing) existing.cents += left;
-		else result.push({ month: current, cents: left, hasEntry: hasEntry(current) });
-	}
-	return result;
-}
-
-/**
+ * Whole-month billing from before proration. Kept only for migration 0001, which must keep
+ * reporting the balances it computed then; the app bills through `billing.ts`.
+ *
  * What a lease owes through the current month (or its end month), in integer cents. A month with an entry in
  * payment_history owes its `remainingBalance` (never below 0); a month without one owes the rent.
  */

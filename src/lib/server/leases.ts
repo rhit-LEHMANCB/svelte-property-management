@@ -12,8 +12,11 @@ import {
 	type LeaseDocument
 } from './leaseDates';
 import { createTenantAccount, type CreatedAccount } from './users';
+import { depositRef, loadLeaseLedger } from './balance';
+import { toCents, type DepositLedger, type Ledger } from './billing';
 import type {
 	EmailProblem,
+	LeaseBilling,
 	LeaseSummary,
 	OverlapSummary,
 	TenantLease,
@@ -66,15 +69,57 @@ export async function summarizeLease(
 	};
 }
 
-/** Every lease of a property, newest start date first. */
-export async function listPropertyLeases(propertyId: string): Promise<LeaseSummary[]> {
+/** The admin's view of what a lease owes and holds. */
+export function leaseBilling(ledger: Ledger): LeaseBilling {
+	const { settlement } = ledger.deposit;
+	return {
+		totalCents: ledger.totalCents,
+		creditCents: ledger.creditCents,
+		dueDate: ledger.dueDate,
+		deposit: {
+			amountCents: ledger.deposit.amountCents,
+			paidCents: ledger.deposit.paidCents,
+			heldCents: ledger.deposit.heldCents,
+			settled: ledger.deposit.settled,
+			toSettle: ledger.deposit.toSettle,
+			settlement: settlement
+				? {
+						returned: settlement.returned,
+						deductions: settlement.deductions,
+						recordedAt: settlement.recordedAt
+					}
+				: null
+		},
+		lateFees: ledger.lateFees.map((fee) => ({
+			month: fee.month.key,
+			monthLabel: `${fee.month.monthName} ${fee.month.year}`,
+			amountCents: fee.amountCents,
+			paidCents: fee.paidCents,
+			owedCents: fee.owedCents,
+			waived: fee.waived
+		}))
+	};
+}
+
+/** Every lease of a property, newest start date first, with what each owes and holds. */
+export async function listPropertyLeases(
+	propertyId: string,
+	now = new Date()
+): Promise<LeaseSummary[]> {
 	const snapshot = await leases()
 		.where('propertyId', '==', propertyId)
 		.orderBy('startDate', 'desc')
 		.get();
-	const today = businessToday();
+	const today = businessToday(now);
 	return Promise.all(
-		snapshot.docs.map((doc) => summarizeLease(doc.id, doc.data() as LeaseDoc, today))
+		snapshot.docs.map(async (doc) => {
+			const lease = doc.data() as LeaseDoc;
+			const [summary, ledger] = await Promise.all([
+				summarizeLease(doc.id, lease, today),
+				loadLeaseLedger(doc.id, lease, now)
+			]);
+			return { ...summary, billing: leaseBilling(ledger) };
+		})
 	);
 }
 
@@ -116,7 +161,11 @@ export async function loadTenantLeases(
 					endDate: lease.endDate,
 					status: leaseStatus(lease, today),
 					...(others && { otherTenants: others.map((t) => t.name || 'A tenant') }),
-					hasDocument: Boolean(lease.document)
+					hasDocument: Boolean(lease.document),
+					deposit: lease.deposit ?? null,
+					lateFee: lease.lateFee,
+					graceDays: lease.graceDays,
+					lateFeesFrom: lease.lateFeesFrom
 				},
 				property
 			};
@@ -148,7 +197,8 @@ export type SaveLeaseResult =
 	| { kind: 'saved'; leaseId: string; emailFailures: string[] }
 	| { kind: 'conflicts'; problems: EmailProblem[] }
 	| { kind: 'overlap'; overlapping: OverlapSummary[] }
-	| { kind: 'documentError'; message: string };
+	| { kind: 'documentError'; message: string }
+	| { kind: 'depositBelowPaid'; paid: number };
 
 /** Why a PDF upload is refused, or null when it is acceptable. */
 export async function documentProblem(file: File): Promise<string | null> {
@@ -168,6 +218,13 @@ class LeaseGoneError extends Error {}
 class LeaseOverlapError extends Error {
 	constructor(public overlapping: { id: string; data(): unknown }[]) {
 		super('Lease overlap');
+	}
+}
+
+/** Raised inside the save transaction when the deposit would be less than what was paid. */
+class DepositBelowPaidError extends Error {
+	constructor(public paid: number) {
+		super('Deposit below paid');
 	}
 }
 
@@ -358,6 +415,15 @@ export async function saveLease(options: {
 				if (overlapping.length > 0) throw new LeaseOverlapError(overlapping);
 			}
 
+			// A deposit cannot drop below what has been paid toward it (the webhook updates the
+			// ledger in a transaction that reads the lease, so the two cannot interleave).
+			const paidDeposit = toCents(
+				((await tx.get(depositRef(leaseRef))).data() as DepositLedger | undefined)?.paid ?? 0
+			);
+			if (toCents(input.deposit ?? 0) < paidDeposit) {
+				throw new DepositBelowPaidError(paidDeposit / 100);
+			}
+
 			const lease: LeaseDoc = {
 				propertyId,
 				tenantIds,
@@ -365,6 +431,14 @@ export async function saveLease(options: {
 				startDate: dates.startDate,
 				endDate: dates.endDate,
 				document: upload ? document : (stored?.document ?? null),
+				deposit:
+					input.deposit !== undefined
+						? { amount: input.deposit, dueDate: input.depositDueDate || dates.startDate }
+						: null,
+				lateFee: input.lateFee,
+				graceDays: input.graceDays,
+				// Months due before a lease was entered are never charged a late fee.
+				lateFeesFrom: stored?.lateFeesFrom ?? businessToday(now),
 				createdAt: stored?.createdAt ?? now.toISOString(),
 				updatedAt: now.toISOString()
 			};
@@ -381,6 +455,7 @@ export async function saveLease(options: {
 		if (err instanceof LeaseConflictError) return { kind: 'conflicts', problems: err.problems };
 		if (err instanceof LeaseGoneError) throw error(404, 'Lease not found');
 		if (err instanceof LeaseOverlapError) return overlapResult(err.overlapping);
+		if (err instanceof DepositBelowPaidError) return { kind: 'depositBelowPaid', paid: err.paid };
 		throw err;
 	}
 
@@ -406,7 +481,10 @@ export async function saveLease(options: {
 	return { kind: 'saved', leaseId: leaseRef.id, emailFailures };
 }
 
-/** Deletes a lease with no recorded payments, with its document; refuses one that has payments. */
+/**
+ * Deletes a lease with no recorded rent, deposit or late-fee payments, with its document; refuses one
+ * that has any.
+ */
 export async function deleteLease(
 	leaseId: string
 ): Promise<'deleted' | 'has-payments' | 'missing'> {
@@ -416,10 +494,19 @@ export async function deleteLease(
 	// the lease gone.
 	const outcome = await adminDB.runTransaction(async (tx) => {
 		if (!(await tx.get(leaseRef)).exists) return 'missing' as const;
-		const history = await tx.get(leaseRef.collection('payment_history').limit(1));
-		if (!history.empty) return 'has-payments' as const;
-		const invoices = await tx.get(leaseRef.collection('recorded_invoices'));
-		invoices.docs.forEach((doc) => tx.delete(doc.ref));
+		const [history, lateFees, deposit, invoices] = await Promise.all([
+			tx.get(leaseRef.collection('payment_history').limit(1)),
+			tx.get(leaseRef.collection('late_fees')),
+			tx.get(depositRef(leaseRef)),
+			tx.get(leaseRef.collection('recorded_invoices'))
+		]);
+		const paid = (record: { paid?: number } | undefined) => toCents(record?.paid ?? 0) > 0;
+		if (!history.empty || lateFees.docs.some((doc) => paid(doc.data())) || paid(deposit.data())) {
+			return 'has-payments' as const;
+		}
+		// What is left is bookkeeping only: waived late fees, an empty deposit ledger, handled invoices.
+		[...lateFees.docs, ...invoices.docs].forEach((doc) => tx.delete(doc.ref));
+		if (deposit.exists) tx.delete(deposit.ref);
 		tx.delete(leaseRef);
 		return 'deleted' as const;
 	});

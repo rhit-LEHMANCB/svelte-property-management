@@ -15,6 +15,6 @@
 	</PageHeader>
 	<p class="opacity-80">{data.property.address}</p>
 	<div class="card bg-surface-100-900 p-4 sm:p-6">
-		<LeaseForm data={data.form} propertyId={data.property.id} />
+		<LeaseForm data={data.form} propertyId={data.property.id} lateFeeFollowsRent />
 	</div>
 </div>

@@ -12,6 +12,8 @@
 		endDate: string | null;
 		balanceCents: number;
 		dueDate: string | null;
+		owed: { rentCents: number; depositCents: number; lateFeesCents: number };
+		creditCents: number;
 	};
 	export let data: { leases: LeaseBalance[] };
 
@@ -100,6 +102,31 @@
 						{@const amount = currency.format(lease.balanceCents / 100)}
 						{@const due = dueDate.toLocaleString('en-us', { dateStyle: 'short' })}
 						<p>You have a balance of <strong>{amount}</strong> due on {due}</p>
+						{#if lease.owed.depositCents > 0 || lease.owed.lateFeesCents > 0}
+							<dl
+								class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm"
+								aria-label="Balance breakdown"
+							>
+								{#if lease.owed.lateFeesCents > 0}
+									<dt class="opacity-70">Late fees</dt>
+									<dd>{currency.format(lease.owed.lateFeesCents / 100)}</dd>
+								{/if}
+								{#if lease.owed.depositCents > 0}
+									<dt class="opacity-70">Security deposit</dt>
+									<dd>{currency.format(lease.owed.depositCents / 100)}</dd>
+								{/if}
+								<dt class="opacity-70">Rent</dt>
+								<dd>{currency.format(lease.owed.rentCents / 100)}</dd>
+							</dl>
+							<p class="text-sm opacity-80">
+								Payments go to late fees first, then the security deposit, then the oldest rent.
+							</p>
+						{/if}
+					{/if}
+					{#if lease.creditCents > 0}
+						<p class="text-sm">
+							Credit: <strong>{currency.format(lease.creditCents / 100)}</strong>
+						</p>
 					{/if}
 					<div class="flex flex-wrap items-center gap-2">
 						<button

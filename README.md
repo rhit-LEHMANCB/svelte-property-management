@@ -122,6 +122,30 @@ recorded backup. Backups restore into a new database, never in place:
 `gcloud firestore databases restore --source-backup=<restorePoint.backup> --destination-database=<new-name> --project=<project>`,
 then copy back the documents you need and delete the new database.
 
+## Lease billing
+
+What a lease owes is computed whenever it is read (`src/lib/server/billing.ts`), from its terms and
+what has been recorded against it; nothing is written by a scheduled job.
+
+- **Rent** is prorated by day: a month the lease covers only in part is charged rent × days covered
+  ÷ days in the month, to the cent. The first month is due on the start date, later months on the
+  1st. What a month has been paid is the sum of the `transactions` in its
+  `leases/{id}/payment_history/{year}` entry (`remainingBalance` is still written, but not read
+  except for old entries that have no transactions).
+- **Credit** is anything recorded beyond a month's charge; it pays the oldest rent still owed.
+- **Late fees**: a lease has `lateFee` (dollars), `graceDays` and `lateFeesFrom`. A month due on or
+  after `lateFeesFrom` that was not paid in full by the end of its grace days owes the fee once.
+  `leases/{id}/late_fees/{YYYY-MM}` is written only when a fee is paid or waived, and fixes its
+  `amount`.
+- **Deposit**: `deposit: { amount, dueDate }` on the lease; payments and the settlement are in
+  `leases/{id}/deposit/ledger` (`paid`, `transactions`, `settlement`).
+- **Paying**: one amount is applied to late fees, then the deposit, then the oldest rent. Checkout
+  shows a line per part and the invoice metadata carries `lateFeeCents`, `depositCents`,
+  `rentCents` and `feeCents`; the webhook recomputes the split when it records the payment.
+
+Migration `0003-lease-billing-terms` gave leases created before this their terms: no deposit, a 5%
+late fee, 5 grace days, and late fees only for months due from the day it ran.
+
 ## Stripe
 
 Dev and local environments use Stripe test-mode keys; only production may use a live key. The server
