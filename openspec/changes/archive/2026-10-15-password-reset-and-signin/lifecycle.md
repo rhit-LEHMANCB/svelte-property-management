@@ -1,7 +1,7 @@
 # Lifecycle: password-reset-and-signin
 
 - Branch: `claude/password-reset-and-signin`
-- Stage: 7 Production PR (Gate B: human verifies and merges production PR #140, which carries this change)
+- Stage: **complete (archived automatically on 2026-10-15 after the production release `0cf0dc3`)**
 - Review round: 4 of 5
 - QA cycle: 2 of 3
 - Started: 2026-10-13
@@ -116,3 +116,6 @@ Production-only risks: no new env vars, secrets or Stripe changes. New server-on
 
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
+
+## Archive
+Archived automatically on 2026-10-15 after the production release `0cf0dc3` ([workflow run](https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/38659779211)). That marks this lifecycle complete.

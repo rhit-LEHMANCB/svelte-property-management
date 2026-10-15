@@ -17,8 +17,12 @@ The system SHALL keep the Firestore security rules, the Storage security rules a
 - **THEN** the committed rules deny the request
 
 #### Scenario: Storage allows public read only
-- **WHEN** anyone fetches a Storage object by URL
+- **WHEN** anyone fetches a Storage object under `properties/` or `users/` by URL
 - **THEN** the committed rules allow it, and any client write or bucket listing is denied
+
+#### Scenario: Lease documents are private
+- **WHEN** anyone fetches a Storage object under `leases/` by URL, signed in or not
+- **THEN** the committed rules deny it
 
 ### Requirement: Project aliases
 The repo SHALL define Firebase CLI aliases `dev` for `lehman-realty-dev` and `prod` for `lehman-realty` in `.firebaserc`.
