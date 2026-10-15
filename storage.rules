@@ -1,9 +1,14 @@
 rules_version = '2';
 
 // Objects are read by URL (get) only: photo URLs are unsigned, and listing a bucket is not needed.
+// Only property photos and user files are public. Anything else, lease documents included, is denied
+// here and served by the app after it checks who is asking.
 service firebase.storage {
   match /b/{bucket}/o {
-    match /{allPaths=**} {
+    match /properties/{allPaths=**} {
+      allow get;
+    }
+    match /users/{allPaths=**} {
       allow get;
     }
   }

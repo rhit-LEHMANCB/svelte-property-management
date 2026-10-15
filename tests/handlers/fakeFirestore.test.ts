@@ -4,6 +4,7 @@ import {
 	FakeFieldValue,
 	FakeFirestore,
 	FakeTimestamp,
+	FirestoreAlreadyExistsError,
 	FirestoreNotFoundError
 } from '../helpers/fakeFirestore';
 
@@ -248,5 +249,81 @@ describe('FakeFirestore: batches', () => {
 		const batch = db.batch();
 		for (let i = 0; i < 501; i++) batch.delete(db.doc(`c/${i}`));
 		await expect(batch.commit()).rejects.toThrow(/500/);
+	});
+});
+
+describe('FakeFirestore: array queries', () => {
+	beforeEach(() => {
+		db.seed('leases/a', { tenantIds: ['u1', 'u2'] });
+		db.seed('leases/b', { tenantIds: ['u3'] });
+		db.seed('leases/c', { tenantIds: 'u1' });
+		db.seed('leases/d', {});
+	});
+
+	it('array-contains matches documents whose array holds the value', async () => {
+		expect(await ids(db.collection('leases').where('tenantIds', 'array-contains', 'u1'))).toEqual([
+			'a'
+		]);
+	});
+
+	it('array-contains ignores fields that are not arrays and missing fields', async () => {
+		expect(await ids(db.collection('leases').where('tenantIds', 'array-contains', 'u9'))).toEqual(
+			[]
+		);
+	});
+
+	it('array-contains-any matches any of the values, once per document', async () => {
+		expect(
+			await ids(
+				db.collection('leases').where('tenantIds', 'array-contains-any', ['u2', 'u3', 'u1'])
+			)
+		).toEqual(['a', 'b']);
+	});
+});
+
+describe('FakeFirestore: create and transactions', () => {
+	it('create writes a new document and refuses an existing one', async () => {
+		await db.doc('c/a').create({ n: 1 });
+		expect(db.peek('c/a')).toEqual({ n: 1 });
+		await expect(db.doc('c/a').create({ n: 2 })).rejects.toBeInstanceOf(
+			FirestoreAlreadyExistsError
+		);
+		expect(db.peek('c/a')).toEqual({ n: 1 });
+	});
+
+	it('a transaction reads queries and applies set, update, create and delete together', async () => {
+		db.seed('c/a', { n: 1, k: 'x' });
+		db.seed('c/b', { n: 2, k: 'x' });
+		await db.runTransaction(async (tx) => {
+			const snap = await tx.get(db.collection('c').where('k', '==', 'x'));
+			expect(snap.size).toBe(2);
+			tx.update(db.doc('c/a'), { n: 10 }).delete(db.doc('c/b')).create(db.doc('c/new'), { n: 3 });
+			expect(db.peek('c/new')).toBeUndefined();
+		});
+		expect(db.peek('c/a')).toEqual({ n: 10, k: 'x' });
+		expect(db.peek('c/b')).toBeUndefined();
+		expect(db.peek('c/new')).toEqual({ n: 3 });
+	});
+
+	it('a transaction whose create collides writes nothing', async () => {
+		db.seed('c/a', { n: 1 });
+		await expect(
+			db.runTransaction(async (tx) => {
+				tx.set(db.doc('c/other'), { n: 5 });
+				tx.create(db.doc('c/a'), { n: 2 });
+			})
+		).rejects.toBeInstanceOf(FirestoreAlreadyExistsError);
+		expect(db.peek('c/other')).toBeUndefined();
+		expect(db.peek('c/a')).toEqual({ n: 1 });
+	});
+
+	it('a transaction whose callback throws writes nothing', async () => {
+		await expect(
+			db.runTransaction(async (tx) => {
+				tx.set(db.doc('c/a'), { n: 1 });
+				throw new Error('boom');
+			})
+		).rejects.toThrow('boom');
+		expect(db.peek('c/a')).toBeUndefined();
 	});
 });

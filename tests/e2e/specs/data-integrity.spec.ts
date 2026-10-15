@@ -3,7 +3,8 @@ import { ADMIN, TENANT } from '../support/constants';
 import { adminAuth, adminDb } from '../support/admin';
 import { signIn } from '../support/helpers';
 
-// Data-integrity fixes (#38, #39): one property per tenant and a clean property delete.
+// Data-integrity fixes (#38, #39), now through leases: no tenant on two overlapping leases, and a
+// clean property delete.
 
 const PROPERTY_A = 'e2e-di-property-a';
 const PROPERTY_B = 'e2e-di-property-b';
@@ -23,7 +24,7 @@ const property = (title: string) => ({
 	zip: '47802'
 });
 
-test.describe('tenant-assignment: one property per tenant', () => {
+test.describe('leases: a tenant cannot be on two overlapping leases', () => {
 	test.beforeAll(async () => {
 		const db = adminDb();
 		await db.doc(`properties/${PROPERTY_A}`).set(property('DI Property A'));
@@ -35,51 +36,89 @@ test.describe('tenant-assignment: one property per tenant', () => {
 			phoneNumber: '+15555550143',
 			permissions: 'user'
 		});
-		await db.doc(`junction_user_property/${TENANT_ID}_${PROPERTY_A}`).set({
-			tenantId: TENANT_ID,
+		await adminAuth()
+			.createUser({ uid: TENANT_ID, email: 'di-tenant@e2e.test' })
+			.catch(() => undefined);
+		await db.doc('leases/e2e-di-lease-a').set({
 			propertyId: PROPERTY_A,
-			moveInMonth: '2026-05'
+			tenantIds: [TENANT_ID],
+			rent: 1000,
+			startDate: '2026-05-01',
+			endDate: null,
+			document: null,
+			createdAt: '2026-05-01T00:00:00.000Z',
+			updatedAt: '2026-05-01T00:00:00.000Z'
 		});
 	});
 
-	test('Scenario: Second assignment is rejected with 409 and the dropdown does not offer the tenant', async ({
+	test('Scenario: Tenant on an overlapping lease: the lease is refused, naming the other property', async ({
 		page
 	}) => {
-		await page.route('**/maps.googleapis.com/**', (route) => route.abort());
 		await signIn(page, ADMIN);
-
-		// The assignable list on the other property does not include the assigned tenant or admins.
-		await page.goto(`/admin/properties/${PROPERTY_B}/edit`);
+		await page.goto(`/admin/properties/${PROPERTY_B}/leases/new`);
 		await page.waitForLoadState('networkidle');
-		await page.getByText('Tenants', { exact: true }).click();
-		await page.getByPlaceholder('Search...').fill('Dana');
-		await expect(page.getByRole('button', { name: 'Dana Zzintegrity' })).toHaveCount(0);
-		await page.getByPlaceholder('Search...').fill('Ada');
-		await expect(page.getByRole('button', { name: 'Ada Admin' })).toHaveCount(0);
 
-		// A direct request is still rejected by the server.
-		const status = await page.evaluate(
-			async ({ url, tenantId }) =>
-				(
-					await fetch(url, {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ tenantId })
-					})
-				).status,
-			{ url: `/api/property/${PROPERTY_B}/tenants`, tenantId: TENANT_ID }
-		);
-		expect(status).toBe(409);
-		expect(
-			(await adminDb().doc(`junction_user_property/${TENANT_ID}_${PROPERTY_B}`).get()).exists
-		).toBe(false);
+		await page.getByLabel('Start date').fill('2026-11-01');
+		await page.getByLabel('Tenant email 1', { exact: true }).fill('di-tenant@e2e.test');
+		await page.getByRole('button', { name: 'Save lease' }).click();
+
+		await expect(
+			page.getByRole('alert').filter({
+				hasText:
+					'di-tenant@e2e.test is already on a lease at 3 Main St, Terre Haute from 2026-05-01 (month to month).'
+			})
+		).toBeVisible();
+		const leasesAtB = await adminDb()
+			.collection('leases')
+			.where('propertyId', '==', PROPERTY_B)
+			.get();
+		expect(leasesAtB.size).toBe(0);
+	});
+
+	test('Scenario: Admin email: an admin cannot be put on a lease', async ({ page }) => {
+		await signIn(page, ADMIN);
+		await page.goto(`/admin/properties/${PROPERTY_B}/leases/new`);
+		await page.waitForLoadState('networkidle');
+
+		await page.getByLabel('Start date').fill('2026-11-01');
+		await page.getByLabel('Tenant email 1', { exact: true }).fill(ADMIN.email);
+		await page.getByRole('button', { name: 'Save lease' }).click();
+
+		await expect(
+			page
+				.getByRole('alert')
+				.filter({ hasText: `${ADMIN.email} belongs to an admin and cannot be a tenant.` })
+		).toBeVisible();
+	});
+
+	test('Scenario: Tenant on an overlapping lease or an admin email: no account is created for the other emails', async ({
+		page
+	}) => {
+		await signIn(page, ADMIN);
+		for (const blocked of ['di-tenant@e2e.test', ADMIN.email]) {
+			await page.goto(`/admin/properties/${PROPERTY_B}/leases/new`);
+			await page.waitForLoadState('networkidle');
+			await page.getByLabel('Start date').fill('2026-11-01');
+			await page.getByLabel('Tenant email 1', { exact: true }).fill(blocked);
+			await page.getByRole('button', { name: 'Add tenant' }).click();
+			await page.getByLabel('Tenant email 2', { exact: true }).fill('di-bystander@e2e.test');
+			await page.getByRole('button', { name: 'Save lease' }).click();
+
+			await expect(page.getByRole('alert').filter({ hasText: blocked })).toBeVisible();
+			await expect(adminAuth().getUserByEmail('di-bystander@e2e.test')).rejects.toBeTruthy();
+		}
+		const leasesAtB = await adminDb()
+			.collection('leases')
+			.where('propertyId', '==', PROPERTY_B)
+			.get();
+		expect(leasesAtB.size).toBe(0);
 	});
 });
 
-test.describe('property-management: delete removes tenant links and payment history', () => {
+test.describe('property-management: delete removes leases, tenant links and payment history', () => {
 	const DELETE_PROPERTY = 'e2e-di-delete-property';
 
-	test('Scenario: Deleted property with tenants leaves no junction or payment history', async ({
+	test('Scenario: Deleted property with tenants leaves no lease, junction or payment history', async ({
 		page
 	}) => {
 		const db = adminDb();
@@ -91,6 +130,17 @@ test.describe('property-management: delete removes tenant links and payment hist
 		});
 		await db
 			.doc(`properties/${DELETE_PROPERTY}/payment_history/2026`)
+			.set({ August: { remainingBalance: 0 } });
+		await db.doc('leases/e2e-di-delete-lease').set({
+			propertyId: DELETE_PROPERTY,
+			tenantIds: ['e2e-di-gone'],
+			rent: 1000,
+			startDate: '2026-05-01',
+			endDate: null,
+			document: null
+		});
+		await db
+			.doc('leases/e2e-di-delete-lease/payment_history/2026')
 			.set({ August: { remainingBalance: 0 } });
 		await signIn(page, ADMIN);
 
@@ -107,6 +157,10 @@ test.describe('property-management: delete removes tenant links and payment hist
 			(await db.doc(`junction_user_property/e2e-di-gone_${DELETE_PROPERTY}`).get()).exists
 		).toBe(false);
 		expect((await db.doc(`properties/${DELETE_PROPERTY}/payment_history/2026`).get()).exists).toBe(
+			false
+		);
+		expect((await db.doc('leases/e2e-di-delete-lease').get()).exists).toBe(false);
+		expect((await db.doc('leases/e2e-di-delete-lease/payment_history/2026').get()).exists).toBe(
 			false
 		);
 	});

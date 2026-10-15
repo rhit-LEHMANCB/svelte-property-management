@@ -7,7 +7,6 @@ import { signIn } from '../support/helpers';
 // pagination, navigation shell) keep working across framework and dependency upgrades.
 
 const AC_PROPERTY = 'e2e-autocomplete-property';
-const AC_TENANT = { id: 'e2e-ava', firstName: 'Ava', lastName: 'Autocomplete' };
 
 test.describe('app-platform: modal dialogs keep working', () => {
 	test('Scenario: Admin cancels a dialog', async ({ page }) => {
@@ -92,49 +91,9 @@ test.describe('app-platform: menus, autocompletes, tabs and pagination keep work
 			state: 'IN',
 			zip: '47802'
 		});
-		await db.doc(`users/${AC_TENANT.id}`).set({
-			email: 'ava@e2e.test',
-			firstName: AC_TENANT.firstName,
-			lastName: AC_TENANT.lastName,
-			phoneNumber: '+15555550142',
-			permissions: 'user'
-		});
-	});
-
-	test('Scenario: Autocomplete selection adds the chosen tenant', async ({ page }) => {
-		await page.route('**/maps.googleapis.com/**', (route) => route.abort());
-		await signIn(page, ADMIN);
-		await page.goto(`/admin/properties/${AC_PROPERTY}/edit`);
-		await page.waitForLoadState('networkidle');
-		await page.getByText('Tenants', { exact: true }).click();
-
-		const search = page.getByPlaceholder('Search...');
-		await search.fill('Ava');
-		await page.getByRole('option', { name: 'Ava Autocomplete' }).click();
-		await expect(search).toHaveValue('Ava Autocomplete (ava@e2e.test)');
-		const moveIn = page.getByRole('group', { name: 'Move-in month', exact: true });
-		await moveIn.getByLabel('Month', { exact: true }).selectOption('05');
-		await moveIn.getByLabel('Year', { exact: true }).selectOption('2026');
-		await page.getByRole('button', { name: 'Add', exact: true }).click();
-
-		await expect(page.getByText('Successfully added tenant.')).toBeVisible();
-		await expect(page.getByText('ava@e2e.test')).toBeVisible();
-
-		// The month was stored and can be changed from the list.
-		const tenantMonth = page.getByRole('group', { name: 'Move-in month for Ava Autocomplete' });
-		await expect(tenantMonth.getByLabel('Month', { exact: true })).toHaveValue('05');
-		await expect(tenantMonth.getByLabel('Year', { exact: true })).toHaveValue('2026');
-		await tenantMonth.getByLabel('Month', { exact: true }).selectOption('07');
-		await expect(page.getByText('Move-in month updated.')).toBeVisible();
-		await page.reload();
-		await page.waitForLoadState('networkidle');
-		await page.getByText('Tenants', { exact: true }).click();
-		await expect(tenantMonth.getByLabel('Month', { exact: true })).toHaveValue('07');
-		await expect(tenantMonth.getByLabel('Year', { exact: true })).toHaveValue('2026');
 	});
 
 	test('Scenario: Tabs show one panel at a time', async ({ page }) => {
-		await page.route('**/maps.googleapis.com/**', (route) => route.abort());
 		await signIn(page, ADMIN);
 		await page.goto(`/admin/properties/${AC_PROPERTY}/edit`);
 		await page.waitForLoadState('networkidle');

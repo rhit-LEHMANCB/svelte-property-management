@@ -27,3 +27,33 @@ describe('authentication: email templates', () => {
 		}
 	});
 });
+
+describe('leases: New tenant accounts from a lease (welcome email)', () => {
+	const lease = { address: '12 Elm St, Terre Haute', startDate: '2026-11-01' };
+
+	it('Scenario: New email: the welcome email names the address and start date', () => {
+		const { text, html, subject } = renderWelcomeEmail(LINK, lease);
+		expect(subject).toBe('Welcome to Lehman Family LLC');
+		expect(text).toContain('Your lease at 12 Elm St, Terre Haute starts on November 1, 2026.');
+		expect(html).toContain('Your lease at 12 Elm St, Terre Haute starts on November 1, 2026.');
+		expect(text).toContain(LINK);
+	});
+
+	it('names the company as Lehman Family LLC and no other name', () => {
+		const { text, html } = renderWelcomeEmail(LINK, lease);
+		for (const body of [text, html]) {
+			expect(body).toContain('Lehman Family LLC');
+			expect(body).not.toMatch(/Lehman (Family )?Realty/);
+		}
+	});
+
+	it('escapes the address in the HTML body', () => {
+		const { html } = renderWelcomeEmail(LINK, { ...lease, address: '<b>5 Oak</b> & Co' });
+		expect(html).toContain('&lt;b&gt;5 Oak&lt;/b&gt; &amp; Co');
+		expect(html).not.toContain('<b>5 Oak</b>');
+	});
+
+	it('without a lease the welcome email has no lease sentence', () => {
+		expect(renderWelcomeEmail(LINK).text).not.toContain('Your lease');
+	});
+});

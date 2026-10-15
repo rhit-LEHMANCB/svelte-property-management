@@ -27,6 +27,8 @@
 		enhance: enhanceContact
 	} = superForm(data.form, {
 		customValidity: true,
+		// The default reset puts back the values the page first loaded with, which are stale after a save.
+		resetForm: false,
 		validators: zodClient(profileSchema),
 		onUpdated({ form: updated }) {
 			if (updated.message === 'Form submitted') {
@@ -52,7 +54,7 @@
 			body: JSON.stringify({ email: data.user.email })
 		});
 		if (response.ok) {
-			successToast('Reset email successfully sent.', toastStore);
+			successToast('Reset email requested. Check your inbox.', toastStore);
 		} else {
 			errorToast('Error sending reset email.', toastStore);
 		}

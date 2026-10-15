@@ -5,7 +5,7 @@ import { DELETE as deleteUser } from '../../src/routes/api/user/[userId]/+server
 import { load as usersLoad } from '../../src/routes/(authenticated)/admin/users/+page.server';
 import { call } from '../helpers/callHandler';
 import { services } from '../helpers/services';
-import { db, linkTenant, seedAdmin, seedProperty, seedTenant } from '../helpers/seed';
+import { db, linkTenant, seedAdmin, seedLease, seedProperty, seedTenant } from '../helpers/seed';
 
 describe('user-management: create user (POST /api/user/add)', () => {
 	it('Scenario: New user creates the Auth user, Stripe customer, user document and welcome email', async () => {
@@ -153,6 +153,38 @@ describe('user-management: delete user (DELETE /api/user/{userId})', () => {
 		expect(db.peek('properties/prop-1/payment_history/2026')).toBeDefined();
 	});
 
+	it('Scenario: Delete removes the user from their leases and keeps the leases', async () => {
+		seedAdmin('admin-1');
+		seedTenant('tenant-9');
+		seedTenant('tenant-8');
+		seedProperty('prop-1');
+		seedLease('shared', { tenantIds: ['tenant-8', 'tenant-9'], startDate: '2026-01-01' });
+		seedLease('other', { tenantIds: ['tenant-8'], startDate: '2025-01-01' });
+		db.seed('leases/shared/payment_history/2026', { January: { remainingBalance: 0 } });
+
+		const result = await call(deleteUser, {
+			method: 'DELETE',
+			userID: 'admin-1',
+			params: { userId: 'tenant-9' }
+		});
+
+		expect(result.status).toBe(200);
+		expect(db.peek('leases/shared')?.tenantIds).toEqual(['tenant-8']);
+		expect(db.peek('leases/other')?.tenantIds).toEqual(['tenant-8']);
+		expect(db.peek('leases/shared/payment_history/2026')).toBeDefined();
+	});
+
+	it('Scenario: Last tenant on a lease: the lease is kept with no tenants', async () => {
+		seedAdmin('admin-1');
+		seedTenant('tenant-9');
+		seedProperty('prop-1');
+		seedLease('solo', { tenantIds: ['tenant-9'], startDate: '2026-01-01' });
+
+		await call(deleteUser, { method: 'DELETE', userID: 'admin-1', params: { userId: 'tenant-9' } });
+
+		expect(db.peek('leases/solo')).toMatchObject({ tenantIds: [], propertyId: 'prop-1' });
+	});
+
 	it('Scenario: Already gone Stripe customer and Auth account still complete the delete', async () => {
 		seedAdmin('admin-1');
 		seedTenant('tenant-9');
@@ -250,6 +282,23 @@ describe('user-management: user directory (admin users page load)', () => {
 			't-zed'
 		]);
 		expect(result.data.users[0].data).toMatchObject({ lastName: 'Abe', permissions: 'user' });
+	});
+
+	it("shows each user's property from their current lease, and none for an ended lease", async () => {
+		seedAdmin('admin-1');
+		seedProperty('prop-1', { streetAddress: '1 Main St', city: 'Terre Haute' });
+		seedTenant('t-now');
+		seedTenant('t-old');
+		seedLease('current', { tenantIds: ['t-now'], startDate: '2020-01-01' });
+		seedLease('ended', { tenantIds: ['t-old'], startDate: '2020-01-01', endDate: '2020-12-31' });
+
+		const result = await call(usersLoad, { userID: 'admin-1' });
+		const property = (id: string) =>
+			result.data.users.find((u: { id: string }) => u.id === id).property;
+
+		expect(property('t-now')).toEqual({ id: 'prop-1', address: '1 Main St, Terre Haute' });
+		expect(property('t-old')).toBeNull();
+		expect(property('admin-1')).toBeNull();
 	});
 
 	it('Scenario: a non-admin is rejected with 401', async () => {

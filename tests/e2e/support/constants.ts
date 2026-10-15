@@ -23,6 +23,7 @@ export const TENANT = {
 	password: 'E2e-Tenant-Passw0rd',
 	firstName: 'Tom',
 	lastName: 'Tenant',
+	phoneNumber: '+15555550101',
 	stripeID: 'cus_e2e'
 };
 
@@ -34,3 +35,6 @@ export const PROPERTY = {
 	state: 'IN',
 	rent: 1000
 };
+
+/** The lease migration 0001 makes from the seeded tenant link (see global-setup.ts). */
+export const LEASE_ID = `migrated-${PROPERTY.id}`;

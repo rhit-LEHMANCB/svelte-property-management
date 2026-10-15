@@ -5,14 +5,16 @@ import { adminDB } from '$lib/server/admin';
 import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 import { getUserDataOrError } from '$lib/server/authHelpers';
 import { getUserIdOrError } from '$lib/server/authHelpers';
-import { loadBalance } from '$lib/server/balance';
+import { loadLeaseBalance } from '$lib/server/balance';
+import type { LeaseDoc } from '$lib/server/leaseDates';
+import { propertyAddress } from '$lib/server/leases';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const userId = getUserIdOrError(locals.userID);
 
 	const userData = await getUserDataOrError(userId);
 
-	const { amount } = await request.json();
+	const { amount, leaseId } = await request.json();
 
 	if (!amount || typeof amount != 'number') {
 		throw error(400, 'Amount must be a provided number for the amount to charge');
@@ -24,33 +26,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		throw error(400, 'Amount must be greater than 0 and have at most two decimal places');
 	}
 
-	const userJunctionsQuery = await adminDB
-		.collection('junction_user_property')
-		.where('tenantId', '==', locals.userID)
-		.get();
-
-	if (userJunctionsQuery.size !== 1) {
-		throw error(
-			500,
-			`User is associated with wrong number of properties: ${userJunctionsQuery.size}`
-		);
+	// The lease to pay against must be one the tenant is on. A missing, unknown or someone else's
+	// lease gets the same answer, so lease ids cannot be probed.
+	const lease =
+		typeof leaseId === 'string' && leaseId !== ''
+			? ((await adminDB.collection('leases').doc(leaseId).get()).data() as LeaseDoc | undefined)
+			: undefined;
+	if (!lease || !lease.tenantIds.includes(userId)) {
+		throw error(403, 'You can only pay for a lease you are on.');
 	}
 
-	const userProperty = await adminDB
-		.collection('properties')
-		.doc(userJunctionsQuery.docs[0].data().propertyId)
-		.get();
-
-	const userPropertyData = userProperty.data();
-	if (!userPropertyData) {
-		throw error(500, 'Failed to find property info.');
-	}
-
-	const moveInMonth: string | undefined = userJunctionsQuery.docs[0].data().moveInMonth;
-	const { balanceCents } = await loadBalance(userProperty.id, userPropertyData.rent, moveInMonth);
+	const { balanceCents } = await loadLeaseBalance(leaseId, lease);
 	if (amountCents > balanceCents) {
 		throw error(400, 'Amount is greater than the balance owed');
 	}
+
+	const propertyData = (await adminDB.collection('properties').doc(lease.propertyId).get()).data();
 
 	const feeCents = Math.round(amountCents * 0.029 + 30);
 
@@ -66,7 +57,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					currency: 'usd',
 					product_data: {
 						name: 'Rent',
-						description: `Rent payment for ${userPropertyData.streetAddress}, ${userPropertyData.city}, ${userPropertyData.state}`
+						description: `Rent payment for ${propertyData ? `${propertyAddress(propertyData)}, ${propertyData.state}` : 'your lease'}`
 					},
 					unit_amount: amountCents
 				},
@@ -91,11 +82,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			enabled: true,
 			invoice_data: {
 				metadata: {
-					propertyID: userProperty.id,
+					// The webhook records the payment against this lease, oldest unpaid month first.
+					leaseID: leaseId,
+					propertyID: lease.propertyId,
 					rentCents: String(amountCents),
-					feeCents: String(feeCents),
-					// The webhook uses it to apply the payment to the oldest unpaid months first.
-					...(moveInMonth && { moveInMonth })
+					feeCents: String(feeCents)
 				}
 			}
 		},

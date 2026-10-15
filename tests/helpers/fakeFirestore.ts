@@ -2,13 +2,14 @@ import { isDeepStrictEqual } from 'node:util';
 
 /**
  * A small in-memory stand-in for the Firestore Admin SDK, covering only the calls the app makes:
- * collection/doc/collection(sub), get/set(merge)/update/add/delete, where(==, !=, in, not-in,
- * documentId), orderBy, limit, and the FieldValue sentinels serverTimestamp, increment,
- * arrayUnion, arrayRemove, delete. It exists so handler tests run without Java or an emulator;
+ * collection/doc/collection(sub)/listCollections, get/set(merge)/update/create/add/delete, where(==, !=, in, not-in,
+ * array-contains, array-contains-any, documentId), orderBy, limit, transactions that read documents
+ * and queries, and the FieldValue sentinels serverTimestamp, increment, arrayUnion, arrayRemove,
+ * delete. It exists so handler tests run without Java or an emulator;
  * the Playwright layer covers real Firestore behavior.
  *
- * Not modeled: composite-index requirements, the 10-value limit on `in` and `not-in`, transactions,
- * isolation between concurrent transactions, security rules, and consistency or latency.
+ * Not modeled: composite-index requirements, the 30-value limit on `in`, `not-in` and
+ * `array-contains-any`, transaction retries, isolation between concurrent transactions, security rules, and consistency or latency.
  */
 
 export class FakeTimestamp {
@@ -61,6 +62,13 @@ export class FakeFieldPath {
 	constructor(public path: string) {}
 	static documentId() {
 		return new FakeFieldPath('__name__');
+	}
+}
+
+export class FirestoreAlreadyExistsError extends Error {
+	code = 6;
+	constructor(path: string) {
+		super(`6 ALREADY_EXISTS: Document already exists: ${path}`);
 	}
 }
 
@@ -225,6 +233,18 @@ export class FakeQuery {
 					a !== undefined &&
 					!(f.value as unknown[]).some((v) => isDeepStrictEqual(a, comparable(v)))
 				);
+			case 'array-contains':
+				return (
+					Array.isArray(actual) &&
+					actual.some((el) => isDeepStrictEqual(comparable(el), comparable(f.value)))
+				);
+			case 'array-contains-any':
+				return (
+					Array.isArray(actual) &&
+					actual.some((el) =>
+						(f.value as unknown[]).some((v) => isDeepStrictEqual(comparable(el), comparable(v)))
+					)
+				);
 			default:
 				throw new Error(`FakeFirestore: unsupported operator ${f.op}`);
 		}
@@ -272,6 +292,9 @@ export class FakeDocRef {
 	collection(name: string) {
 		return this.db.collection(`${this.path}/${name}`);
 	}
+	async listCollections() {
+		return this.db.subcollectionNames(this.path).map((name) => this.collection(name));
+	}
 	async get() {
 		return new FakeSnapshot(this, this.db.read(this.path));
 	}
@@ -280,6 +303,10 @@ export class FakeDocRef {
 		const merge = options?.merge === true;
 		const existing = merge ? this.db.read(this.path) : undefined;
 		this.db.write(this.path, resolve(data, existing, merge) as Data);
+	}
+	async create(data: Data) {
+		if (this.db.read(this.path)) throw new FirestoreAlreadyExistsError(this.path);
+		await this.set(data);
 	}
 	async update(data: Data) {
 		assertNoUndefined(data);
@@ -305,6 +332,17 @@ export class FakeDocRef {
 		this.db.remove(this.path);
 	}
 }
+
+export type FakeTransaction = {
+	get: {
+		(ref: FakeDocRef): Promise<FakeSnapshot>;
+		(query: FakeQuery): Promise<FakeQuerySnapshot>;
+	};
+	set: (ref: FakeDocRef, data: Data, options?: { merge?: boolean }) => FakeTransaction;
+	update: (ref: FakeDocRef, data: Data) => FakeTransaction;
+	create: (ref: FakeDocRef, data: Data) => FakeTransaction;
+	delete: (ref: FakeDocRef) => FakeTransaction;
+};
 
 export class FakeFirestore {
 	private store = new Map<string, Data>();
@@ -339,6 +377,10 @@ export class FakeFirestore {
 				ops.push(() => ref.update(data));
 				return batch;
 			},
+			create: (ref: FakeDocRef, data: Data) => {
+				ops.push(() => ref.create(data));
+				return batch;
+			},
 			delete: (ref: FakeDocRef) => {
 				ops.push(() => ref.delete());
 				return batch;
@@ -356,18 +398,20 @@ export class FakeFirestore {
 		};
 		return batch;
 	}
-	/** Reads see the current data; writes are applied together at the end. Not retried or isolated. */
-	async runTransaction<T>(
-		fn: (tx: {
-			get: (ref: FakeDocRef) => Promise<FakeSnapshot>;
-			set: (ref: FakeDocRef, data: Data, options?: { merge?: boolean }) => unknown;
-		}) => Promise<T>
-	): Promise<T> {
+	/**
+	 * Reads (documents or queries) see the current data; writes are applied together at the end, all
+	 * or nothing. Not retried or isolated.
+	 */
+	async runTransaction<T>(fn: (tx: FakeTransaction) => Promise<T>): Promise<T> {
 		const batch = this.batch();
-		const result = await fn({
-			get: (ref) => ref.get(),
-			set: (ref, data, options) => batch.set(ref, data, options)
-		});
+		const tx: FakeTransaction = {
+			get: ((target: FakeDocRef | FakeQuery) => target.get()) as FakeTransaction['get'],
+			set: (ref, data, options) => (batch.set(ref, data, options), tx),
+			update: (ref, data) => (batch.update(ref, data), tx),
+			create: (ref, data) => (batch.create(ref, data), tx),
+			delete: (ref) => (batch.delete(ref), tx)
+		};
+		const result = await fn(tx);
 		await batch.commit();
 		return result;
 	}
@@ -387,6 +431,15 @@ export class FakeFirestore {
 		return [...this.store.entries()]
 			.filter(([p]) => p.startsWith(prefix) && !p.slice(prefix.length).includes('/'))
 			.map(([p, data]) => [p.slice(prefix.length), data]);
+	}
+
+	/** Names of the collections directly under a document that hold at least one document. */
+	subcollectionNames(docPath: string): string[] {
+		const prefix = `${docPath}/`;
+		const names = [...this.store.keys()]
+			.filter((p) => p.startsWith(prefix))
+			.map((p) => p.slice(prefix.length).split('/')[0]);
+		return [...new Set(names)];
 	}
 
 	// Test conveniences.

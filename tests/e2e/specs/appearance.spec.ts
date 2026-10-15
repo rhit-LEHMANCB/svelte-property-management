@@ -30,6 +30,12 @@ async function scanPages(page: Page) {
 	await page.goto('/signin');
 	await page.waitForLoadState('networkidle');
 	await check(page, 'sign-in page');
+	await page.goto('/forgot');
+	await page.waitForLoadState('networkidle');
+	await check(page, 'forgot password page');
+	await page.goto('/signin?reset=success');
+	await page.waitForLoadState('networkidle');
+	await check(page, 'sign-in page after a password reset');
 
 	await signIn(page, ADMIN);
 	for (const path of ['/admin', '/admin/users', '/admin/properties', '/admin/maintenance']) {

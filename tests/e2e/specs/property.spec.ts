@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { ADMIN, FIRESTORE_EMULATOR, PROJECT_ID } from '../support/constants';
-import { adminDb } from '../support/admin';
+import { adminAuth, adminDb, storageFileExists, uploadStorageFile } from '../support/admin';
 import { signIn } from '../support/helpers';
 
 const findProperty = async (title: string) => {
@@ -29,8 +29,6 @@ const findProperty = async (title: string) => {
 
 test.describe('property-management', () => {
 	test('Scenario: an admin creates a property and finds it in the list', async ({ page }) => {
-		// The form loads Google Maps for address lookup; nothing in e2e may reach the network.
-		await page.route('**/maps.googleapis.com/**', (route) => route.abort());
 		const title = `Birch Lane ${Date.now()}`;
 
 		await signIn(page, ADMIN);
@@ -60,6 +58,8 @@ test.describe('property-management', () => {
 		const stored = await findProperty(title);
 		expect(stored?.city?.stringValue).toBe('Terre Haute');
 		expect(stored?.state?.stringValue).toBe('IN');
+		expect(stored?.streetAddress?.stringValue).toBe('12 Birch Lane');
+		expect(stored?.zip?.stringValue).toBe('47803');
 		expect(stored?.bathrooms?.doubleValue).toBe(1.5);
 
 		// Property directory: the new property is listed.
@@ -68,7 +68,6 @@ test.describe('property-management', () => {
 	});
 
 	test('Scenario: Invalid property (bad zip code) is not created', async ({ page }) => {
-		await page.route('**/maps.googleapis.com/**', (route) => route.abort());
 		const title = `Bad Zip ${Date.now()}`;
 
 		await signIn(page, ADMIN);
@@ -97,6 +96,42 @@ test.describe('property-management', () => {
 		expect(await findProperty(title)).toBeUndefined();
 	});
 
+	test('Scenario: the property form has no address lookup and makes no Google Maps requests', async ({
+		page
+	}) => {
+		await adminDb().doc('properties/e2e-manual-address').set({
+			title: 'E2E Manual Address',
+			description: 'Address typed by hand',
+			bedrooms: 2,
+			bathrooms: 1,
+			squareFeet: 800,
+			rent: 900,
+			streetAddress: '5 Oak St',
+			city: 'Terre Haute',
+			state: 'IN',
+			zip: '47803'
+		});
+		const mapsRequests: string[] = [];
+		page.on('request', (request) => {
+			if (new URL(request.url()).hostname === 'maps.googleapis.com')
+				mapsRequests.push(request.url());
+		});
+
+		await signIn(page, ADMIN);
+		for (const path of ['/admin/properties/add', '/admin/properties/e2e-manual-address/edit']) {
+			await page.goto(path);
+			await page.waitForLoadState('networkidle');
+			await expect(page.getByTitle('Address Lookup')).toHaveCount(0);
+			for (const field of ['Street Address', 'Apartment Info', 'City', 'State', 'Zip Code']) {
+				await expect(page.getByTitle(field, { exact: true })).toBeVisible();
+			}
+			// Typing in the address fields must not start a lookup either.
+			await page.getByTitle('Street Address').fill('7 Elm St');
+			await page.waitForLoadState('networkidle');
+		}
+		expect(mapsRequests).toEqual([]);
+	});
+
 	test('Scenario: a property whose photos were all deleted still appears in the list', async ({
 		page
 	}) => {
@@ -120,5 +155,88 @@ test.describe('property-management', () => {
 		await expect(row).toBeVisible();
 		await expect(row.locator('img')).toHaveCount(0);
 		await expect(row.locator('svg').first()).toBeVisible();
+	});
+});
+
+test.describe('property-management: Cascade', () => {
+	const PROPERTY_ID = 'e2e-cascade-property';
+	const TITLE = 'E2E Cascade Court';
+	const LEASE = 'e2e-cascade-lease';
+	const DOCUMENT = `leases/${LEASE}/lease.pdf`;
+	const RESIDENT = {
+		uid: 'e2e-cascade-tenant',
+		email: 'cascade@e2e.test',
+		password: 'E2e-Cascade-Passw0rd'
+	};
+
+	test.beforeAll(async () => {
+		const db = adminDb();
+		await adminAuth()
+			.deleteUser(RESIDENT.uid)
+			.catch(() => undefined);
+		await adminAuth().createUser({
+			uid: RESIDENT.uid,
+			email: RESIDENT.email,
+			password: RESIDENT.password
+		});
+		await db.doc(`users/${RESIDENT.uid}`).set({
+			email: RESIDENT.email,
+			firstName: 'Cass',
+			lastName: 'Cascade',
+			phoneNumber: '+15555550180',
+			permissions: 'user',
+			stripeID: 'cus_cascade'
+		});
+		await db.doc(`properties/${PROPERTY_ID}`).set({
+			title: TITLE,
+			description: 'Deleted by the cascade test',
+			streetAddress: '24 Cascade Way',
+			city: 'Terre Haute',
+			state: 'IN',
+			rent: 900
+		});
+		await uploadStorageFile(DOCUMENT, Buffer.from('%PDF-1.4\n%%EOF\n'), 'application/pdf');
+		await db.doc(`leases/${LEASE}`).set({
+			propertyId: PROPERTY_ID,
+			tenantIds: [RESIDENT.uid],
+			rent: 900,
+			startDate: '2026-01-01',
+			endDate: null,
+			document: {
+				path: DOCUMENT,
+				fileName: 'lease.pdf',
+				size: 15,
+				uploadedAt: '2026-01-01T00:00:00.000Z'
+			},
+			createdAt: '2026-01-01T00:00:00.000Z',
+			updatedAt: '2026-01-01T00:00:00.000Z'
+		});
+		await db.doc(`leases/${LEASE}/payment_history/2026`).set({ January: { remainingBalance: 0 } });
+		await db.doc(`leases/${LEASE}/recorded_invoices/in_cascade`).set({ recordedAt: '2026-01-15' });
+	});
+
+	test('Scenario: Cascade: deleting a property with a paid lease removes the lease, its document and its records, and the tenant still loads the app', async ({
+		page
+	}) => {
+		await signIn(page, ADMIN);
+		await page.goto('/admin/properties');
+		await page.waitForLoadState('networkidle');
+		await page.getByRole('searchbox', { name: 'Search properties' }).fill(TITLE);
+		await page.getByRole('button', { name: `Actions for ${TITLE}` }).click();
+		await page.getByRole('menuitem', { name: 'Delete' }).click();
+		await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
+		await expect(page.getByText('Property Successfully Removed.')).toBeVisible();
+
+		const db = adminDb();
+		expect((await db.doc(`properties/${PROPERTY_ID}`).get()).exists).toBe(false);
+		expect((await db.doc(`leases/${LEASE}`).get()).exists).toBe(false);
+		expect((await db.doc(`leases/${LEASE}/payment_history/2026`).get()).exists).toBe(false);
+		expect((await db.doc(`leases/${LEASE}/recorded_invoices/in_cascade`).get()).exists).toBe(false);
+		expect(await storageFileExists(DOCUMENT)).toBe(false);
+
+		await page.context().clearCookies();
+		await signIn(page, RESIDENT);
+		await page.waitForLoadState('networkidle');
+		await expect(page.getByText('No property is assigned to your account yet.')).toBeVisible();
 	});
 });

@@ -5,6 +5,7 @@ import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
 import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
 import { deleteDocs } from '$lib/server/firestoreDelete';
 import { stripe } from '$lib/server/stripe';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const codeOf = (err: unknown) => (err as { code?: string } | undefined)?.code;
 
@@ -28,12 +29,16 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 			});
 		}
 
-		const junctions = await adminDB
-			.collection('junction_user_property')
-			.where('tenantId', '==', params.userId)
-			.get();
+		const [junctions, leases] = await Promise.all([
+			adminDB.collection('junction_user_property').where('tenantId', '==', params.userId).get(),
+			adminDB.collection('leases').where('tenantIds', 'array-contains', params.userId).get()
+		]);
 
+		// Leases stay, even with no tenants left, so their payment history is kept.
 		await Promise.all([
+			...leases.docs.map((lease) =>
+				lease.ref.update({ tenantIds: FieldValue.arrayRemove(params.userId) })
+			),
 			deleteDocs(junctions.docs.map((doc) => doc.ref)),
 			adminStorage.bucket(`gs://${PUBLIC_FB_STORAGE_BUCKET}`).deleteFiles({
 				prefix: `users/${params.userId}/`

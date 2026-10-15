@@ -3,7 +3,7 @@ import { load as adminPageLoad } from '../../src/routes/(authenticated)/admin/+p
 import { load as layoutLoad } from '../../src/routes/(authenticated)/+layout.server';
 import { load as homeLoad } from '../../src/routes/(authenticated)/+page.server';
 import { call } from '../helpers/callHandler';
-import { linkTenant, seedAdmin, seedProperty, seedTenant } from '../helpers/seed';
+import { seedAdmin, seedLease, seedProperty, seedTenant } from '../helpers/seed';
 
 describe('access-control: tenant property context (authenticated layout)', () => {
 	it('Scenario: anonymous callers are rejected with 401', async () => {
@@ -16,19 +16,37 @@ describe('access-control: tenant property context (authenticated layout)', () =>
 		expect(result).toMatchObject({ status: 401, error: 'Failed to retrieve user details' });
 	});
 
-	it('Scenario: One property exposes userProperty to child pages', async () => {
+	it("Scenario: One property: the current lease's property is exposed to child pages", async () => {
 		seedTenant('t1');
-		seedProperty('p1', { title: 'Oak House' });
-		linkTenant('t1', 'p1');
+		seedTenant('t2', { firstName: 'Tess', lastName: 'Two' });
+		seedProperty('p1', { title: 'Oak House', streetAddress: '9 Oak Ave', city: 'Brazil' });
+		seedLease('l1', {
+			propertyId: 'p1',
+			tenantIds: ['t1', 't2'],
+			startDate: '2020-01-01',
+			document: { path: 'leases/l1/1.pdf', fileName: 'l.pdf', size: 1, uploadedAt: 'x' }
+		});
 
 		const result = await call(layoutLoad, { userID: 't1' });
 
 		expect(result.status).toBe(200);
 		expect(result.data.user).toMatchObject({ permissions: 'user', firstName: 'Tom' });
 		expect(result.data.userProperty).toMatchObject({ id: 'p1', data: { title: 'Oak House' } });
+		expect(result.data.userLeases).toEqual([
+			{
+				id: 'l1',
+				propertyId: 'p1',
+				address: '9 Oak Ave, Brazil',
+				rent: 1200,
+				startDate: '2020-01-01',
+				endDate: null,
+				status: 'current',
+				hasDocument: true
+			}
+		]);
 	});
 
-	it('Scenario: No property loads the layout with the user only and no error', async () => {
+	it('Scenario: No property: never added to a lease', async () => {
 		seedTenant('t1');
 
 		const result = await call(layoutLoad, { userID: 't1' });
@@ -36,21 +54,53 @@ describe('access-control: tenant property context (authenticated layout)', () =>
 		expect(result.status).toBe(200);
 		expect(result.data.user).toMatchObject({ permissions: 'user' });
 		expect(result.data).not.toHaveProperty('userProperty');
+		expect(result.data.userLeases).toEqual([]);
 	});
 
-	it('Scenario: Wrong number of properties (more than one) fails with 500 and the count', async () => {
+	it('Scenario: No property: the lease has not started, or it has ended', async () => {
 		seedTenant('t1');
 		seedProperty('p1');
-		seedProperty('p2');
-		linkTenant('t1', 'p1');
-		linkTenant('t1', 'p2');
+		seedLease('future', { propertyId: 'p1', tenantIds: ['t1'], startDate: '2099-01-01' });
+		seedLease('past', {
+			propertyId: 'p1',
+			tenantIds: ['t1'],
+			startDate: '2019-01-01',
+			endDate: '2019-12-31'
+		});
 
 		const result = await call(layoutLoad, { userID: 't1' });
 
-		expect(result).toMatchObject({
-			status: 500,
-			error: 'User is associated with wrong number of properties: 2'
-		});
+		expect(result.status).toBe(200);
+		expect(result.data).not.toHaveProperty('userProperty');
+		expect(
+			result.data.userLeases.map((l: { id: string; status: string }) => [l.id, l.status])
+		).toEqual([
+			['future', 'upcoming'],
+			['past', 'ended']
+		]);
+	});
+
+	it("Scenario: No property: the current lease's property was deleted", async () => {
+		seedTenant('t1');
+		seedLease('l1', { propertyId: 'gone', tenantIds: ['t1'], startDate: '2020-01-01' });
+
+		const result = await call(layoutLoad, { userID: 't1' });
+
+		expect(result.status).toBe(200);
+		expect(result.data).not.toHaveProperty('userProperty');
+	});
+
+	it('Scenario: Wrong number of properties: several current leases use the latest start', async () => {
+		seedTenant('t1');
+		seedProperty('p1', { title: 'Older' });
+		seedProperty('p2', { title: 'Newer' });
+		seedLease('l1', { propertyId: 'p1', tenantIds: ['t1'], startDate: '2020-01-01' });
+		seedLease('l2', { propertyId: 'p2', tenantIds: ['t1'], startDate: '2021-01-01' });
+
+		const result = await call(layoutLoad, { userID: 't1' });
+
+		expect(result.status).toBe(200);
+		expect(result.data.userProperty).toMatchObject({ id: 'p2', data: { title: 'Newer' } });
 	});
 
 	it('Scenario: admins need no property and get only their user data', async () => {
@@ -83,7 +133,7 @@ describe('access-control: tenant-only routes redirect admins', () => {
 	it.each(routes)('Scenario: a tenant opening %s loads', async (routeId) => {
 		seedTenant('t1');
 		seedProperty('p1');
-		linkTenant('t1', 'p1');
+		seedLease('l1', { propertyId: 'p1', tenantIds: ['t1'], startDate: '2020-01-01' });
 
 		const result = await call(layoutLoad, { userID: 't1', routeId });
 
@@ -133,7 +183,7 @@ describe('access-control: first login redirect', () => {
 		seedAdmin('a1');
 		seedTenant('t1', { isFirstLogin: false });
 		seedProperty('p1');
-		linkTenant('t1', 'p1');
+		seedLease('l1', { propertyId: 'p1', tenantIds: ['t1'], startDate: '2020-01-01' });
 
 		for (const userID of ['a1', 't1']) {
 			const result = await call(layoutLoad, { userID });
@@ -165,19 +215,52 @@ describe('access-control: role-based landing (home page load)', () => {
 	});
 });
 
+describe('leases: Tenant lease card (dashboard load)', () => {
+	it('Scenario: Current lease: the card data names the other tenants, never their emails', async () => {
+		seedTenant('t1');
+		seedTenant('t2', { firstName: 'Tess', lastName: 'Two' });
+		seedProperty('p1', { streetAddress: '9 Oak Ave', city: 'Brazil' });
+		seedLease('l1', { propertyId: 'p1', tenantIds: ['t1', 't2'], startDate: '2020-01-01' });
+
+		const result = await call(homeLoad, { userID: 't1' });
+
+		expect(result.data.leaseCards).toEqual([
+			expect.objectContaining({
+				id: 'l1',
+				address: '9 Oak Ave, Brazil',
+				otherTenants: ['Tess Two']
+			})
+		]);
+		expect(JSON.stringify(result.data)).not.toContain('t2@example.com');
+	});
+
+	it('the layout does not load the other tenants (only the dashboard does)', async () => {
+		seedTenant('t1');
+		seedTenant('t2');
+		seedProperty('p1');
+		seedLease('l1', { propertyId: 'p1', tenantIds: ['t1', 't2'], startDate: '2020-01-01' });
+
+		const result = await call(layoutLoad, { userID: 't1' });
+
+		expect(result.data.userLeases[0]).not.toHaveProperty('otherTenants');
+	});
+});
+
 describe('access-control: data is not shared between tenants', () => {
 	it("Scenario: each tenant's layout exposes only their own property", async () => {
 		seedTenant('t1');
 		seedTenant('t2');
 		seedProperty('p1', { title: 'One' });
 		seedProperty('p2', { title: 'Two' });
-		linkTenant('t1', 'p1');
-		linkTenant('t2', 'p2');
+		seedLease('l1', { propertyId: 'p1', tenantIds: ['t1'], startDate: '2020-01-01' });
+		seedLease('l2', { propertyId: 'p2', tenantIds: ['t2'], startDate: '2020-01-01' });
 
 		const first = await call(layoutLoad, { userID: 't1' });
 		const second = await call(layoutLoad, { userID: 't2' });
 
 		expect(first.data.userProperty.data.title).toBe('One');
 		expect(second.data.userProperty.data.title).toBe('Two');
+		expect(first.data.userLeases.map((l: { id: string }) => l.id)).toEqual(['l1']);
+		expect(second.data.userLeases.map((l: { id: string }) => l.id)).toEqual(['l2']);
 	});
 });

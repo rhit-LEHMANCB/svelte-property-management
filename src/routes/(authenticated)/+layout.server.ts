@@ -1,7 +1,7 @@
-import { adminDB } from '$lib/server/admin';
-import { error, redirect } from '@sveltejs/kit';
+import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { getUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
+import { currentTenancy, loadTenantLeases } from '$lib/server/leases';
 
 // Pages only tenants use. Admins who open them (typed URL, old bookmark) go to the admin home.
 const tenantOnlyRoutes = [
@@ -30,36 +30,19 @@ export const load = (async ({ locals, route }) => {
 		};
 	}
 
-	const userJunctionsQuery = await adminDB
-		.collection('junction_user_property')
-		.where('tenantId', '==', uid)
-		.get();
-
-	// A tenant without a property (new user, or their property was deleted) still gets the app, so
-	// they can reach their profile; pages that need a property send them to the dashboard.
-	if (userJunctionsQuery.size === 0) {
-		return { user: userData };
-	}
-
-	if (userJunctionsQuery.size !== 1) {
-		throw error(
-			500,
-			`User is associated with wrong number of properties: ${userJunctionsQuery.size}`
-		);
-	}
-
-	const userProperty = await adminDB
-		.collection('properties')
-		.doc(userJunctionsQuery.docs[0].data().propertyId)
-		.get();
-
-	const userPropertyData = userProperty.data();
-	if (!userPropertyData) {
-		throw error(500, 'Failed to find property info.');
+	// A tenant's property is the one of their current lease. A tenant without one (new, not started,
+	// ended, or their property was deleted) still gets the app, so they can reach their profile;
+	// pages that need a property send them to the dashboard.
+	const tenantLeases = await loadTenantLeases(uid);
+	const userLeases = tenantLeases.map((l) => l.lease);
+	const chosen = currentTenancy(tenantLeases);
+	if (!chosen) {
+		return { user: userData, userLeases };
 	}
 
 	return {
 		user: userData,
-		userProperty: { id: userProperty.id, data: userPropertyData }
+		userLeases,
+		userProperty: { id: chosen.lease.propertyId, data: chosen.property }
 	};
 }) satisfies LayoutServerLoad;

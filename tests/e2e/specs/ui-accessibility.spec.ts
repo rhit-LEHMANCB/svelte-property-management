@@ -3,11 +3,10 @@ import { ADMIN, TENANT } from '../support/constants';
 import { adminDb } from '../support/admin';
 import { signIn } from '../support/helpers';
 
-// ui-accessibility: every dialog, menu, tab group, drawer, combobox, toast and pagination works by
+// ui-accessibility: every dialog, menu, tab group, drawer, toast and pagination works by
 // keyboard and exposes its role and name.
 
 const KB_PROPERTY = 'e2e-keyboard-property';
-const KB_TENANT = { id: 'e2e-kim', firstName: 'Kim', lastName: 'Keyboard', email: 'kim@e2e.test' };
 
 const focusIsInside = (locator: Locator) =>
 	locator.evaluate((el) => el.contains(document.activeElement));
@@ -117,7 +116,7 @@ test.describe('ui-accessibility: menus are operable by keyboard', () => {
 	});
 });
 
-test.describe('ui-accessibility: tabs, comboboxes on the property page', () => {
+test.describe('ui-accessibility: tabs on the property page', () => {
 	test.beforeAll(async () => {
 		const db = adminDb();
 		await db.doc(`properties/${KB_PROPERTY}`).set({
@@ -133,18 +132,9 @@ test.describe('ui-accessibility: tabs, comboboxes on the property page', () => {
 			state: 'IN',
 			zip: '47802'
 		});
-		await db.doc(`users/${KB_TENANT.id}`).set({
-			email: KB_TENANT.email,
-			firstName: KB_TENANT.firstName,
-			lastName: KB_TENANT.lastName,
-			phoneNumber: '+15555550143',
-			permissions: 'user'
-		});
-		await db.doc(`junction_user_property/${KB_TENANT.id}_${KB_PROPERTY}`).delete();
 	});
 
 	async function openProperty(page: Page) {
-		await page.route('**/maps.googleapis.com/**', (route) => route.abort());
 		await signIn(page, ADMIN);
 		await page.goto(`/admin/properties/${KB_PROPERTY}/edit`);
 		await page.waitForLoadState('networkidle');
@@ -166,27 +156,6 @@ test.describe('ui-accessibility: tabs, comboboxes on the property page', () => {
 		await expect(page.getByRole('tabpanel')).toContainText('Photos');
 		await expect(page.locator('input[type="file"][name="photos"]')).toBeVisible();
 		await expect(page.getByLabel('Title')).toHaveCount(0);
-	});
-
-	test('Scenario: Choose by keyboard, and No matches', async ({ page }) => {
-		await openProperty(page);
-		await page.getByRole('tab', { name: 'Tenants' }).click();
-		const input = page.getByRole('combobox', { name: 'Tenant' });
-
-		await input.fill('zzzz');
-		await expect(page.getByText('No results found.')).toBeVisible();
-
-		await input.fill('Kim');
-		await expect(input).toHaveAttribute('aria-expanded', 'true');
-		await page.keyboard.press('ArrowDown');
-		await page.keyboard.press('Enter');
-		await expect(input).toHaveValue('Kim Keyboard (kim@e2e.test)');
-		await expect(input).toHaveAttribute('aria-expanded', 'false');
-
-		await page.getByRole('button', { name: 'Add', exact: true }).click();
-		await expect(page.getByText('Successfully added tenant.')).toBeVisible();
-		await expect(page.getByText(KB_TENANT.email)).toBeVisible();
-		await expect(input).toHaveValue('');
 	});
 });
 
@@ -251,7 +220,9 @@ test.describe('ui-accessibility: notifications use the right live-region roles',
 		const reset = page.getByRole('button', { name: 'Reset', exact: true });
 		await reset.click();
 
-		const toast = page.getByRole('status').filter({ hasText: 'Reset email successfully sent.' });
+		const toast = page
+			.getByRole('status')
+			.filter({ hasText: 'Reset email requested. Check your inbox.' });
 		await expect(toast).toBeVisible();
 		await expect(reset).toBeFocused();
 		await expect(page.getByRole('region', { name: 'Notifications' })).toHaveAttribute(

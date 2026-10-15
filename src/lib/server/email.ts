@@ -2,7 +2,13 @@ import { RESEND_API_KEY } from '$env/static/private';
 import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 import { Resend } from 'resend';
 import { adminAuth } from './admin';
-import { renderPasswordResetEmail, renderWelcomeEmail, type EmailContent } from './email-templates';
+import { isUnknownAccountError } from '$lib/authErrors';
+import {
+	renderPasswordResetEmail,
+	renderWelcomeEmail,
+	type EmailContent,
+	type WelcomeLease
+} from './email-templates';
 
 export const EMAIL_FROM = 'Lehman Family LLC <support@lehmanfamilyllc.com>';
 
@@ -20,7 +26,12 @@ export const sendEmail = async (message: EmailMessage): Promise<void> => {
 	}
 };
 
-export const sendPasswordResetEmail = async (email: string, isWelcomeEmail: boolean) => {
+/** Sends the password reset email, or the welcome email (optionally naming the tenant's lease). */
+export const sendPasswordResetEmail = async (
+	email: string,
+	isWelcomeEmail: boolean,
+	lease?: WelcomeLease
+) => {
 	const actionCodeSettings = {
 		// URL you want to redirect back to. The domain (www.example.com) for
 		// this URL must be whitelisted in the Firebase Console.
@@ -31,10 +42,13 @@ export const sendPasswordResetEmail = async (email: string, isWelcomeEmail: bool
 	try {
 		link = await adminAuth.generatePasswordResetLink(email, actionCodeSettings);
 	} catch (error) {
-		console.error('Problem generating password reset link', error);
+		// An unknown address is an expected answer to a reset request, not a fault worth logging.
+		if (!isUnknownAccountError(error)) {
+			console.error('Problem generating password reset link', error);
+		}
 		throw error;
 	}
 
-	const content = isWelcomeEmail ? renderWelcomeEmail(link) : renderPasswordResetEmail(link);
+	const content = isWelcomeEmail ? renderWelcomeEmail(link, lease) : renderPasswordResetEmail(link);
 	await sendEmail({ to: email, ...content });
 };

@@ -21,7 +21,8 @@
 		"pretest": "svelte-kit sync",
 		"test": "vitest run",
 		"test:e2e": "firebase emulators:exec --config firebase.emulators.json --project demo-lehman-realty --only auth,firestore,storage \"playwright test --project=e2e\"",
-		"test:qa": "PLAYWRIGHT_QA=1 playwright test --project=qa"
+		"test:qa": "PLAYWRIGHT_QA=1 playwright test --project=qa",
+		"migrate": "tsx scripts/migrate.ts"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.0",
@@ -45,6 +46,7 @@
 		"svelte-check": "^4.0.0",
 		"tailwindcss": "^4.0.0",
 		"tslib": "^2.4.1",
+		"tsx": "^4.23.15",
 		"typescript": "^6.0.0",
 		"typescript-eslint": "^8.0.0",
 		"vitest": "^5.0.0"
@@ -55,7 +57,6 @@
 		"@tabler/icons-svelte": "^3.49.0",
 		"firebase": "^12.0.0",
 		"firebase-admin": "^13.0.0",
-		"google-maps": "^4.3.3",
 		"resend": "^6.32.1",
 		"stripe": "^23.0.0",
 		"sveltekit-superforms": "^3.0.0",

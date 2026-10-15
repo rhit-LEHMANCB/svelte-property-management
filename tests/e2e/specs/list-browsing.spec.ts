@@ -143,14 +143,13 @@ test.describe('list-browsing: sort lists in the browser', () => {
 
 test.describe('list-browsing: empty and no-result states', () => {
 	test('Scenario: No rows', async ({ page }) => {
-		await page.route('**/maps.googleapis.com/**', (route) => route.abort());
 		await signIn(page, ADMIN);
 		await page.goto(`/admin/properties/${EMPTY_PROPERTY}/edit`);
 		await page.waitForLoadState('networkidle');
-		await page.getByRole('tab', { name: 'Tenants' }).click();
+		await page.getByRole('tab', { name: 'Leases' }).click();
 
-		await expect(page.getByText('No tenants', { exact: true })).toBeVisible();
-		await expect(page.getByRole('table', { name: 'tenants' })).toHaveCount(0);
+		await expect(page.getByText('No leases', { exact: true })).toBeVisible();
+		await expect(page.getByRole('list', { name: 'Leases' })).toHaveCount(0);
 	});
 
 	test('Scenario: No rows on the properties page shows one Add property action', async ({

@@ -57,7 +57,9 @@ projects, and the e2e emulator loads the same rules. `.firebaserc` defines the a
 (`lehman-realty-dev`) and `prod` (`lehman-realty`) and has no default, so always pass `--project`.
 
 - Firestore denies all client access: the app reads and writes through the Admin SDK, which ignores
-  rules. Storage allows public `get` (photo URLs are unsigned) and no writes or listing.
+  rules. Storage allows public `get` under `properties/` and `users/` (photo URLs are unsigned) and
+  no writes or listing. Everything else, lease documents included, is denied; the app serves lease
+  PDFs itself at `/api/lease/{id}/document` after checking who is asking.
 - CI deploys them to the project in the GitHub environment's `FB_PROJECT_ID` on every push to `develop`
   and `production` (`.github/workflows/firebase-hosting-merge.yml`), before the Hosting deploy. The
   service account in `FIREBASE_SERVICE_ACCOUNT_LEHMAN_REALTY` needs at least the Firebase Rules Admin and Cloud
@@ -71,6 +73,54 @@ projects, and the e2e emulator loads the same rules. `.firebaserc` defines the a
   `npx firebase firestore:indexes --project dev > firestore.indexes.json`, format it with
   `npx prettier --write firestore.indexes.json` and commit the result. Run the export from Git Bash,
   because PowerShell 5.1 would write UTF-16.
+
+## Data migrations
+
+Changes to stored data ship as numbered files in `migrations/` (`0001-short-name.ts`) and run once
+per Firebase project. The deploy workflow applies any that are pending after the rules and indexes
+deploy and before Hosting, using the environment's service account; a failure stops the deploy before
+the new code goes live. Each run is recorded in the `_migrations` collection.
+
+**Writing one.** Copy `migrations/0001-leases-from-tenant-links.ts`. The default export has a `name`
+that matches the file name, a `description`, `undo` steps written for a person, and `up(ctx)`.
+Read with `ctx.db`, but write only through `ctx.write.set` and `ctx.write.delete`, so the dry run can
+show the writes instead of making them. Make it safe to run again on data it already changed (use
+fixed document ids, skip what is done), because a run that fails part way is repeated. Return a
+summary object; it is stored on the record. `tests/unit/migrations.test.ts` checks every file.
+
+**Running by hand.**
+
+```bash
+# against the emulator (the backup check is skipped)
+npx firebase emulators:start --config firebase.emulators.json --only firestore --project demo-lehman-realty
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FB_PROJECT_ID=demo-lehman-realty npm run migrate -- --dry-run
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FB_PROJECT_ID=demo-lehman-realty npm run migrate
+
+# against a real project, with a service account key
+GOOGLE_APPLICATION_CREDENTIALS=path/to/key.json FB_PROJECT_ID=lehman-realty-dev npm run migrate -- --dry-run
+```
+
+`npm run migrate -- --help` lists the options. Only one run at a time can hold the lock
+(`_migrations/_lock`); a lock older than 30 minutes is taken over.
+
+**Backups first.** The runner refuses to touch a database that has no backup schedule. Create two
+in the Firebase console for the `(default)` database of each project (Firestore, Disaster recovery,
+Create backup schedule): daily with 2-day retention and weekly with 8-day retention. Point-in-time
+recovery stays off for now to avoid its cost; turn it on once the app holds real data. The deploy
+service account (`FIREBASE_SERVICE_ACCOUNT_LEHMAN_REALTY`) needs two roles for the migrate step: one
+that lists backup schedules and backups (for example Cloud Datastore Viewer) and Cloud Datastore User,
+to read and write the data.
+
+**Restore point.** Before applying a migration, the runner prints, and stores on
+`_migrations/{name}`, the start time and the newest finished backup (`restorePoint`). A schedule with
+no finished backup yet gives a warning and no restore point. Scheduled backups are at most daily, so
+changes made between that backup and the migration are not in it.
+
+**Rolling back.** First follow the migration's `undo` steps (also on its file); they usually remove
+what it added, and the previous app version can then be redeployed. As a last resort, restore the
+recorded backup. Backups restore into a new database, never in place:
+`gcloud firestore databases restore --source-backup=<restorePoint.backup> --destination-database=<new-name> --project=<project>`,
+then copy back the documents you need and delete the new database.
 
 ## Stripe
 
