@@ -26,19 +26,23 @@ The system SHALL charge each month of a lease its rent times the days the lease 
 - **THEN** February 2028 is charged $517.24 (15 of 29 days)
 
 ### Requirement: Rent due dates
-The system SHALL make the first month's rent due on the lease start date and every later month's rent due on the 1st of that month, using dates in the business time zone (America/Indiana/Indianapolis). A month's rent counts toward the balance from the 1st of that month.
+The system SHALL make the first month's rent due on the lease start date and every later month's rent due on the 1st of that month, using dates in the business time zone (America/Indiana/Indianapolis). A month's rent counts toward the balance, and can be paid, from 7 days before its due date.
 
 #### Scenario: Mid-month start
-- **WHEN** today is 2026-10-03 and a lease with rent 1500 starts 2026-10-15
+- **WHEN** a lease with rent 1500 starts 2026-10-15 and today is 2026-10-08
 - **THEN** October's $822.58 is owed and due on 2026-10-15, not 2026-10-01
 
+#### Scenario: Before the first payable day
+- **WHEN** today is 2026-10-07 for the same lease
+- **THEN** nothing is owed yet
+
 #### Scenario: Later months
-- **WHEN** the same lease reaches November
-- **THEN** November's rent is due on 2026-11-01
+- **WHEN** the same lease reaches 2026-10-25
+- **THEN** November's $1,500.00 is also owed, due on 2026-11-01
 
 #### Scenario: Start on the 1st
 - **WHEN** a lease starts 2026-11-01
-- **THEN** November's rent is due on 2026-11-01, as before this change
+- **THEN** November's rent is due on 2026-11-01 and can be paid from 2026-10-25
 
 ### Requirement: Credit from overpaid months
 The system SHALL treat any amount recorded against a month beyond what that month is charged as credit on the lease, apply the credit to the oldest rent still owed, and show the unused credit to the admin and the lease's tenants as "Credit". Credit is never refunded or paid out by the app.
@@ -67,11 +71,15 @@ The system SHALL store on each lease a late fee amount in dollars (0 or more, at
 - **THEN** no late fee is ever charged on it
 
 ### Requirement: Late fee charged once per late month
-The system SHALL charge a month's late fee once when less than that month's rent had been paid (counting credit) by the end of the day that is the grace days after its due date, provided that due date is on or after the lease's late-fee start date. A late fee is due on the day after the grace period ends. Deposits never incur late fees.
+The system SHALL charge a month's late fee once, through the daily billing job, when less than that month's rent had been paid (counting credit) by the end of the day that is the grace days after its due date, provided that due date is on or after the lease's late-fee start date. A late fee is owed only once the job has recorded it, and is due on the day after the grace period ends. Deposits never incur late fees.
 
 #### Scenario: Unpaid after grace
 - **WHEN** a lease has rent 1500, late fee 75, grace 5 days, November's rent is due 2026-11-01 and only $1,000.00 was paid by the end of 2026-11-06
-- **THEN** on 2026-11-07 a $75.00 late fee for November is owed
+- **THEN** the daily run on 2026-11-07 records a $75.00 late fee for November, due 2026-11-07, and the lease owes it from then on
+
+#### Scenario: Before the run
+- **WHEN** the grace period has ended but the daily job has not yet run
+- **THEN** no late fee is owed yet
 
 #### Scenario: Paid within grace
 - **WHEN** November's rent was paid in full on 2026-11-06
@@ -80,6 +88,14 @@ The system SHALL charge a month's late fee once when less than that month's rent
 #### Scenario: Paid after the fee
 - **WHEN** November's late fee was charged and the rent is paid in full on 2026-11-10
 - **THEN** the $75.00 late fee is still owed until it is paid or waived
+
+#### Scenario: Paid late but before the run
+- **WHEN** November's rent was paid in full on 2026-11-07 at 05:00, before that day's run
+- **THEN** the run still charges the fee, because less than the rent was paid by the end of 2026-11-06
+
+#### Scenario: Missed run
+- **WHEN** the job does not run on 2026-11-07 and runs next on 2026-11-08
+- **THEN** that run charges November's fee with its due date 2026-11-07
 
 #### Scenario: Before the late-fee start date
 - **WHEN** a month's due date is before the lease's late-fee start date
@@ -90,7 +106,7 @@ The system SHALL charge a month's late fee once when less than that month's rent
 - **THEN** no late fee is charged for it
 
 ### Requirement: Waive a late fee
-The system SHALL let an admin waive one month's late fee on a lease, which removes whatever of that fee is still unpaid; amounts already paid toward it stay recorded. Only admins can waive.
+The system SHALL let an admin waive one month's charged late fee on a lease, which removes whatever of that fee is still unpaid; amounts already paid toward it stay recorded. Only admins can waive.
 
 #### Scenario: Waive
 - **WHEN** an admin waives November's unpaid $75.00 late fee

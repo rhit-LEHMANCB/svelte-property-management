@@ -22,10 +22,18 @@ export type PaymentTransaction = {
 	fee?: number;
 };
 
-/** `leases/{id}/late_fees/{YYYY-MM}`: written only once a late fee is paid or waived. */
+/**
+ * `leases/{id}/late_fees/{YYYY-MM}`: written by the daily billing job when it charges the fee. A fee
+ * is owed only once this record exists.
+ */
 export type LateFeeRecord = {
-	/** The fee in dollars, fixed by the first write. */
+	/** The fee in dollars, fixed when it is charged. */
 	amount: number;
+	/** When the daily job charged it (ISO). */
+	chargedAt?: string;
+	chargedBy?: string;
+	/** `YYYY-MM-DD`: the day after the grace period ended. */
+	dueDate?: string;
 	paid?: number;
 	transactions?: PaymentTransaction[];
 	waivedAt?: string;
@@ -114,6 +122,15 @@ const monthKeyOf = (key: string): MonthKey => {
 	return { year, month, monthName: MONTH_NAMES[month - 1], key };
 };
 
+const MONTH_KEY = /^20\d{2}-(0[1-9]|1[0-2])$/;
+
+/**
+ * Whether a late-fee record is a charged fee. Records from before the daily job (paid or waived
+ * while fees were worked out on read) count as charged too.
+ */
+const isCharged = (record: LateFeeRecord | undefined) =>
+	Boolean(record && (record.chargedAt || record.waivedAt || (record.paid ?? 0) > 0));
+
 const sumCents = (transactions: { amount?: number }[] | undefined) =>
 	(transactions ?? []).reduce(
 		(sum, t) =>
@@ -161,6 +178,7 @@ export type RentRow = {
 	hasEntry: boolean;
 };
 
+/** A charged late fee. */
 export type LateFeeRow = {
 	month: MonthKey;
 	dueDate: string;
@@ -169,6 +187,12 @@ export type LateFeeRow = {
 	waived: boolean;
 	owedCents: number;
 };
+
+/** A month that is late but whose fee the daily job has not charged yet. */
+export type UnchargedLateFee = { month: MonthKey; dueDate: string; amountCents: number };
+
+/** How many days before its due date a month's rent can be paid (the day of its first reminder). */
+export const PAYABLE_DAYS_BEFORE_DUE = 7;
 
 export type DepositState = {
 	amountCents: number;
@@ -187,6 +211,8 @@ export type Ledger = {
 	today: string;
 	rent: RentRow[];
 	lateFees: LateFeeRow[];
+	/** Late months the daily job still has to charge. Not owed until it does. */
+	unchargedLateFees: UnchargedLateFee[];
 	deposit: DepositState;
 	creditCents: number;
 	owed: { lateFeesCents: number; depositCents: number; rentCents: number };
@@ -209,7 +235,11 @@ export function computeLedger(input: LedgerInput): Ledger {
 	const rentCents = toCents(lease.rent);
 	const startMonth = monthOf(lease.startDate);
 	const endMonth = lease.endDate ? monthOf(lease.endDate) : null;
-	const months = monthsOwed(startMonth, now, endMonth);
+	// A month is in the balance from its payable day, 7 days before it is due.
+	const horizon = new Date(`${addDays(today, PAYABLE_DAYS_BEFORE_DUE)}T12:00:00Z`);
+	const months = monthsOwed(startMonth, horizon, endMonth).filter(
+		(month) => addDays(rentDueDate(lease, month), -PAYABLE_DAYS_BEFORE_DUE) <= today
+	);
 	const entryOf = (m: MonthKey) => histories[String(m.year)]?.[m.monthName];
 
 	// Rent: each month's charge against what was recorded for it. Anything recorded beyond a
@@ -247,14 +277,15 @@ export function computeLedger(input: LedgerInput): Ledger {
 		row.owedCents = short - row.creditAppliedCents;
 	}
 
-	// Late fees: a month is late when, by the end of its grace period, less than its charge had been
-	// paid (credit counts as on time). Months due before `lateFeesFrom` never are.
+	// Late fees. A month is late when, by the end of its grace period, less than its charge had been
+	// paid (credit counts as on time); months due before `lateFeesFrom` never are. A fee is owed only
+	// once the daily job has charged it; late months it has not charged yet are listed for it.
 	const records = input.lateFees ?? {};
 	const graceDays = lease.graceDays ?? 0;
 	const lateFeeCents = toCents(lease.lateFee ?? 0);
-	const lateFees: LateFeeRow[] = [];
+	const unchargedLateFees: UnchargedLateFee[] = [];
 	for (const row of rows) {
-		const record = records[row.month.key];
+		if (isCharged(records[row.month.key]) || lateFeeCents <= 0) continue;
 		const deadline = addDays(row.dueDate, graceDays);
 		const late =
 			lease.lateFeesFrom !== undefined &&
@@ -262,20 +293,31 @@ export function computeLedger(input: LedgerInput): Ledger {
 			deadline < today &&
 			monthPaidByCents(entryOf(row.month), rentCents, deadline) + row.creditAppliedCents <
 				row.chargeCents;
-		if (!late && !record) continue;
-		const amountCents = record ? toCents(record.amount) : lateFeeCents;
-		if (amountCents <= 0 && !record) continue;
-		const paidCents = toCents(record?.paid ?? 0);
-		const waived = Boolean(record?.waivedAt);
-		lateFees.push({
-			month: row.month,
-			dueDate: addDays(deadline, 1),
-			amountCents,
-			paidCents,
-			waived,
-			owedCents: waived || !late ? 0 : Math.max(0, amountCents - paidCents)
-		});
+		if (late) {
+			unchargedLateFees.push({
+				month: row.month,
+				dueDate: addDays(deadline, 1),
+				amountCents: lateFeeCents
+			});
+		}
 	}
+	const lateFees: LateFeeRow[] = Object.entries(records)
+		.filter(([key, record]) => MONTH_KEY.test(key) && isCharged(record))
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([key, record]) => {
+			const month = monthKeyOf(key);
+			const amountCents = toCents(record!.amount);
+			const paidCents = toCents(record!.paid ?? 0);
+			const waived = Boolean(record!.waivedAt);
+			return {
+				month,
+				dueDate: record!.dueDate ?? addDays(addDays(rentDueDate(lease, month), graceDays), 1),
+				amountCents,
+				paidCents,
+				waived,
+				owedCents: waived ? 0 : Math.max(0, amountCents - paidCents)
+			};
+		});
 
 	// Deposit.
 	const deposit = input.deposit;
@@ -314,6 +356,7 @@ export function computeLedger(input: LedgerInput): Ledger {
 		today,
 		rent: rows,
 		lateFees,
+		unchargedLateFees,
 		deposit: depositState,
 		creditCents: pool,
 		owed,

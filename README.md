@@ -133,15 +133,50 @@ what has been recorded against it; nothing is written by a scheduled job.
   `leases/{id}/payment_history/{year}` entry (`remainingBalance` is still written, but not read
   except for old entries that have no transactions).
 - **Credit** is anything recorded beyond a month's charge; it pays the oldest rent still owed.
+- **Rent becomes payable** 7 days before it is due, the day of its first reminder.
 - **Late fees**: a lease has `lateFee` (dollars), `graceDays` and `lateFeesFrom`. A month due on or
-  after `lateFeesFrom` that was not paid in full by the end of its grace days owes the fee once.
-  `leases/{id}/late_fees/{YYYY-MM}` is written only when a fee is paid or waived, and fixes its
-  `amount`.
+  after `lateFeesFrom` that was not paid in full by the end of its grace days is late. The **daily
+  billing job** (below) charges its fee once by writing `leases/{id}/late_fees/{YYYY-MM}` with
+  `chargedAt`; a fee is owed only from then on.
 - **Deposit**: `deposit: { amount, dueDate }` on the lease; payments and the settlement are in
   `leases/{id}/deposit/ledger` (`paid`, `transactions`, `settlement`).
 - **Paying**: one amount is applied to late fees, then the deposit, then the oldest rent. Checkout
   shows a line per part and the invoice metadata carries `lateFeeCents`, `depositCents`,
   `rentCents` and `feeCents`; the webhook recomputes the split when it records the payment.
+
+### Daily billing job
+
+`POST /api/jobs/daily` (`src/lib/server/billingJob.ts`) runs once a day. Each run:
+
+1. Charges every late month that has no fee yet. A missed day is caught up on the next run.
+2. Emails each tenant on the lease a late-fee notice for every fee it charged.
+3. Emails rent and deposit reminders 7 days before and on the due date, while the amount is unpaid.
+
+It sends every email once (records in `leases/{id}/notices`). Only one run proceeds at a time (lock
+in `_jobs/daily`). Each run appends a summary to `_jobs/daily/runs/{YYYY-MM-DD}`: the fees charged,
+the emails sent and any errors. Check that document if fees or emails seem missing.
+
+The route accepts `Authorization: Bearer <JOBS_SECRET>` or a signed-in admin, and answers 401 to
+everyone else. To run it by hand, sign in as an admin and run
+`await fetch('/api/jobs/daily', { method: 'POST' })` in the browser console.
+
+**Setup, once per Firebase project** (until it is done, no fees are charged and no emails are sent):
+
+1. Generate a secret (`openssl rand -hex 32`). Add it as `JOBS_SECRET` to the GitHub environment
+   (`develop` or `production`) and to the 1Password `.env` item. Every `.env` needs the line, even
+   empty, or the build fails. Redeploy.
+2. Enable Cloud Scheduler and create the job, replacing the project, site URL and secret:
+
+```bash
+gcloud services enable cloudscheduler.googleapis.com --project=<project-id>
+gcloud scheduler jobs create http daily-billing \
+  --project=<project-id> --location=us-central1 \
+  --schedule="0 6 * * *" --time-zone="America/Indiana/Indianapolis" \
+  --uri="https://<site>/api/jobs/daily" --http-method=POST \
+  --headers="Authorization=Bearer <JOBS_SECRET>" \
+  --attempt-deadline=600s --max-retry-attempts=3
+gcloud scheduler jobs run daily-billing --project=<project-id> --location=us-central1   # try it once
+```
 
 Migration `0003-lease-billing-terms` gave leases created before this their terms: no deposit, a 5%
 late fee, 5 grace days, and late fees only for months due from the day it ran.

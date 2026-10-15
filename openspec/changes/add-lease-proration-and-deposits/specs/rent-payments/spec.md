@@ -97,10 +97,10 @@ The system SHALL verify the Stripe signature on `POST /api/stripe/webhook` and, 
 - **THEN** it is logged as an error naming the invoice, customer and amounts, nothing is recorded, and the response is 500 so the failed delivery shows in Stripe and is retried
 
 ### Requirement: Real balance and due date
-The system SHALL show the tenant, for each of their leases that is current or owes money, the total owed (late fees owed, plus unpaid deposit, plus prorated rent through the current month or the lease's end month, whichever is earlier, minus credit), how much of it is rent, deposit and late fees, any credit, and the earliest due date among what is owed, and the server SHALL reject amounts above the total.
+The system SHALL show the tenant, for each of their leases that is current or owes money, the total owed (late fees owed, plus unpaid deposit, plus prorated rent for every month whose payable day, 7 days before its due date, has come, up to the lease's end month, minus credit), how much of it is rent, deposit and late fees, any credit, and the earliest due date among what is owed, and the server SHALL reject amounts above the total.
 
 #### Scenario: No payments yet
-- **WHEN** a tenant's lease has rent 1000, started on the 1st of this month and has no payments
+- **WHEN** a tenant's lease has rent 1000, started on the 1st of this month, has no payments, and the 1st of next month is more than 7 days away
 - **THEN** `/payment` shows a balance of $1,000.00 for that lease due on the 1st of this month
 
 #### Scenario: Mid-month start
@@ -124,8 +124,12 @@ The system SHALL show the tenant, for each of their leases that is current or ow
 - **THEN** `/payment` lists the ended lease with $2,000.00 owed and the current lease with its own balance, and the tenant chooses which to pay
 
 #### Scenario: Upcoming lease
-- **WHEN** the tenant's only lease starts next month and has no deposit
+- **WHEN** the tenant's only lease starts more than 7 days from today and has no deposit
 - **THEN** nothing is owed yet
+
+#### Scenario: Next month payable a week early
+- **WHEN** today is 2026-10-25 and a current lease with rent 1000 has paid October
+- **THEN** `/payment` shows $1,000.00 owed for November, due on 2026-11-01
 
 #### Scenario: Upcoming lease with a deposit
 - **WHEN** the tenant's only lease starts next month with a $1,000.00 deposit due on its start date

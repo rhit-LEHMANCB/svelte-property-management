@@ -10,6 +10,14 @@ import { call } from '../helpers/callHandler';
 import { VALID_STRIPE_SIGNATURE, services } from '../helpers/services';
 import { db, seedLease, seedProperty, seedTenant } from '../helpers/seed';
 
+// Next month's rent becomes payable 7 days before it is due, so balances depend on the day of the
+// month. Pin "now" to mid-month so these tests mean the same thing on every day they run.
+beforeEach(() => {
+	vi.useFakeTimers({ toFake: ['Date'] });
+	vi.setSystemTime(new Date('2026-03-12T17:00:00Z'));
+});
+afterEach(() => vi.useRealTimers());
+
 /** The first day of the month `monthsAgo` months before this one, as YYYY-MM-DD. */
 const monthStart = (monthsAgo = 0) => {
 	const current = getMonthKey(new Date());
@@ -778,6 +786,14 @@ describe('rent-payments: rent, deposit and late fees', () => {
 			November: { remainingBalance: 500, transactions: [{ date: nov2, amount: 1000 }] }
 		});
 		db.seed('leases/lease-1/deposit/ledger', { paid: 500, transactions: [] });
+		// November's late fee, as the daily job charged it on 2026-11-07.
+		db.seed('leases/lease-1/late_fees/2026-11', {
+			amount: 75,
+			paid: 0,
+			chargedAt: '2026-11-07T11:00:00.000Z',
+			chargedBy: 'daily-job',
+			dueDate: '2026-11-07'
+		});
 	};
 	const tenantLease = {
 		id: 'lease-1',
@@ -940,7 +956,7 @@ describe('rent-payments: rent, deposit and late fees', () => {
 
 		await send(invoice({ rentCents: '60000', feeCents: '1770' }));
 
-		expect(db.peek('leases/lease-1/late_fees/2026-11')).toBeUndefined();
+		expect(db.peek('leases/lease-1/late_fees/2026-11')).toMatchObject({ paid: 0 });
 		expect(db.peek('leases/lease-1/deposit/ledger')).toMatchObject({ paid: 500 });
 		const november = (
 			db.peek('leases/lease-1/payment_history/2026') as Record<string, { remainingBalance: number }>

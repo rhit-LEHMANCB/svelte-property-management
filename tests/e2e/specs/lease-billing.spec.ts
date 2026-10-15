@@ -66,6 +66,15 @@ test.describe.serial('lease billing', () => {
 			February: { remainingBalance: -500, transactions: [{ amount: 1500, date: '2025-02-20' }] }
 		});
 		await db.doc(`leases/${ENDED}/deposit/ledger`).set({ paid: 1000, transactions: [] });
+		// February's fee as the daily billing job charges it (the job itself is covered by the
+		// handler tests; running it here would email every other e2e tenant).
+		await db.doc(`leases/${ENDED}/late_fees/2025-02`).set({
+			amount: 75,
+			paid: 0,
+			chargedAt: '2025-02-07T11:00:00.000Z',
+			chargedBy: 'daily-job',
+			dueDate: '2025-02-07'
+		});
 	});
 
 	test('Scenario: Prefilled late fee follows the rent until edited, and the terms are saved', async ({
@@ -99,6 +108,14 @@ test.describe.serial('lease billing', () => {
 			})
 		]);
 		upcomingId = saved[0].id;
+	});
+
+	test('Scenario: Anyone else: a tenant cannot run the daily job', async ({ page }) => {
+		await signIn(page, BILL);
+		const status = await page.evaluate(
+			async () => (await fetch('/api/jobs/daily', { method: 'POST' })).status
+		);
+		expect(status).toBe(401);
 	});
 
 	test('Scenario: Billing details on the Leases tab; waive a late fee', async ({

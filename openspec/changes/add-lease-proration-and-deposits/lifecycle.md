@@ -1,9 +1,9 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 7 Production PR (QA cycle 1 passed 2026-10-15)
+- Stage: 5 Ship to develop (amendment 1): PR #158 open, waiting for the `tests` and `build_and_preview` checks
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
-- Review round: 1 of 5
+- Review round: 3 of 5
 - QA cycle: 1 of 3
 - Started: 2026-10-15
 
@@ -46,9 +46,39 @@
 
 **Answers given.** Round 1: per-lease proration toggle (later changed by the user to always on); deposit due date per lease defaulting to the start date; refunds only recorded; existing leases migrated (later: prorated fully). Scope: late fees added, autopay moved to the next change. Late fee: flat per lease, default 5% of rent, once per month; grace per lease, default 5; one payment amount applied late fees → deposit → oldest rent; card fee on the whole payment; settlement itemized and must add up; overpaid months become credit; late fees only for months due after release.
 
+
+## Amendment 1 (2026-10-15, after Gate B was reached; approved: yes, 2026-10-15)
+
+The user chose to hold production PR #157 and move late fees to a daily scheduled job before release. Proration and deposits are unchanged.
+
+**Decisions**
+- **Trigger.** Google Cloud Scheduler calls a protected app route, `POST /api/jobs/daily`, at 6:00 America/Indiana/Indianapolis every day, in each Firebase project (dev and production).
+- **Job scope.**
+  - It charges late fees by writing a record for each month that became late.
+  - It emails a late-fee notice when it charges a fee.
+  - It emails due-date reminders **7 days before and on the due day**, for rent and for deposits, only while the amount is still unpaid.
+  - Autopay stays in the next change and will use the same job.
+- **Payable from the first reminder.** A month's rent counts in the balance, and can be paid, from 7 days before its due date (for example, from October 25 for November 1). For a lease starting October 15, the first month is payable from October 8. The due date and the late-fee rule do not change. A deposit is still payable as soon as the lease is saved.
+- **Missed runs.** The next run catches up on fees: every late month without a recorded fee is charged, with its original due date. Reminders are only sent on their own days, so a missed day's reminders are not resent.
+- **Recipients.** Every tenant on the lease gets their own email. No admin emails. Tenants cannot opt out.
+- **Lateness rule unchanged.** A month is late if less than its rent was paid, counting credit, by the end of its due date plus the grace days, and only from the late-fee start date on. Paying afterwards does not remove a fee. Waive works as before.
+
+**What changes from the approved plan**
+- The balance no longer works out late fees itself. A fee is owed only once the job has recorded it (`late_fees/{YYYY-MM}` with `chargedAt`). Between the end of the grace period and the next run, nothing is owed.
+- Emails are sent at most once each. A record per lease, notice type and month prevents a second send if the job runs again.
+
+**Assumptions** (not asked)
+1. The route accepts either `Authorization: Bearer <JOBS_SECRET>` (Cloud Scheduler) or a signed-in admin. That lets an admin, or QA on the dev site, run the job on demand. Anyone else gets 401.
+2. Only one run can happen at a time (a lock), and each run writes a summary to `_jobs/daily/runs/{date}`. A run that fails part way is safe to repeat.
+3. Emails come from Lehman Family LLC through the existing email provider, with the amount, the due date and a link to `/payment`. A failed email is logged and retried on the next run, because its sent record is written only after a successful send.
+4. Rollout: a new private secret `JOBS_SECRET` goes in the GitHub `develop` and `production` environments. A Cloud Scheduler job is created in each project, which is a human step with a documented `gcloud` command. Until the scheduler exists, no fees are charged and no emails go out.
+5. PR #157 stays open and on hold. Its head is `develop`, so it picks up the rework once that is merged to `develop`. The QA and checklist are then redone.
+
 ## Gate A
 Approved: yes, 2026-10-15 (by the user in session, after the proposal and preflight were presented)
 Accepted preflight gaps: none
+
+Amendment 1: approved 2026-10-15 by the user in session. Accepted gaps: `JOBS_SECRET` is not yet in the GitHub environments, and the Cloud Scheduler API is disabled with no job in either project. Both are human rollout steps before production; dev QA runs the job as an admin.
 
 ## Preflight
 Run 2026-10-15 on `claude/add-lease-proration-and-deposits` (develop merged in at 0efda52, which has the add-leases archive).
@@ -66,6 +96,18 @@ Run 2026-10-15 on `claude/add-lease-proration-and-deposits` (develop merged in a
 | Secrets and variables | None needed for this change |
 | Not available under MCP | Approving a PR's pending workflow runs (human step at wrap-up if needed) |
 
+### Preflight for amendment 1 (2026-10-15)
+
+| Check | Result |
+| --- | --- |
+| git commit and push | OK (pushed 2d0b6db) |
+| GitHub backend | GitHub MCP, as before |
+| Playwright, browsers, QA credentials | OK, unchanged: `.env.qa` mode 600 and gitignored; browser mapping in the scratchpad |
+| Dev deploy on develop | OK: run 95 (800f8fe) succeeded |
+| Local checks | OK at the last run; Java present |
+| `JOBS_SECRET` in the GitHub `develop` environment | Not added yet (cannot be checked with this access). Not needed for dev QA, which runs the job as an admin |
+| Cloud Scheduler on `lehman-realty-dev` | The Cloud Scheduler API is **disabled**, and no job exists. This is a human rollout step; the job is not needed for QA |
+
 ## Review rounds
 Stage 3 done 2026-10-15: all 21 tasks ticked. Local checks: lint, check, 567 unit/handler tests, build, `npm run test:e2e` 149 passed (new `tests/e2e/specs/lease-billing.spec.ts`).
 Round 1 (2026-10-15, fresh Explore/Sonnet reviewer): blockers 0, majors 0, minors 3, nits 1. Exit after fixing.
@@ -74,6 +116,25 @@ Round 1 (2026-10-15, fresh Explore/Sonnet reviewer): blockers 0, majors 0, minor
 - minor, admin list loads a ledger per lease: not changed. Reason: every lease, ended ones included, can owe rent or hold a deposit that the list must show; the cost is three reads per lease, which the design accepts at this app's scale.
 - nit, unbounded deductions: fixed (at most 50; test added).
 Local checks after the fixes: lint, check, 564 tests, build.
+
+Amendment 1, stage 3 done 2026-10-15: tasks 7.1 to 7.8 ticked. Local checks: lint, check, 592 vitest tests (date-sensitive rent-payment tests pinned; probed at 2026-10-28 and 2027-01-01), build, `npm run test:e2e` 150 passed (balance expectations follow the 7-day window). `.env` and both workflows gained `JOBS_SECRET`.
+
+Round 2 (amendment 1, 2026-10-15, fresh Explore/Sonnet reviewer): blockers 0, majors 1, minors 4, nits 1. All fixed; round 3 required.
+- major, the ended-lease reminder test could not fail: fixed (now an ended lease with a deposit due on the run day; mutation-checked).
+- minor, no test that a missed reminder day is not sent later: added.
+- minor, a failed sent-record write could cause a duplicate email: fixed (each notice is claimed with `create()` before sending and released if the send fails).
+- minor, the lock could expire during a long run: fixed (extended after each lease; the claim also prevents duplicate sends). Known edge: a run that dies between claiming and sending leaves that notice unsent.
+- minor, `JOBS_SECRET` missing from the e2e app env: fixed.
+- nit, 200 despite errors: changed to 500 when a run had errors, so Cloud Scheduler retries (the spec scenario says so).
+Local checks: lint, check, 594 tests, build; e2e lease-billing and payment specs, 17 passed.
+
+Round 3 (amendment 1, 2026-10-15, fresh Explore/Sonnet reviewer): blockers 0, majors 0, minors 4, nits 1. Exit after fixing; all fixed.
+- minor, a claim never sent was lost: fixed (a claim with no `sentAt`, older than the lock window, is claimed again; test added).
+- minor, extend and release did not check ownership: fixed (run token in `lockedBy`; transactional extend and release; test added).
+- minor, a tenant with no email was skipped silently: fixed (a `warnings` entry in the run summary, which does not fail the run, since a retry cannot fix it; test added).
+- minor, emails sent for a lease deleted after charging: fixed (the lease is re-checked before sending; test added).
+- nit, notice step re-read records for every lease: fixed (charged records passed along; the property, tenants and notices are read only when something is due).
+Local checks: lint, check, 598 tests, build.
 
 Implementation notes: the tenant refusal status in the two new admin routes is 401 (the codebase's admin guard), so the spec scenarios were aligned from 403 to 401.
 

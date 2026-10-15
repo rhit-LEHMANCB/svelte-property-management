@@ -494,18 +494,20 @@ export async function deleteLease(
 	// the lease gone.
 	const outcome = await adminDB.runTransaction(async (tx) => {
 		if (!(await tx.get(leaseRef)).exists) return 'missing' as const;
-		const [history, lateFees, deposit, invoices] = await Promise.all([
+		const [history, lateFees, deposit, invoices, notices] = await Promise.all([
 			tx.get(leaseRef.collection('payment_history').limit(1)),
 			tx.get(leaseRef.collection('late_fees')),
 			tx.get(depositRef(leaseRef)),
-			tx.get(leaseRef.collection('recorded_invoices'))
+			tx.get(leaseRef.collection('recorded_invoices')),
+			tx.get(leaseRef.collection('notices'))
 		]);
 		const paid = (record: { paid?: number } | undefined) => toCents(record?.paid ?? 0) > 0;
 		if (!history.empty || lateFees.docs.some((doc) => paid(doc.data())) || paid(deposit.data())) {
 			return 'has-payments' as const;
 		}
-		// What is left is bookkeeping only: waived late fees, an empty deposit ledger, handled invoices.
-		[...lateFees.docs, ...invoices.docs].forEach((doc) => tx.delete(doc.ref));
+		// What is left is bookkeeping only: unpaid or waived late fees, an empty deposit ledger, handled
+		// invoices and sent-email records.
+		[...lateFees.docs, ...invoices.docs, ...notices.docs].forEach((doc) => tx.delete(doc.ref));
 		if (deposit.exists) tx.delete(deposit.ref);
 		tx.delete(leaseRef);
 		return 'deleted' as const;

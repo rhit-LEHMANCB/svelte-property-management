@@ -881,6 +881,12 @@ describe('leases: Admin lease list (property edit page)', () => {
 			February: { transactions: [{ amount: 1500, date: '2025-02-20' }] }
 		});
 		db.seed('leases/current/deposit/ledger', { paid: 1000 });
+		db.seed('leases/current/late_fees/2025-02', {
+			amount: 75,
+			paid: 0,
+			chargedAt: '2025-02-07T11:00:00.000Z',
+			dueDate: '2025-02-07'
+		});
 
 		const result = await call(propertyEditLoad, {
 			userID: 'admin-1',

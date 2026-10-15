@@ -22,6 +22,15 @@ const setup = (terms: { endDate?: string | null; startDate?: string } = {}) => {
 		lateFeesFrom: '2025-01-01'
 	});
 	db.seed('leases/lease-1/deposit/ledger', { paid: 1000, transactions: [] });
+	// February's fee, as the daily job charged it.
+	db.seed('leases/lease-1/late_fees/2025-02', CHARGED);
+};
+const CHARGED = {
+	amount: 75,
+	paid: 0,
+	chargedAt: '2025-02-07T11:00:00.000Z',
+	chargedBy: 'daily-job',
+	dueDate: '2025-02-07'
 };
 
 const waiveAs = (userID: string, month = '2025-02', leaseId = 'lease-1') =>
@@ -48,7 +57,7 @@ describe('lease-billing: Waive a late fee (POST /api/lease/{id}/late-fees/{month
 
 	it('a partly paid fee keeps what was paid', async () => {
 		setup();
-		db.seed('leases/lease-1/late_fees/2025-02', { amount: 75, paid: 25, transactions: [] });
+		db.seed('leases/lease-1/late_fees/2025-02', { ...CHARGED, paid: 25, transactions: [] });
 		await waiveAs('admin-1');
 		expect(db.peek('leases/lease-1/late_fees/2025-02')).toMatchObject({ amount: 75, paid: 25 });
 	});
@@ -56,11 +65,13 @@ describe('lease-billing: Waive a late fee (POST /api/lease/{id}/late-fees/{month
 	it('Scenario: Tenant tries to waive: 401 and nothing changes', async () => {
 		setup();
 		expect((await waiveAs('t1')).status).toBe(401);
-		expect(db.peek('leases/lease-1/late_fees/2025-02')).toBeUndefined();
+		expect(db.peek('leases/lease-1/late_fees/2025-02')).toEqual(CHARGED);
 	});
 
-	it('a month with no fee charged, a malformed month or an unknown lease responds 404', async () => {
+	it('a month with no fee charged (even if it is late), a malformed month or an unknown lease responds 404', async () => {
 		setup();
+		// March 2025 is late, but the job has not charged it.
+		expect((await waiveAs('admin-1', '2025-03')).status).toBe(404);
 		expect((await waiveAs('admin-1', '2025-05')).status).toBe(404);
 		expect((await waiveAs('admin-1', 'March')).status).toBe(404);
 		expect((await waiveAs('admin-1', '2025-02', 'nope')).status).toBe(404);
