@@ -1,7 +1,7 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 5 Ship to develop: PR #155 open, waiting for the `tests` and `build_and_preview` checks (subscribed to PR events)
+- Stage: 6 QA: PR #155 merged 2026-10-15 (1763b66, merge commit); waiting for dev deploy run 38679015088
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 1 of 5
 - QA cycle: 0 of 3
