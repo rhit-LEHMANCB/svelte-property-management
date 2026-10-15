@@ -1,7 +1,7 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 5 Ship to develop (amendment 1)
+- Stage: 5 Ship to develop (amendment 1): PR #158 open, waiting for the `tests` and `build_and_preview` checks
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
 - QA cycle: 1 of 3
