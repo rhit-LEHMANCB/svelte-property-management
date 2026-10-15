@@ -1,10 +1,10 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 6 QA cycle 2 running (amendment 1; dev deploy run 38771381143 on 7d1b3dc succeeded 2026-10-15 16:49 UTC)
+- Stage: 6 QA cycle 3 running (amendment 1)
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
-- QA cycle: 2 of 3
+- QA cycle: 3 of 3
 - Started: 2026-10-15
 
 ## Interview summary
@@ -138,6 +138,13 @@ Local checks: lint, check, 598 tests, build.
 
 Implementation notes: the tenant refusal status in the two new admin routes is 401 (the codebase's admin guard), so the spec scenarios were aligned from 403 to 401.
 
+### QA cycle 2 (amendment 1, 2026-10-15, on 7d1b3dc)
+No app bug. Evidence is on the `qa-evidence` branch (commit b34ddbb).
+- **Passed:** the job's admin run with a summary; 401 for no credentials, a wrong secret and a tenant; a repeat run charges and sends nothing; an ended lease gets no reminders; no fee before the late-fee start date; no late-fee line before a fee is charged; waive refuses an uncharged month (404); a tenant cannot waive (401). The light regression of lease-billing, leases, data-migrations and the top-level pages also passed.
+- **Not verified:** reminders, charging, notices, waive success, and the 7-day payable window. The QA tenant's own current month-to-month lease blocks any current or future qa- lease for them. Also not verified: the scheduler secret path and the 409 overlap (the runs were too short to overlap).
+- **Test bugs** (state left from cycle 1): `rent-payments.spec.ts` setup hit an overlap with the cycle 1 lease; `security-deposits` "Before settlement" reused a lease that was already settled. Triage: a fresh QA agent corrects the scripts (cycle 3).
+- 7 job runs sent 0 emails and charged 0 fees on the dev project.
+
 ## Out-of-scope observations
 - Medium: deleting a property deletes its leases even when they have recorded payments (QA saw a lease with a $400 deposit payment vanish with its `qa-` property). This bypasses the lease delete rule. Existing behavior, not from this change.
 - Low: the edit-lease page always says "A lease with recorded payments cannot be deleted..." even when the lease has none. Existing copy.
@@ -147,7 +154,7 @@ Implementation notes: the tenant refusal status in the two new admin routes is 4
 QA report: add-lease-proration-and-deposits
 
 - Deployed commit: `1763b66` on `develop` (dev site: https://lehman-realty-dev.web.app)
-- QA cycle: 2 of 3, by a fresh independent QA agent (Sonnet), 2026-10-15, about 04:20 to 05:30 UTC
+- QA cycle: 3 of 3, by a fresh independent QA agent (Sonnet), 2026-10-15, about 04:20 to 05:30 UTC
 - Result: **PASS**, 0 failing scenarios. Of 87 changed scenarios: 54 pass (some partly), 33 not verified on the dev site.
 - Evidence branch: [`qa-evidence/add-lease-proration-and-deposits`](https://github.com/rhit-LEHMANCB/svelte-property-management/tree/qa-evidence/add-lease-proration-and-deposits). It holds 73 screenshots under `openspec/changes/add-lease-proration-and-deposits/qa/screenshots/` and the QA specs under `tests/qa/add-lease-proration-and-deposits/`.
 - Stripe test mode and the dev webhook both worked. Four test-card payments were recorded (a deposit and rent split, a partial deposit, and a deposit paid after settlement).
