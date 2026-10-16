@@ -2,7 +2,7 @@
 
 - Branch: `claude/add-one-time-bank-payments`
 - Stage: 2 Propose + preflight
-- GitHub backend: (chosen at preflight)
+- GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-16
@@ -49,7 +49,22 @@ Approved: no
 Accepted preflight gaps: none
 
 ## Preflight
-(table of checks and results, from stage 2)
+Run 2026-10-16.
+
+| Check | Result |
+| --- | --- |
+| Env files (`scripts/pull-env.sh` via 1Password service account) | OK: `.env` and `.env.qa` pulled, mode 600, gitignored |
+| git commit + push to origin | OK: pushed `claude/add-one-time-bank-payments` |
+| GitHub backend | OK: GitHub MCP, `get_me` = rhit-LEHMANCB (`gh` token invalid) |
+| Playwright `qa` project + browsers | OK: `playwright.config.ts` has `qa`; Chromium in /opt/pw-browsers |
+| QA credentials (4 vars) | OK: all present in `.env.qa` (not printed) |
+| Dev deploy `firebase-hosting-merge.yml` on develop | OK: run 38951808079 (d260d55) success |
+| `npm run lint` | OK |
+| `npm run check` | OK with `JOBS_SECRET` set; the pulled `.env` lacks `JOBS_SECRET` (CI provides it), so local checks run with a placeholder |
+| Unit + handler tests (`vitest run`) | OK: 40 files, 697 tests |
+| Java + Firebase CLI for emulator e2e | OK: Java present, firebase 15.32.1 |
+| Secrets/variables for this change | None needed |
+| Stripe webhook events (rollout, not a run blocker) | Needed: add `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` to the dev endpoint before QA (the success page covers pending without them) and to the live endpoint before production |
 
 ## Review rounds
 (none yet; one line per round: blockers, majors, minors, nits, fixed, rejected with reason)
