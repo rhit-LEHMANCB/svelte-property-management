@@ -6,10 +6,10 @@
 
 ## 2. Enrollment
 
-- [ ] 2.1 Add enrollment helpers (read, save, remove, `publicEnrollment()` without the payment method id) and the `leases/{id}/autopay/{uid}` shape. Verify: unit tests that the public shape has no method id and ordering is by `enrolledAt`.
-- [ ] 2.2 Add `POST /api/autopay/setup` (Checkout setup mode, card and bank account, metadata, success URL with `{CHECKOUT_SESSION_ID}`) with the 401/403/400 rules. Verify: handler tests for each setup scenario.
-- [ ] 2.3 Add `POST /api/autopay/complete` (retrieve the session, check owner, lease membership and completion, save once, keep the first `enrolledAt`). Verify: handler tests for complete, someone else's session, unfinished session, completing twice.
-- [ ] 2.4 Add `PATCH` and `DELETE /api/autopay` for the caller's own enrollment. Verify: handler tests for amount change, `null`, turn off, other tenant untouched, 403/404, 401.
+- [x] 2.1 Add enrollment helpers (read, save, remove, `publicEnrollment()` without the payment method id) and the `leases/{id}/autopay/{uid}` shape. Verify: unit tests that the public shape has no method id and ordering is by `enrolledAt`.
+- [x] 2.2 Add `POST /api/autopay/setup` (Checkout setup mode, card and bank account, metadata, success URL with `{CHECKOUT_SESSION_ID}`) with the 401/403/400 rules. Verify: handler tests for each setup scenario.
+- [x] 2.3 Add `POST /api/autopay/complete` (retrieve the session, check owner, lease membership and completion, save once, keep the first `enrolledAt`). Verify: handler tests for complete, someone else's session, unfinished session, completing twice.
+- [x] 2.4 Add `PATCH` and `DELETE /api/autopay` for the caller's own enrollment. Verify: handler tests for amount change, `null`, turn off, other tenant untouched, 403/404, 401.
 - [ ] 2.5 Teach `fake-stripe.mjs` the setup-mode session, session retrieval with payment method details, invoices, invoice items, finalize, pay and void, with switches for decline and processing. Verify: used by tasks 4.x and 6.1; the existing e2e specs still pass.
 
 ## 3. Tenant UI

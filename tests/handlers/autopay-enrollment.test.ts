@@ -1,0 +1,300 @@
+import { describe, expect, it } from 'vitest';
+import { PUBLIC_FRONTEND_URL } from '$env/static/public';
+import { POST as setup } from '../../src/routes/api/autopay/setup/+server';
+import { POST as complete } from '../../src/routes/api/autopay/complete/+server';
+import { DELETE as turnOff, PATCH as change } from '../../src/routes/api/autopay/+server';
+import { call } from '../helpers/callHandler';
+import { services } from '../helpers/services';
+import { db, seedLease, seedProperty, seedTenant } from '../helpers/seed';
+
+// autopay: saving a payment method, enrolling, changing the amount and turning autopay off.
+
+function setupLease() {
+	seedTenant('t1');
+	seedTenant('t2');
+	seedTenant('t3');
+	seedProperty('prop-1');
+	seedLease('lease-1', { tenantIds: ['t1', 't2'], rent: 1000, startDate: '2026-01-01' });
+}
+
+const start = (body: unknown, userID: string | null = 't1') => call(setup, { userID, body });
+
+/** A completed setup session as Stripe returns it, with the saved method expanded. */
+const session = (
+	overrides: Record<string, unknown> = {},
+	method: Record<string, unknown> = {}
+) => ({
+	id: 'cs_test_1',
+	mode: 'setup',
+	status: 'complete',
+	customer: 'cus_t1',
+	metadata: { leaseID: 'lease-1', propertyID: 'prop-1', uid: 't1', amountCents: '50000' },
+	setup_intent: {
+		id: 'seti_1',
+		status: 'succeeded',
+		payment_method: {
+			id: 'pm_card_1',
+			type: 'card',
+			card: { brand: 'visa', last4: '4242' },
+			...method
+		}
+	},
+	...overrides
+});
+
+const finish = (userID: string | null = 't1', sessionId = 'cs_test_1') =>
+	call(complete, { userID, body: { sessionId } });
+
+describe('autopay: Save a payment method and enroll', () => {
+	it('Scenario: Start setup: a setup-mode Checkout session for card and bank account', async () => {
+		setupLease();
+		const result = await start({ leaseId: 'lease-1', amount: 500 });
+
+		expect(result).toMatchObject({ status: 200, json: { url: 'https://checkout.test/session' } });
+		const args = services.stripe.checkout.sessions.create.mock.calls[0][0];
+		expect(args).toMatchObject({
+			mode: 'setup',
+			customer: 'cus_t1',
+			currency: 'usd',
+			payment_method_types: ['card', 'us_bank_account'],
+			metadata: { leaseID: 'lease-1', propertyID: 'prop-1', uid: 't1', amountCents: '50000' },
+			success_url: `${PUBLIC_FRONTEND_URL}/payment?autopay_session={CHECKOUT_SESSION_ID}`,
+			cancel_url: `${PUBLIC_FRONTEND_URL}/payment`
+		});
+	});
+
+	it('no amount means the full balance', async () => {
+		setupLease();
+		await start({ leaseId: 'lease-1' });
+		await start({ leaseId: 'lease-1', amount: null });
+		for (const [args] of services.stripe.checkout.sessions.create.mock.calls) {
+			expect(args.metadata.amountCents).toBe('');
+		}
+	});
+
+	it('Scenario: Not the tenant’s lease or bad amount: 403 or 400, and no session', async () => {
+		setupLease();
+		expect((await start({ leaseId: 'lease-1' }, 't3')).status).toBe(403);
+		expect((await start({ leaseId: 'nope' })).status).toBe(403);
+		expect((await start({})).status).toBe(403);
+		expect((await start({ leaseId: 'lease-1', amount: 0 })).status).toBe(400);
+		expect((await start({ leaseId: 'lease-1', amount: -5 })).status).toBe(400);
+		expect((await start({ leaseId: 'lease-1', amount: 10.005 })).status).toBe(400);
+		expect((await start({ leaseId: 'lease-1', amount: '500' })).status).toBe(400);
+		expect(services.stripe.checkout.sessions.create).not.toHaveBeenCalled();
+	});
+
+	it('Scenario: Complete enrollment: saved with display details only in the response', async () => {
+		setupLease();
+		services.stripe.checkout.sessions.retrieve.mockResolvedValue(session());
+
+		const result = await finish();
+
+		expect(result.status).toBe(200);
+		expect(services.stripe.checkout.sessions.retrieve).toHaveBeenCalledWith('cs_test_1', {
+			expand: ['setup_intent.payment_method']
+		});
+		expect(result.json).toEqual({
+			leaseId: 'lease-1',
+			enrollment: {
+				type: 'card',
+				brand: 'visa',
+				last4: '4242',
+				method: 'Visa ending 4242',
+				amountCents: 50000,
+				enrolledAt: expect.any(String)
+			}
+		});
+		expect(JSON.stringify(result.json)).not.toContain('pm_card_1');
+		expect(db.peek('leases/lease-1/autopay/t1')).toMatchObject({
+			paymentMethodId: 'pm_card_1',
+			type: 'card',
+			brand: 'visa',
+			last4: '4242',
+			amountCents: 50000,
+			setupSessionId: 'cs_test_1'
+		});
+	});
+
+	it('a bank account is saved with its bank name and last four digits', async () => {
+		setupLease();
+		services.stripe.checkout.sessions.retrieve.mockResolvedValue(
+			session(
+				{ metadata: { leaseID: 'lease-1', uid: 't1', amountCents: '' } },
+				{
+					id: 'pm_bank_1',
+					type: 'us_bank_account',
+					card: undefined,
+					us_bank_account: { bank_name: 'STRIPE TEST BANK', last4: '6789' }
+				}
+			)
+		);
+		const result = await finish();
+		expect(result.json.enrollment).toMatchObject({
+			method: 'Bank account ending 6789',
+			amountCents: null
+		});
+		expect(db.peek('leases/lease-1/autopay/t1')).toMatchObject({
+			paymentMethodId: 'pm_bank_1',
+			type: 'us_bank_account'
+		});
+	});
+
+	it('Scenario: Someone else’s or unfinished session: nothing is saved', async () => {
+		setupLease();
+		services.stripe.checkout.sessions.retrieve.mockResolvedValue(session());
+		// Started by t1, completed by t2 (who is on the same lease).
+		expect((await finish('t2')).status).toBe(403);
+
+		services.stripe.checkout.sessions.retrieve.mockResolvedValue(
+			session({ metadata: { leaseID: 'lease-1', uid: 't3' } })
+		);
+		expect((await finish('t3')).status).toBe(403);
+
+		services.stripe.checkout.sessions.retrieve.mockResolvedValue(
+			session({ status: 'open', setup_intent: null })
+		);
+		expect((await finish()).status).toBe(400);
+
+		services.stripe.checkout.sessions.retrieve.mockResolvedValue(session({ mode: 'payment' }));
+		expect((await finish()).status).toBe(403);
+
+		services.stripe.checkout.sessions.retrieve.mockResolvedValue(
+			session({ customer: 'cus_someone_else' })
+		);
+		expect((await finish()).status).toBe(403);
+
+		services.stripe.checkout.sessions.retrieve.mockRejectedValue(new Error('No such session'));
+		expect((await finish()).status).toBe(400);
+		expect((await finish('t1', 'not a session')).status).toBe(400);
+
+		expect(db.peek('leases/lease-1/autopay/t1')).toBeUndefined();
+		expect(db.peek('leases/lease-1/autopay/t2')).toBeUndefined();
+	});
+
+	it('Scenario: Completing twice: the enrollment is unchanged, including its enrollment time', async () => {
+		setupLease();
+		services.stripe.checkout.sessions.retrieve.mockResolvedValue(session());
+		await finish();
+		const first = db.peek('leases/lease-1/autopay/t1');
+		await new Promise((r) => setTimeout(r, 5));
+		const again = await finish();
+		expect(again.status).toBe(200);
+		expect(db.peek('leases/lease-1/autopay/t1')).toEqual(first);
+	});
+
+	it('re-enrolling with a new method keeps the original place in the charge order', async () => {
+		setupLease();
+		db.seed('leases/lease-1/autopay/t1', {
+			paymentMethodId: 'pm_old',
+			type: 'card',
+			brand: 'visa',
+			last4: '1111',
+			amountCents: null,
+			enrolledAt: '2026-02-01T00:00:00.000Z',
+			setupSessionId: 'cs_old'
+		});
+		services.stripe.checkout.sessions.retrieve.mockResolvedValue(session());
+		await finish();
+		expect(db.peek('leases/lease-1/autopay/t1')).toMatchObject({
+			paymentMethodId: 'pm_card_1',
+			last4: '4242',
+			enrolledAt: '2026-02-01T00:00:00.000Z'
+		});
+	});
+});
+
+const enroll = (uid: string, amountCents: number | null = null) =>
+	db.seed(`leases/lease-1/autopay/${uid}`, {
+		paymentMethodId: `pm_${uid}`,
+		type: 'card',
+		brand: 'visa',
+		last4: '4242',
+		amountCents,
+		enrolledAt: '2026-02-01T00:00:00.000Z'
+	});
+
+describe('autopay: Change or end autopay', () => {
+	it('Scenario: Change amount: a new amount, or null for the full balance', async () => {
+		setupLease();
+		enroll('t1');
+		const result = await call(change, {
+			userID: 't1',
+			method: 'PATCH',
+			body: { leaseId: 'lease-1', amount: 250.5 }
+		});
+		expect(result).toMatchObject({ status: 200, json: { enrollment: { amountCents: 25050 } } });
+		expect(db.peek('leases/lease-1/autopay/t1')).toMatchObject({ amountCents: 25050 });
+		expect(JSON.stringify(result.json)).not.toContain('pm_t1');
+
+		await call(change, {
+			userID: 't1',
+			method: 'PATCH',
+			body: { leaseId: 'lease-1', amount: null }
+		});
+		expect(db.peek('leases/lease-1/autopay/t1')).toMatchObject({ amountCents: null });
+	});
+
+	it('a bad amount is 400 and nothing changes', async () => {
+		setupLease();
+		enroll('t1', 10000);
+		for (const body of [{ leaseId: 'lease-1', amount: 0 }, { leaseId: 'lease-1' }]) {
+			const result = await call(change, { userID: 't1', method: 'PATCH', body });
+			expect(result.status).toBe(400);
+		}
+		expect(db.peek('leases/lease-1/autopay/t1')).toMatchObject({ amountCents: 10000 });
+	});
+
+	it('Scenario: Turn off: the enrollment is removed; pending charges stay recorded', async () => {
+		setupLease();
+		enroll('t1');
+		enroll('t2');
+		db.seed('leases/lease-1/autopay_charges/2026-03-01_t1', { uid: 't1', state: 'pending' });
+		const result = await call(turnOff, {
+			userID: 't1',
+			method: 'DELETE',
+			body: { leaseId: 'lease-1' }
+		});
+		expect(result.status).toBe(204);
+		expect(db.peek('leases/lease-1/autopay/t1')).toBeUndefined();
+		expect(db.peek('leases/lease-1/autopay/t2')).toBeDefined();
+		expect(db.peek('leases/lease-1/autopay_charges/2026-03-01_t1')).toMatchObject({
+			state: 'pending'
+		});
+	});
+
+	it('Scenario: Only your own: 403 for another lease, 404 with no enrollment', async () => {
+		setupLease();
+		enroll('t2');
+		const patch = (userID: string, leaseId: string) =>
+			call(change, { userID, method: 'PATCH', body: { leaseId, amount: 5 } });
+		const del = (userID: string, leaseId: string) =>
+			call(turnOff, { userID, method: 'DELETE', body: { leaseId } });
+		expect((await patch('t3', 'lease-1')).status).toBe(403);
+		expect((await del('t3', 'lease-1')).status).toBe(403);
+		expect((await patch('t1', 'lease-1')).status).toBe(404);
+		expect((await del('t1', 'lease-1')).status).toBe(404);
+		expect(db.peek('leases/lease-1/autopay/t2')).toMatchObject({ amountCents: null });
+	});
+});
+
+describe('autopay: Access', () => {
+	it('Scenario: Not signed in: every autopay route answers 401', async () => {
+		setupLease();
+		expect((await start({ leaseId: 'lease-1' }, null)).status).toBe(401);
+		expect((await finish(null)).status).toBe(401);
+		expect(
+			(
+				await call(change, {
+					userID: null,
+					method: 'PATCH',
+					body: { leaseId: 'lease-1', amount: 5 }
+				})
+			).status
+		).toBe(401);
+		expect(
+			(await call(turnOff, { userID: null, method: 'DELETE', body: { leaseId: 'lease-1' } })).status
+		).toBe(401);
+		expect(services.stripe.checkout.sessions.create).not.toHaveBeenCalled();
+	});
+});
