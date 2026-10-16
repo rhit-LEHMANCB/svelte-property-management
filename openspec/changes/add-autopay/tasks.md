@@ -14,8 +14,8 @@
 
 ## 3. Tenant UI
 
-- [ ] 3.1 `/payment` server load returns the caller's enrollments (public shape) and the latest non-succeeded charge state per lease; the page runs `complete` when `autopay_session` is in the URL and then clears it. Verify: component or load test that only the caller's enrollments are returned.
-- [ ] 3.2 `/payment` shows the autopay controls per lease (set up with optional amount, method and amount display, change amount, turn off, pending or failed note), using the existing UI components and the company name "Lehman Family LLC" in any copy. Verify: `npm run check`, lint, and e2e in 6.1.
+- [x] 3.1 `/payment` server load returns the caller's enrollments (public shape) and the latest non-succeeded charge state per lease; the page runs `complete` when `autopay_session` is in the URL and then clears it. Verify: component or load test that only the caller's enrollments are returned.
+- [x] 3.2 `/payment` shows the autopay controls per lease (set up with optional amount, method and amount display, change amount, turn off, pending or failed note), using the existing UI components and the company name "Lehman Family LLC" in any copy. Verify: `npm run check`, lint, and e2e in 6.1.
 
 ## 4. Daily job and webhook
 

@@ -3,6 +3,7 @@ import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 import { POST as setup } from '../../src/routes/api/autopay/setup/+server';
 import { POST as complete } from '../../src/routes/api/autopay/complete/+server';
 import { DELETE as turnOff, PATCH as change } from '../../src/routes/api/autopay/+server';
+import { load as paymentLoad } from '../../src/routes/(authenticated)/payment/+page.server';
 import { call } from '../helpers/callHandler';
 import { services } from '../helpers/services';
 import { db, seedLease, seedProperty, seedTenant } from '../helpers/seed';
@@ -296,5 +297,62 @@ describe('autopay: Access', () => {
 			(await call(turnOff, { userID: null, method: 'DELETE', body: { leaseId: 'lease-1' } })).status
 		).toBe(401);
 		expect(services.stripe.checkout.sessions.create).not.toHaveBeenCalled();
+	});
+});
+
+describe('autopay: Tenant autopay controls (payment page data)', () => {
+	const parent = {
+		userLeases: [
+			{
+				id: 'lease-1',
+				propertyId: 'prop-1',
+				address: '1 Main St, Terre Haute',
+				rent: 1000,
+				startDate: '2026-01-01',
+				endDate: null,
+				status: 'current',
+				hasDocument: false
+			}
+		]
+	};
+
+	it('Scenario: Another tenant’s data: the page shows only the caller’s enrollment and charges', async () => {
+		setupLease();
+		enroll('t1', 30000);
+		enroll('t2');
+		db.seed('leases/lease-1/autopay_charges/2026-03-01_t2', {
+			uid: 't2',
+			cycleKey: '2026-03-01',
+			state: 'failed',
+			attempts: 1,
+			lastAttemptDay: '2026-03-01',
+			claimedAt: '2026-03-01T11:00:00.000Z',
+			amountCents: 70000,
+			feeCents: 2060
+		});
+
+		const own = (await call(paymentLoad, { userID: 't1', parent })).data.leases[0].autopay;
+		expect(own).toEqual({
+			enrollment: {
+				type: 'card',
+				brand: 'visa',
+				last4: '4242',
+				method: 'Visa ending 4242',
+				amountCents: 30000,
+				enrolledAt: '2026-02-01T00:00:00.000Z'
+			},
+			charge: null
+		});
+
+		const other = (await call(paymentLoad, { userID: 't2', parent })).data.leases[0].autopay;
+		expect(other.enrollment.amountCents).toBeNull();
+		expect(other.charge).toMatchObject({ state: 'failed', day: '2026-03-01', amountCents: 70000 });
+		expect(JSON.stringify(other)).not.toContain('pm_');
+	});
+
+	it('Scenario: Not enrolled: no enrollment and no charge', async () => {
+		setupLease();
+		const data = (await call(paymentLoad, { userID: 't1', parent })).data.leases[0].autopay;
+		expect(data).toEqual({ enrollment: null, charge: null });
 	});
 });
