@@ -56,7 +56,7 @@ The system SHALL email each tenant on a lease, once, when the job charges a late
 - **THEN** the failure is recorded in the run summary, the response is 500 so Cloud Scheduler retries, and a later run sends it again; the fee itself stays charged once
 
 ### Requirement: Due-date reminders
-The system SHALL email each tenant on a lease a reminder 7 days before, and on, the due date of each rent month and of the deposit, when that amount is not yet paid in full. A reminder is sent only on its day; a reminder for a day with no run is not sent later.
+The system SHALL email each tenant on a lease a reminder 7 days before, and on, the due date of each rent month and of the deposit, when that amount is not yet paid in full. All reminders a lease has on the same run go to each tenant in one email, which lists each amount with its due date and the total. A late-fee notice stays a separate email. A reminder is sent only on its day; a reminder for a day with no run is not sent later.
 
 #### Scenario: Seven days before
 - **WHEN** the run on 2026-10-25 finds November's $1,500.00 rent, due 2026-11-01, unpaid
@@ -73,6 +73,14 @@ The system SHALL email each tenant on a lease a reminder 7 days before, and on, 
 #### Scenario: Deposit due
 - **WHEN** a $1,000.00 deposit due 2026-11-15 is unpaid on 2026-11-08
 - **THEN** each tenant gets a deposit reminder
+
+#### Scenario: Rent and deposit on the same day
+- **WHEN** a lease starting 2026-11-15 owes its prorated November rent and its $1,000.00 deposit, both due 2026-11-15, on 2026-11-08
+- **THEN** each tenant gets one email listing both amounts, their due date and the total, not one email per amount
+
+#### Scenario: Late fee on a reminder day
+- **WHEN** a run charges a late fee on a lease that also has a reminder that day
+- **THEN** each tenant gets the late-fee notice and the reminder as two separate emails
 
 #### Scenario: Ended lease
 - **WHEN** a lease has ended

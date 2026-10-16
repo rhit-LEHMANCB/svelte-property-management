@@ -49,3 +49,10 @@
 - [x] 7.6 Update the admin list, tenant card and `/payment` copy for job-charged fees, and update the e2e spec to charge a fee by running the job as admin. Verify `npm run test:e2e`
 - [x] 7.7 Document the job in the README: what it does, how to create the Cloud Scheduler job per project (`gcloud scheduler jobs create http ...` with the secret header, 6:00 America/Indiana/Indianapolis), how to run it by hand, and how to read run summaries. Verify the documented command names the route, schedule, time zone and header
 - [x] 7.8 Run `npm run lint`, `npm run check`, `npm test`, `npm run test:e2e` and `npm run build`; verify all pass
+
+## 8. Amendment 2: one reminder email per lease per day
+
+- [x] 8.1 Make `renderDueReminderEmail` take a list of items (what, amount, due date) and list them with the total; one item keeps today's subject. Verify template unit tests for one item, several items with the same and different due dates, and HTML escaping
+- [x] 8.2 Send all of a lease's reminders for the day to each tenant in one email, keeping a claim per reminder; a failed send releases all of them; late-fee notices stay separate. Verify handler tests for rent and deposit on the same day, a late fee on a reminder day, a partly claimed set and a failed send
+- [x] 8.3 Run `npm run lint`, `npm run check`, `npm test`, `npm run test:e2e` and `npm run build`; verify all pass
+

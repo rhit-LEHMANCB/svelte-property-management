@@ -8,8 +8,18 @@ const escapeHtml = (value: string) =>
 		.replace(/"/g, '&quot;')
 		.replace(/'/g, '&#39;');
 
-const layout = (heading: string, intro: string, buttonLabel: string, link: string) => {
+const layout = (
+	heading: string,
+	intro: string,
+	buttonLabel: string,
+	link: string,
+	lines: string[] = []
+) => {
 	const href = escapeHtml(link);
+	const list = lines.length
+		? `<ul style="margin:0 0 24px;padding-left:20px;font-size:16px;line-height:1.5;">${lines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
+								`
+		: '';
 	return `<!doctype html>
 <html>
 	<body style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#18181b;">
@@ -21,7 +31,7 @@ const layout = (heading: string, intro: string, buttonLabel: string, link: strin
 							<td>
 								<h1 style="margin:0 0 16px;font-size:22px;">${escapeHtml(heading)}</h1>
 								<p style="margin:0 0 24px;font-size:16px;line-height:1.5;">${escapeHtml(intro)}</p>
-								<p style="margin:0 0 24px;"><a href="${href}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#ffffff;text-decoration:none;border-radius:6px;font-size:16px;">${escapeHtml(buttonLabel)}</a></p>
+								${list}<p style="margin:0 0 24px;"><a href="${href}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#ffffff;text-decoration:none;border-radius:6px;font-size:16px;">${escapeHtml(buttonLabel)}</a></p>
 								<p style="margin:0 0 8px;font-size:13px;color:#52525b;">If the button does not work, copy this link into your browser:</p>
 								<p style="margin:0 0 24px;font-size:13px;word-break:break-all;"><a href="${href}">${href}</a></p>
 								<p style="margin:0;font-size:13px;color:#52525b;">Lehman Family LLC</p>
@@ -127,28 +137,43 @@ Lehman Family LLC`
 };
 
 /** A rent month or deposit coming due (in 7 days) or due today. */
-export type DueReminder = {
-	address: string;
+export type ReminderItem = {
 	/** `Rent for November 2026` or `Security deposit` */
 	what: string;
 	amountCents: number;
 	dueDate: string;
 	dueToday: boolean;
-	link: string;
 };
 
-export const renderDueReminderEmail = (reminder: DueReminder): EmailContent => {
-	const when = reminder.dueToday ? 'today' : `on ${longDate(reminder.dueDate)}`;
-	const subject = `${reminder.what} is due ${when}`;
-	const intro = `${reminder.what} for your lease at ${reminder.address} is due ${when}. ${money(reminder.amountCents)} is still to be paid.`;
+/** Every reminder a lease has on one day, sent to a tenant as one email. */
+export type DueReminder = { address: string; items: ReminderItem[]; link: string };
+
+const dueWhen = (item: ReminderItem) => (item.dueToday ? 'today' : `on ${longDate(item.dueDate)}`);
+
+export const renderDueReminderEmail = ({ address, items, link }: DueReminder): EmailContent => {
+	let subject: string;
+	let intro: string;
+	let lines: string[] = [];
+	if (items.length === 1) {
+		const [item] = items;
+		subject = `${item.what} is due ${dueWhen(item)}`;
+		intro = `${item.what} for your lease at ${address} is due ${dueWhen(item)}. ${money(item.amountCents)} is still to be paid.`;
+	} else {
+		const sorted = [...items].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+		const totalCents = sorted.reduce((sum, item) => sum + item.amountCents, 0);
+		subject = `Payments due ${dueWhen(sorted[0])}`;
+		intro = `The payments below for your lease at ${address} are due. ${money(totalCents)} is still to be paid in total.`;
+		lines = sorted.map((item) => `${item.what}: ${money(item.amountCents)}, due ${dueWhen(item)}`);
+	}
+	const listText = lines.length ? `\n\n${lines.map((line) => `- ${line}`).join('\n')}` : '';
 	return {
 		subject,
-		html: layout(subject, intro, 'Make a payment', reminder.link),
+		html: layout(subject, intro, 'Make a payment', link, lines),
 		text: `${subject}
 
-${intro}
+${intro}${listText}
 
-Pay online: ${reminder.link}
+Pay online: ${link}
 
 Lehman Family LLC`
 	};

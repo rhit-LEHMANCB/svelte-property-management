@@ -28,7 +28,8 @@ import {
 	renderAutopayNoticeEmail,
 	renderDueReminderEmail,
 	renderLateFeeEmail,
-	type EmailContent
+	type EmailContent,
+	type ReminderItem
 } from './email-templates';
 import { businessToday, leaseStatus, type LeaseDoc } from './leaseDates';
 import { propertyAddress } from './leases';
@@ -138,11 +139,17 @@ async function chargeLateFees(
 	});
 }
 
-/**
- * An email to the lease's tenants: to everyone, only to `to`, or to everyone except `except`. The
- * key is per lease; each tenant's copy is recorded as `{key}-{uid}`.
- */
-type Notice = { key: string; content: EmailContent; to?: string[]; except?: string[] };
+type LateFeeNotice = { key: string; content: EmailContent };
+type Reminder = { key: string; item: ReminderItem };
+/** An autopay email to one tenant: the 7-day notice, a failure or a give-up. */
+type AutopayNotice = { key: string; uid: string; content: EmailContent };
+type Notices = {
+	lateFees: LateFeeNotice[];
+	reminders: Reminder[];
+	autopay: AutopayNotice[];
+	/** Tenants with autopay on, who get the autopay notice instead of the reminders. */
+	enrolled: string[];
+};
 
 /** A lease's autopay state, for the notices. */
 type AutopayContext = { enrollments: Enrollment[]; charges: ChargeRecord[] };
@@ -154,12 +161,16 @@ function noticesFor(
 	address: string,
 	lateFeeRecords: Record<string, LateFeeRecord>,
 	autopay: AutopayContext
-): Notice[] {
+): Notices {
 	const link = `${PUBLIC_FRONTEND_URL}/payment`;
 	const today = ledger.today;
-	const notices: Notice[] = [];
 	const enrollments = autopay.enrollments.filter((e) => lease.tenantIds.includes(e.uid));
-	const enrolled = enrollments.map((e) => e.uid);
+	const notices: Notices = {
+		lateFees: [],
+		reminders: [],
+		autopay: [],
+		enrolled: enrollments.map((e) => e.uid)
+	};
 	const recent = (day: string | null | undefined) =>
 		Boolean(day) && addDays(day!, NOTICE_RETRY_DAYS) >= today;
 
@@ -169,9 +180,9 @@ function noticesFor(
 		const method = enrollment ? methodLabel(enrollment) : 'saved payment method';
 		for (const failure of charge.failures ?? []) {
 			if (failure.attempt >= MAX_ATTEMPTS || !recent(failure.day)) continue;
-			notices.push({
+			notices.autopay.push({
 				key: `autopay-failed-${charge.cycleKey}-${failure.attempt}`,
-				to: [charge.uid],
+				uid: charge.uid,
 				content: renderAutopayFailedEmail({
 					address,
 					amountCents: failure.amountCents,
@@ -182,9 +193,9 @@ function noticesFor(
 			});
 		}
 		if (charge.state === 'gave-up' && recent(charge.gaveUpDay)) {
-			notices.push({
+			notices.autopay.push({
 				key: `autopay-gave-up-${charge.cycleKey}`,
-				to: [charge.uid],
+				uid: charge.uid,
 				content: renderAutopayGaveUpEmail({
 					address,
 					amountCents: charge.amountCents,
@@ -202,7 +213,7 @@ function noticesFor(
 		if (!record?.chargedAt || fee.waived) continue;
 		const chargedDay = businessToday(new Date(record.chargedAt));
 		if (addDays(chargedDay, NOTICE_RETRY_DAYS) < today) continue;
-		notices.push({
+		notices.lateFees.push({
 			key: `late-fee-${fee.month.key}`,
 			content: renderLateFeeEmail({
 				address,
@@ -224,48 +235,34 @@ function noticesFor(
 				: undefined;
 	// Autopay tenants get one autopay notice 7 days before a due date instead of the reminders.
 	const autopayDue = new Map<string, string[]>();
+	const addAutopayDue = (dueDate: string, what: string) =>
+		autopayDue.set(dueDate, [...(autopayDue.get(dueDate) ?? []), what]);
 	for (const row of ledger.rent) {
 		const day = reminderDay(row.dueDate);
 		if (!day || row.owedCents <= 0) continue;
-		if (day === '7d') {
-			autopayDue.set(row.dueDate, [
-				...(autopayDue.get(row.dueDate) ?? []),
-				`Rent for ${monthLabel(row.month)}`
-			]);
-		}
-		notices.push({
+		if (day === '7d') addAutopayDue(row.dueDate, `Rent for ${monthLabel(row.month)}`);
+		notices.reminders.push({
 			key: `rent-${day}-${row.month.key}`,
-			except: enrolled,
-			content: renderDueReminderEmail({
-				address,
+			item: {
 				what: `Rent for ${monthLabel(row.month)}`,
 				amountCents: row.owedCents,
 				dueDate: row.dueDate,
-				dueToday: day === 'due',
-				link
-			})
+				dueToday: day === 'due'
+			}
 		});
 	}
 	const deposit = ledger.deposit;
 	const depositDay = deposit.dueDate ? reminderDay(deposit.dueDate) : undefined;
 	if (depositDay && deposit.owedCents > 0) {
-		if (depositDay === '7d') {
-			autopayDue.set(deposit.dueDate!, [
-				...(autopayDue.get(deposit.dueDate!) ?? []),
-				'Security deposit'
-			]);
-		}
-		notices.push({
+		if (depositDay === '7d') addAutopayDue(deposit.dueDate!, 'Security deposit');
+		notices.reminders.push({
 			key: `deposit-${depositDay}-${deposit.dueDate}`,
-			except: enrolled,
-			content: renderDueReminderEmail({
-				address,
+			item: {
 				what: 'Security deposit',
 				amountCents: deposit.owedCents,
 				dueDate: deposit.dueDate!,
-				dueToday: depositDay === 'due',
-				link
-			})
+				dueToday: depositDay === 'due'
+			}
 		});
 	}
 	if (autopayDue.size > 0 && enrollments.length > 0) {
@@ -278,9 +275,9 @@ function noticesFor(
 				const cents = split.get(enrollment.uid) ?? 0;
 				if (cents <= 0) continue;
 				const feeCents = autopayFeeCents(enrollment.type, cents);
-				notices.push({
+				notices.autopay.push({
 					key: `autopay-7d-${dueDate}`,
-					to: [enrollment.uid],
+					uid: enrollment.uid,
 					content: renderAutopayNoticeEmail({
 						address,
 						what: what.join(' and '),
@@ -384,7 +381,8 @@ async function sendNotices(
 	const { lease, ledger } = charged;
 	// Which notices are due does not depend on the address, so the reads below happen only when
 	// there is something to send.
-	if (noticesFor(lease, ledger, '', charged.lateFees, autopay).length === 0) return;
+	const due = noticesFor(lease, ledger, '', charged.lateFees, autopay);
+	if (due.lateFees.length === 0 && due.reminders.length === 0 && due.autopay.length === 0) return;
 	const [leaseNow, property, sentDocs] = await Promise.all([
 		leaseRef.get(),
 		adminDB.collection('properties').doc(lease.propertyId).get(),
@@ -392,13 +390,9 @@ async function sendNotices(
 	]);
 	// The lease may have been deleted since its fees were charged.
 	if (!leaseNow.exists) return;
-	const notices = noticesFor(
-		lease,
-		ledger,
-		propertyAddress(property.data()),
-		charged.lateFees,
-		autopay
-	);
+	const address = propertyAddress(property.data());
+	const notices = noticesFor(lease, ledger, address, charged.lateFees, autopay);
+	const link = `${PUBLIC_FRONTEND_URL}/payment`;
 
 	const sent = new Set(
 		sentDocs.docs
@@ -419,33 +413,62 @@ async function sendNotices(
 	for (const tenant of tenants.filter((t) => !t.email)) {
 		summary.warnings.push(`lease ${leaseRef.id}: tenant ${tenant.uid} has no email address`);
 	}
-	for (const notice of notices) {
-		for (const tenant of tenants) {
-			if (notice.to && !notice.to.includes(tenant.uid)) continue;
-			if (notice.except?.includes(tenant.uid)) continue;
+
+	/**
+	 * Claims each notice not yet sent to the tenant, then sends one email for the claimed ones.
+	 * `create` fails if another run already claimed a notice, so a second run (an overlapping
+	 * retry) can never send the same notice twice.
+	 */
+	const sendOnce = async <T extends { key: string }>(
+		tenant: { uid: string; email: string },
+		group: T[],
+		render: (claimed: T[]) => EmailContent
+	) => {
+		const claimed: { notice: T; ref: DocumentReference }[] = [];
+		for (const notice of group) {
 			const id = `${notice.key}-${tenant.uid}`;
-			if (sent.has(id) || !tenant.email) continue;
-			// Claim the notice before sending: `create` fails if another run already claimed it, so a
-			// second run (an overlapping retry) can never send the same email twice.
-			const claim = leaseRef.collection('notices').doc(id);
+			if (sent.has(id)) continue;
+			const ref = leaseRef.collection('notices').doc(id);
 			try {
-				if (stale.has(id)) await claim.delete();
-				await claim.create({ notice: notice.key, uid: tenant.uid, claimedAt: now.toISOString() });
+				if (stale.has(id)) await ref.delete();
+				await ref.create({ notice: notice.key, uid: tenant.uid, claimedAt: now.toISOString() });
+				claimed.push({ notice, ref });
 			} catch {
 				continue;
 			}
-			try {
-				await sendEmail({ to: tenant.email, ...notice.content });
-			} catch (err) {
-				fail(`${notice.key} to ${tenant.uid}`, err);
-				// Unclaimed again, so the next run retries it.
-				await claim.delete().catch((e) => fail(`releasing ${id}`, e));
-				continue;
-			}
-			await claim
-				.set({ sentAt: new Date().toISOString() }, { merge: true })
-				.catch((e) => fail(`recording ${id}`, e));
-			summary.emailsSent.push({ leaseId: leaseRef.id, notice: notice.key, to: tenant.uid });
 		}
+		if (claimed.length === 0) return;
+		const keys = claimed.map((c) => c.notice.key).join('+');
+		try {
+			await sendEmail({ to: tenant.email, ...render(claimed.map((c) => c.notice)) });
+		} catch (err) {
+			fail(`${keys} to ${tenant.uid}`, err);
+			// Unclaimed again, so the next run retries them.
+			for (const { ref } of claimed) {
+				await ref.delete().catch((e) => fail(`releasing ${ref.id}`, e));
+			}
+			return;
+		}
+		const sentAt = new Date().toISOString();
+		for (const { ref } of claimed) {
+			await ref.set({ sentAt }, { merge: true }).catch((e) => fail(`recording ${ref.id}`, e));
+		}
+		summary.emailsSent.push({ leaseId: leaseRef.id, notice: keys, to: tenant.uid });
+	};
+
+	for (const tenant of tenants) {
+		if (!tenant.email) continue;
+		const to = { uid: tenant.uid, email: tenant.email };
+		// Each late-fee notice is its own email; the day's reminders go together in one.
+		for (const notice of notices.lateFees) {
+			await sendOnce(to, [notice], () => notice.content);
+		}
+		for (const notice of notices.autopay.filter((n) => n.uid === tenant.uid)) {
+			await sendOnce(to, [notice], () => notice.content);
+		}
+		if (notices.enrolled.includes(tenant.uid)) continue;
+		await sendOnce(to, notices.reminders, (claimed) =>
+			renderDueReminderEmail({ address, items: claimed.map((r) => r.item), link })
+		);
 	}
 }

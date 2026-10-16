@@ -91,13 +91,15 @@ For each lease without a numeric `lateFee`, it sets `deposit: null`, `lateFee: r
      - a late-fee notice for every charged fee without a sent notice;
      - a rent reminder for each month whose payable day or due day is today and that still owes;
      - a deposit reminder on the same two days.
-3. **Send each email per tenant on the lease** (tenant emails come from `users/{uid}`). After a successful send, write `leases/{id}/notices/{type}-{key}-{uid}`. A sent record is never re-sent. A failed send is retried on the next run for late-fee notices. Reminders are only ever sent on their own day.
+3. **Send each email per tenant on the lease** (tenant emails come from `users/{uid}`). Each notice is claimed with `create()` on `leases/{id}/notices/{type}-{key}-{uid}` before sending and marked `sentAt` after a successful send. A sent record is never re-sent. A failed send releases its claims, so late-fee notices are retried on the next run. Reminders are only ever sent on their own day.
+   - Each late-fee notice is its own email.
+   - All of a lease's reminders for the day go to a tenant in one email (amendment 2). Each reminder keeps its own record, so the email lists only the reminders this run claimed, and a failed send releases all of them.
 4. **Write the summary** to `_jobs/daily/runs/{YYYY-MM-DD}` (merged on a re-run): fees charged, emails sent, errors, start and end times.
 
 It is safe to repeat: fee records are created only when missing, inside a transaction, and notices are keyed by type, month and tenant.
 
 ### 10. Email templates
-`email-templates.ts` gains `renderLateFeeEmail` and `renderRentReminderEmail`, in the same style and from address as today (Lehman Family LLC). Each carries the amount, due date, address and a link to `${PUBLIC_FRONTEND_URL}/payment`. Each send goes through the existing `sendEmail`.
+`email-templates.ts` gains `renderLateFeeEmail` and `renderDueReminderEmail` (one or more items: rent months and the deposit, each with its amount and due date, plus the total), in the same style and from address as today (Lehman Family LLC). Each carries the amount, due date, address and a link to `${PUBLIC_FRONTEND_URL}/payment`. Each send goes through the existing `sendEmail`.
 
 ## Risks / Trade-offs
 

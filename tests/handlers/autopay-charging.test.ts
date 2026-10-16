@@ -509,10 +509,10 @@ describe('autopay: Reminders for autopay tenants', () => {
 		await runOn('2026-10-25');
 
 		expect(emails()).toEqual([
-			['t2@example.com', 'Rent for November 2026 is due on November 1, 2026'],
-			['t1@example.com', 'Autopay will charge $1,029.30 on November 1, 2026']
+			['t1@example.com', 'Autopay will charge $1,029.30 on November 1, 2026'],
+			['t2@example.com', 'Rent for November 2026 is due on November 1, 2026']
 		]);
-		const text = services.sendEmail.mock.calls[1][0].text as string;
+		const text = services.sendEmail.mock.calls[0][0].text as string;
 		expect(text).toContain('Visa ending 4242');
 		expect(text).toContain('$29.30 card transaction fee');
 		expect(text).toContain('Lehman Family LLC');
