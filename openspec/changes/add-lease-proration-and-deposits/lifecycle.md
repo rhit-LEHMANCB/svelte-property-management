@@ -1,7 +1,7 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 7 Production PR (QA cycle 3 passed 2026-10-15)
+- Stage: 7 done: production PR #157 updated and off hold, waiting for Gate B (human setup, verification and merge)
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
 - QA cycle: 3 of 3
@@ -74,7 +74,16 @@ The user chose to hold production PR #157 and move late fees to a daily schedule
 4. Rollout: a new private secret `JOBS_SECRET` goes in the GitHub `develop` and `production` environments. A Cloud Scheduler job is created in each project, which is a human step with a documented `gcloud` command. Until the scheduler exists, no fees are charged and no emails go out.
 5. PR #157 stays open and on hold. Its head is `develop`, so it picks up the rework once that is merged to `develop`. The QA and checklist are then redone.
 
-## Gate A
+## Amendment 2 (2026-10-16, while PR #157 waits at Gate B; approved: yes, 2026-10-16)
+
+The user asked why a lease with rent and a deposit due on the same day sends two reminder emails, and chose to combine reminders only.
+
+**Decisions**
+- Each tenant gets at most one reminder email per lease per run. It lists every rent month and deposit reminded that day, each with its amount and due date, and the total.
+- A late-fee notice stays its own email, even on a day with reminders.
+- Records stay per reminder, so at-most-once delivery and stale-claim recovery are unchanged. A failed send releases every claim in that email.
+- The run summary's `emailsSent` lists emails: a combined email is one entry whose `notice` joins its reminder keys with `+`.
+
 Approved: yes, 2026-10-15 (by the user in session, after the proposal and preflight were presented)
 Accepted preflight gaps: none
 
@@ -137,6 +146,9 @@ Round 3 (amendment 1, 2026-10-15, fresh Explore/Sonnet reviewer): blockers 0, ma
 Local checks: lint, check, 598 tests, build.
 
 Implementation notes: the tenant refusal status in the two new admin routes is 401 (the codebase's admin guard), so the spec scenarios were aligned from 403 to 401.
+
+### Amendment 2 review (2026-10-16, on 8f73848)
+No blocking findings. Four non-blocking ones, all fixed: the run summary counts emails rather than reminders (lifecycle.md wording corrected), the intro said "coming due" for amounts due today, a leftover doc comment, and an untested path (a reminder another run is still sending). Checks before review: lint, check, 604 unit and handler tests, build, 150 e2e tests.
 
 ### QA cycle 2 (amendment 1, 2026-10-15, on 7d1b3dc)
 No app bug. Evidence is on the `qa-evidence` branch (commit b34ddbb).
