@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { load as adminPageLoad } from '../../src/routes/(authenticated)/admin/+page.server';
 import { load as layoutLoad } from '../../src/routes/(authenticated)/+layout.server';
 import { load as homeLoad } from '../../src/routes/(authenticated)/+page.server';
@@ -362,6 +362,47 @@ describe('access-control: dashboard notice for a tenant without a current lease'
 			address: '570 Maple Ave, Apt 317, Noblesville',
 			startDate: '2099-10-23',
 			owedCents: 50000
+		});
+	});
+
+	it('Scenario: nothing owed yet: the notice has 0 to pay (the page offers autopay setup)', async () => {
+		seedTenant('t1');
+		seedProperty('p1', { streetAddress: '1 Far St', apartmentInfo: '', city: 'Carmel' });
+		seedLease('far', { propertyId: 'p1', tenantIds: ['t1'], startDate: '2099-10-23' });
+		const result = await call(homeLoad, { userID: 't1', parent: {} });
+		expect(result.data.notice).toMatchObject({ kind: 'upcoming', owedCents: 0 });
+	});
+
+	it('Scenario: rent payable 7 days early counts as owed now', async () => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(new Date('2026-10-16T16:00:00Z'));
+		try {
+			seedTenant('t1');
+			seedProperty('p1', { streetAddress: '1 Soon St', apartmentInfo: '', city: 'Carmel' });
+			seedLease('soon', {
+				propertyId: 'p1',
+				tenantIds: ['t1'],
+				rent: 1550,
+				startDate: '2026-10-23'
+			});
+			const result = await call(homeLoad, { userID: 't1', parent: {} });
+			// October 23 to 31: 9 of 31 days of $1,550.
+			expect(result.data.notice).toMatchObject({ kind: 'upcoming', owedCents: 45000 });
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('Scenario: with two upcoming leases the one starting first is named', async () => {
+		seedTenant('t1');
+		seedProperty('p1', { streetAddress: '1 Later St', apartmentInfo: '', city: 'Carmel' });
+		seedProperty('p2', { streetAddress: '2 First St', apartmentInfo: '', city: 'Carmel' });
+		seedLease('later', { propertyId: 'p1', tenantIds: ['t1'], startDate: '2099-12-01' });
+		seedLease('first', { propertyId: 'p2', tenantIds: ['t1'], startDate: '2099-11-01' });
+		const result = await call(homeLoad, { userID: 't1', parent: {} });
+		expect(result.data.notice).toMatchObject({
+			address: '2 First St, Carmel',
+			startDate: '2099-11-01'
 		});
 	});
 

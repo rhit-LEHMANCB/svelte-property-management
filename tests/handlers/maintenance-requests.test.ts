@@ -163,12 +163,7 @@ describe('maintenance-requests: tenant request list (tenant page load)', () => {
 	// #165: the page used to redirect to / without saying why.
 	it('Scenario: without a property the page stays and explains why, naming an upcoming lease', async () => {
 		seedTenant('tenant-1');
-		seedProperty('prop-1', {
-			streetAddress: '570 Maple Ave',
-			apartmentInfo: '',
-			city: 'Noblesville'
-		});
-		seedLease('soon', { propertyId: 'prop-1', tenantIds: ['tenant-1'], startDate: '2099-10-23' });
+		// The page reads the tenant's leases from the layout data (see the layout tests).
 
 		const result = await call(tenantLoad, {
 			userID: 'tenant-1',

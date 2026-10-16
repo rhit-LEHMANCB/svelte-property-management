@@ -21,7 +21,8 @@ export const load = (async ({ locals, parent }) => {
 		}))
 	);
 	// A tenant without a current lease is told why: the lease that starts next, with what can be
-	// paid now (its deposit, or rent payable early), or that no lease is on file.
+	// paid now on all their leases (a deposit, rent payable early, or an ended lease's balance), or
+	// that no lease is on file.
 	const { userProperty } = await parent();
 	const next = cards
 		.filter((card) => card.status === 'upcoming')
@@ -33,7 +34,7 @@ export const load = (async ({ locals, parent }) => {
 					kind: 'upcoming' as const,
 					address: next.address,
 					startDate: next.startDate,
-					owedCents: next.billing.totalCents
+					owedCents: cards.reduce((sum, card) => sum + card.billing.totalCents, 0)
 				}
 			: { kind: 'none' as const };
 	return {
