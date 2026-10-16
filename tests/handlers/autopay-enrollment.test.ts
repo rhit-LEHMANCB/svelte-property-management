@@ -4,6 +4,7 @@ import { POST as setup } from '../../src/routes/api/autopay/setup/+server';
 import { POST as complete } from '../../src/routes/api/autopay/complete/+server';
 import { DELETE as turnOff, PATCH as change } from '../../src/routes/api/autopay/+server';
 import { load as paymentLoad } from '../../src/routes/(authenticated)/payment/+page.server';
+import { listPropertyLeases } from '../../src/lib/server/leases';
 import { call } from '../helpers/callHandler';
 import { services } from '../helpers/services';
 import { db, seedLease, seedProperty, seedTenant } from '../helpers/seed';
@@ -354,5 +355,65 @@ describe('autopay: Tenant autopay controls (payment page data)', () => {
 		setupLease();
 		const data = (await call(paymentLoad, { userID: 't1', parent })).data.leases[0].autopay;
 		expect(data).toEqual({ enrollment: null, charge: null });
+	});
+});
+
+describe('autopay: Admin visibility', () => {
+	it('Scenario: Lease list: enrolled tenants with method and amount, and a failed charge with its date', async () => {
+		setupLease();
+		seedLease('lease-2', {
+			tenantIds: ['t3'],
+			rent: 800,
+			startDate: '2025-01-01',
+			endDate: '2025-12-31'
+		});
+		enroll('t1', 30000);
+		enroll('t2');
+		// A former tenant's enrollment is not listed.
+		enroll('gone');
+		db.seed('leases/lease-1/autopay_charges/2026-03-01_t2', {
+			uid: 't2',
+			cycleKey: '2026-03-01',
+			state: 'failed',
+			attempts: 2,
+			lastAttemptDay: '2026-03-02',
+			claimedAt: '2026-03-02T11:00:00.000Z',
+			amountCents: 70000,
+			feeCents: 2060
+		});
+
+		const leases = await listPropertyLeases('prop-1', new Date('2026-03-12T17:00:00Z'));
+		const lease1 = leases.find((l) => l.id === 'lease-1')!;
+		expect(lease1.autopay).toEqual([
+			{ tenantId: 't1', name: 'Tom Tenant', method: 'Visa ending 4242', amountCents: 30000 },
+			{ tenantId: 't2', name: 'Tom Tenant', method: 'Visa ending 4242', amountCents: null }
+		]);
+		expect(lease1.autopayStatus).toEqual({
+			state: 'failed',
+			name: 'Tom Tenant',
+			day: '2026-03-02',
+			amountCents: 70000,
+			attempts: 2
+		});
+		expect(JSON.stringify(lease1)).not.toContain('pm_');
+		const lease2 = leases.find((l) => l.id === 'lease-2')!;
+		expect(lease2.autopay).toEqual([]);
+		expect(lease2.autopayStatus).toBeNull();
+	});
+
+	it('a charge that succeeded is not shown as a status', async () => {
+		setupLease();
+		db.seed('leases/lease-1/autopay_charges/2026-03-01_t1', {
+			uid: 't1',
+			cycleKey: '2026-03-01',
+			state: 'succeeded',
+			attempts: 1,
+			lastAttemptDay: '2026-03-01',
+			claimedAt: '2026-03-01T11:00:00.000Z',
+			amountCents: 100000,
+			feeCents: 0
+		});
+		const [lease] = await listPropertyLeases('prop-1');
+		expect(lease.autopayStatus).toBeNull();
 	});
 });

@@ -190,6 +190,39 @@
 									{:else}
 										<p class="text-sm opacity-70">No tenants</p>
 									{/if}
+									{#if lease.autopay?.length}
+										<ul class="text-sm" aria-label="Autopay">
+											{#each lease.autopay as enrolled (enrolled.tenantId)}
+												<li>
+													Autopay: {enrolled.name}, {enrolled.method},
+													{enrolled.amountCents === null
+														? 'full balance'
+														: `up to ${money(enrolled.amountCents / 100)}`}
+												</li>
+											{/each}
+										</ul>
+									{/if}
+									{#if lease.autopayStatus}
+										{@const s = lease.autopayStatus}
+										<p
+											class="text-sm {s.state === 'failed' || s.state === 'gave-up'
+												? 'text-error-700-300'
+												: ''}"
+										>
+											{#if s.state === 'failed'}
+												Autopay failed for {s.name} on {s.day} ({money(s.amountCents / 100)},
+												attempt {s.attempts}
+												of 4); retrying.
+											{:else if s.state === 'gave-up'}
+												Autopay gave up for {s.name} on {s.day} ({money(s.amountCents / 100)}) after {s.attempts}
+												attempts.
+											{:else}
+												Autopay payment from {s.name} processing since {s.day} ({money(
+													s.amountCents / 100
+												)}).
+											{/if}
+										</p>
+									{/if}
 									{#if lease.billing}
 										<LeaseBilling
 											leaseId={lease.id}

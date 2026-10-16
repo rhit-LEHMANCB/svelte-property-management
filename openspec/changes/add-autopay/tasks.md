@@ -27,7 +27,7 @@
 
 ## 5. Admin view
 
-- [ ] 5.1 Add enrolled tenants (method, amount) and latest pending or failed charge to the lease summary and show them in the admin lease list, read-only. Verify: unit test for the summary and a page check in e2e 6.1.
+- [x] 5.1 Add enrolled tenants (method, amount) and latest pending or failed charge to the lease summary and show them in the admin lease list, read-only. Verify: unit test for the summary and a page check in e2e 6.1.
 
 ## 6. End to end and docs
 
