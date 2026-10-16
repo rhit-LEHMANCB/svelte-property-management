@@ -374,6 +374,31 @@ describe('billing-jobs: Due-date reminders', () => {
 		]);
 	});
 
+	it('a reminder another run is still sending is left out; a stale one is included', async () => {
+		startsNov15();
+		// t1's deposit was claimed a moment ago by another run; t2's rent claim is from a run that died.
+		db.seed('leases/lease-1/notices/deposit-7d-2026-11-15-t1', {
+			notice: 'deposit-7d-2026-11-15',
+			uid: 't1',
+			claimedAt: '2026-11-08T11:00:00.000Z'
+		});
+		db.seed('leases/lease-1/notices/rent-7d-2026-11-t2', {
+			notice: 'rent-7d-2026-11',
+			uid: 't2',
+			claimedAt: '2026-11-08T10:00:00.000Z'
+		});
+		setNow('2026-11-08');
+		await run();
+		expect(emails()).toEqual([
+			['t1@example.com', 'Rent for November 2026 is due on November 15, 2026'],
+			['t2@example.com', 'Payments due on November 15, 2026']
+		]);
+		expect(db.peek('leases/lease-1/notices/deposit-7d-2026-11-15-t1')).not.toHaveProperty('sentAt');
+		expect(db.peek('leases/lease-1/notices/rent-7d-2026-11-t2')).toMatchObject({
+			sentAt: expect.any(String)
+		});
+	});
+
 	it('a failed combined email releases every reminder in it', async () => {
 		startsNov15();
 		services.sendEmail.mockImplementation(async (m: { to: string }) => {

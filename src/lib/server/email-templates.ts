@@ -137,7 +137,6 @@ Lehman Family LLC`
 };
 
 /** A rent month or deposit coming due (in 7 days) or due today. */
-/** One amount a reminder email names. */
 export type ReminderItem = {
 	/** `Rent for November 2026` or `Security deposit` */
 	what: string;
@@ -163,7 +162,7 @@ export const renderDueReminderEmail = ({ address, items, link }: DueReminder): E
 		const sorted = [...items].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 		const totalCents = sorted.reduce((sum, item) => sum + item.amountCents, 0);
 		subject = `Payments due ${dueWhen(sorted[0])}`;
-		intro = `These payments for your lease at ${address} are coming due. ${money(totalCents)} is still to be paid in total.`;
+		intro = `The payments below for your lease at ${address} are due. ${money(totalCents)} is still to be paid in total.`;
 		lines = sorted.map((item) => `${item.what}: ${money(item.amountCents)}, due ${dueWhen(item)}`);
 	}
 	const listText = lines.length ? `\n\n${lines.map((line) => `- ${line}`).join('\n')}` : '';

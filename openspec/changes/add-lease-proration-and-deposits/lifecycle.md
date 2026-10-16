@@ -81,7 +81,8 @@ The user asked why a lease with rent and a deposit due on the same day sends two
 **Decisions**
 - Each tenant gets at most one reminder email per lease per run. It lists every rent month and deposit reminded that day, each with its amount and due date, and the total.
 - A late-fee notice stays its own email, even on a day with reminders.
-- Records stay per reminder, so at-most-once delivery, stale-claim recovery and the per-reminder summary are unchanged. A failed send releases every claim in that email.
+- Records stay per reminder, so at-most-once delivery and stale-claim recovery are unchanged. A failed send releases every claim in that email.
+- The run summary's `emailsSent` lists emails: a combined email is one entry whose `notice` joins its reminder keys with `+`.
 
 Approved: yes, 2026-10-15 (by the user in session, after the proposal and preflight were presented)
 Accepted preflight gaps: none
@@ -145,6 +146,9 @@ Round 3 (amendment 1, 2026-10-15, fresh Explore/Sonnet reviewer): blockers 0, ma
 Local checks: lint, check, 598 tests, build.
 
 Implementation notes: the tenant refusal status in the two new admin routes is 401 (the codebase's admin guard), so the spec scenarios were aligned from 403 to 401.
+
+### Amendment 2 review (2026-10-16, on 8f73848)
+No blocking findings. Four non-blocking ones, all fixed: the run summary counts emails rather than reminders (lifecycle.md wording corrected), the intro said "coming due" for amounts due today, a leftover doc comment, and an untested path (a reminder another run is still sending). Checks before review: lint, check, 604 unit and handler tests, build, 150 e2e tests.
 
 ### QA cycle 2 (amendment 1, 2026-10-15, on 7d1b3dc)
 No app bug. Evidence is on the `qa-evidence` branch (commit b34ddbb).
