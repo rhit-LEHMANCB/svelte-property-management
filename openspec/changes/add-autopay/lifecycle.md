@@ -1,7 +1,7 @@
 # Lifecycle: add-autopay
 
 - Branch: `autopay-uopafj` (designated branch of the cloud session; `autopay` holds the same proposal commit)
-- Stage: 4 Review
+- Stage: 5 Ship to develop (waiting on PR checks)
 - Review round: 2 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-15
