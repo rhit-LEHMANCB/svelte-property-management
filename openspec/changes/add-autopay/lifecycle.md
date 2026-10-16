@@ -1,8 +1,8 @@
 # Lifecycle: add-autopay
 
-- Branch: `autopay`
-- Stage: 2 Propose + preflight (awaiting Gate A)
-- Review round: 0 of 3
+- Branch: `autopay-uopafj` (designated branch of the cloud session; `autopay` holds the same proposal commit)
+- Stage: 3 Implement
+- Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-15
 
@@ -42,8 +42,13 @@
 **Assumptions.** No ACH rate constant is needed because ACH is free on autopay. The card fee on autopay is added on top of the amount, as in Checkout. Invoices (not bare PaymentIntents) so the webhook is reused.
 
 ## Gate A
-Approved: no
-Accepted preflight gaps: none
+Approved: yes, 2026-10-16 (user replied "approved")
+Accepted preflight gaps: Stripe dev dashboard (ACH Direct Debit, `invoice.payment_failed` webhook) is a manual step for the user; QA of real ACH and decline paths on the dev site depends on it.
+
+Resumed in a cloud session (Linux) on 2026-10-16:
+- GitHub backend switched to **GitHub MCP**: `gh` token invalid here, `CLAUDE_CODE_REMOTE=true`, `get_me` returns rhit-LEHMANCB.
+- `.env` and `.env.qa` pulled with `scripts/pull-env.sh` (mode 600, gitignored); `.env` points at `lehman-realty-dev`. A local `JOBS_SECRET` placeholder was appended for `npm run check`.
+- Baseline: `npm run check` pass, `npm test` 598 pass, `npm run lint` pass (no CRLF issue on Linux).
 
 ## Preflight
 GitHub backend: `gh` (logged in as rhit-LEHMANCB; scopes repo, workflow).

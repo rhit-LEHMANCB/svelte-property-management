@@ -7,6 +7,7 @@ import { getUserDataOrError } from '$lib/server/authHelpers';
 import { getUserIdOrError } from '$lib/server/authHelpers';
 import { loadLeaseLedger } from '$lib/server/balance';
 import { allocate, allocationParts } from '$lib/server/billing';
+import { cardFeeCents } from '$lib/server/autopay';
 import type { LeaseDoc } from '$lib/server/leaseDates';
 import { propertyAddress } from '$lib/server/leases';
 
@@ -50,7 +51,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	// The same split the webhook applies: late fees, then the deposit, then rent. The webhook
 	// recomputes it when the payment is recorded, so the lines describe the intent at checkout.
 	const parts = allocationParts(allocate(ledger, lease, amountCents));
-	const feeCents = Math.round(amountCents * 0.029 + 30);
+	const feeCents = cardFeeCents(amountCents);
 
 	const line = (name: string, description: string, unit_amount: number) => ({
 		price_data: { currency: 'usd', product_data: { name, description }, unit_amount },
@@ -64,11 +65,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			? [line('Security Deposit', `Security deposit for ${where}`, parts.depositCents)]
 			: []),
 		...(parts.rentCents > 0 ? [line('Rent', `Rent payment for ${where}`, parts.rentCents)] : []),
-		line(
-			'Transaction Fee',
-			'Transaction fee for one-time payment. Set up auto-pay to waive this fee.',
-			feeCents
-		)
+		line('Transaction Fee', 'Transaction fee for one-time card payment.', feeCents)
 	];
 
 	const session = await stripe.checkout.sessions.create({
