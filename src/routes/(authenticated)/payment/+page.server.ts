@@ -1,4 +1,3 @@
-import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getUserIdOrError } from '$lib/server/authHelpers';
 import { loadLeaseLedger } from '$lib/server/balance';
@@ -9,8 +8,8 @@ export const load = (async (event) => {
 
 	const { userLeases = [] } = await event.parent();
 
-	// Each lease has its own balance. Show the current lease, and any other lease with money owed
-	// (an ended lease keeps its unpaid rent payable; an upcoming one can owe its deposit).
+	// Each lease has its own balance. An ended lease keeps its unpaid rent payable; an upcoming one
+	// can owe its deposit, or rent payable 7 days early.
 	const leases = (
 		await Promise.all(
 			userLeases.map(async (lease) => {
@@ -38,12 +37,9 @@ export const load = (async (event) => {
 				};
 			})
 		)
-	).filter((lease) => lease.status === 'current' || lease.balanceCents > 0);
+	).filter((lease) => lease.status !== 'ended' || lease.balanceCents > 0);
 
-	// A tenant with nothing to show here has nothing to pay; the dashboard explains why.
-	if (leases.length === 0) {
-		throw redirect(303, '/');
-	}
-
+	// Current and upcoming leases are listed even with nothing owed, so autopay can be set up before
+	// move-in; an ended lease only while it owes money. With nothing to list, the page says so.
 	return { leases };
 }) satisfies PageServerLoad;

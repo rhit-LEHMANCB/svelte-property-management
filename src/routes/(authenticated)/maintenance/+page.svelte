@@ -41,97 +41,117 @@
 		{ id: 'workDone', label: 'Work done' }
 	];
 
+	// Lease dates are calendar days (YYYY-MM-DD); parse them as local so they are not shifted a day.
+	const longDate = (day: string) =>
+		new Date(`${day}T00:00:00`).toLocaleDateString('en-US', { dateStyle: 'long' });
+
 	const searchText = (r: MaintenanceRequest) =>
 		`${r.subject} ${r.submitter} ${r.description ?? ''} ${r.workDone ?? ''}`;
 </script>
 
 <div class="space-y-8 p-4 sm:p-6">
 	<PageHeader title="Maintenance" />
-	<form
-		method="POST"
-		use:enhance
-		class="card bg-surface-100-900 flex max-w-2xl flex-col gap-4 p-4 sm:p-6"
-	>
-		<h2 class="h4">Add Maintenance Request</h2>
-		<label class="label"
-			><span class="label-text">Subject</span><input
-				name="subject"
-				bind:value={$form.subject}
-				class="input"
-				class:input-error={$errors.subject}
-				title="Subject"
-				type="text"
-			/></label
-		>
-		<label class="label"
-			><span class="label-text">Description</span><textarea
-				name="description"
-				bind:value={$form.description}
-				class="textarea"
-				class:input-error={$errors.description}
-				title="Description"
-				rows="6"></textarea></label
-		>
-		<div>
-			<button type="submit" class="btn preset-filled-primary-500">Add</button>
+	{#if data.noProperty}
+		<div class="card preset-tonal-warning max-w-2xl space-y-2 p-5" role="status">
+			{#if data.noProperty.upcoming}
+				<strong>Maintenance requests open when your lease starts.</strong>
+				<p>
+					Your lease at {data.noProperty.upcoming.address} starts on
+					{longDate(data.noProperty.upcoming.startDate)}. From then on you can report problems with
+					your home here.
+				</p>
+			{:else}
+				<strong>No property is assigned to your account yet.</strong>
+				<p>Maintenance requests are for the home you rent. Please contact your property manager.</p>
+			{/if}
 		</div>
-	</form>
-
-	<section class="space-y-3" aria-labelledby="open-requests">
-		<h2 id="open-requests" class="h4">Open Maintenance Requests</h2>
-		<DataList
-			label="open maintenance requests"
-			items={data.openMaintenanceRequests}
-			key={(r) => r.id}
-			columns={openColumns}
-			sortBy="opened"
-			sortDirection="desc"
-			{searchText}
+	{:else}
+		<form
+			method="POST"
+			use:enhance
+			class="card bg-surface-100-900 flex max-w-2xl flex-col gap-4 p-4 sm:p-6"
 		>
-			{#snippet cell(request, column)}
-				{#if column.id === 'subject'}
-					<strong>{request.subject}</strong>
-				{:else if column.id === 'opened'}
-					{formatDateTime(request.dateAdded)}
-				{:else if column.id === 'submitter'}
-					{request.submitter}
-				{:else if column.id === 'description'}
-					<span class="whitespace-pre-line">{request.description}</span>
-				{/if}
-			{/snippet}
-			{#snippet empty()}
-				<EmptyState icon={IconClipboardCheck} title="No open maintenance requests">
-					Use the form above to report a problem with your home.
-				</EmptyState>
-			{/snippet}
-		</DataList>
-	</section>
+			<h2 class="h4">Add Maintenance Request</h2>
+			<label class="label"
+				><span class="label-text">Subject</span><input
+					name="subject"
+					bind:value={$form.subject}
+					class="input"
+					class:input-error={$errors.subject}
+					title="Subject"
+					type="text"
+				/></label
+			>
+			<label class="label"
+				><span class="label-text">Description</span><textarea
+					name="description"
+					bind:value={$form.description}
+					class="textarea"
+					class:input-error={$errors.description}
+					title="Description"
+					rows="6"></textarea></label
+			>
+			<div>
+				<button type="submit" class="btn preset-filled-primary-500">Add</button>
+			</div>
+		</form>
 
-	<section class="space-y-3" aria-labelledby="closed-requests">
-		<h2 id="closed-requests" class="h4">Closed Maintenance Requests</h2>
-		<DataList
-			label="closed maintenance requests"
-			items={data.closedMaintenanceRequests}
-			key={(r) => r.id}
-			columns={closedColumns}
-			sortBy="closed"
-			sortDirection="desc"
-			{searchText}
-		>
-			{#snippet cell(request, column)}
-				{#if column.id === 'subject'}
-					<strong>{request.subject}</strong>
-				{:else if column.id === 'closed'}
-					{formatDateTime(request.dateClosed)}
-				{:else if column.id === 'submitter'}
-					{request.submitter}
-				{:else if column.id === 'workDone'}
-					<span class="whitespace-pre-line">{request.workDone ?? ''}</span>
-				{/if}
-			{/snippet}
-			{#snippet empty()}
-				<EmptyState icon={IconTool} title="No closed maintenance requests" />
-			{/snippet}
-		</DataList>
-	</section>
+		<section class="space-y-3" aria-labelledby="open-requests">
+			<h2 id="open-requests" class="h4">Open Maintenance Requests</h2>
+			<DataList
+				label="open maintenance requests"
+				items={data.openMaintenanceRequests}
+				key={(r) => r.id}
+				columns={openColumns}
+				sortBy="opened"
+				sortDirection="desc"
+				{searchText}
+			>
+				{#snippet cell(request, column)}
+					{#if column.id === 'subject'}
+						<strong>{request.subject}</strong>
+					{:else if column.id === 'opened'}
+						{formatDateTime(request.dateAdded)}
+					{:else if column.id === 'submitter'}
+						{request.submitter}
+					{:else if column.id === 'description'}
+						<span class="whitespace-pre-line">{request.description}</span>
+					{/if}
+				{/snippet}
+				{#snippet empty()}
+					<EmptyState icon={IconClipboardCheck} title="No open maintenance requests">
+						Use the form above to report a problem with your home.
+					</EmptyState>
+				{/snippet}
+			</DataList>
+		</section>
+
+		<section class="space-y-3" aria-labelledby="closed-requests">
+			<h2 id="closed-requests" class="h4">Closed Maintenance Requests</h2>
+			<DataList
+				label="closed maintenance requests"
+				items={data.closedMaintenanceRequests}
+				key={(r) => r.id}
+				columns={closedColumns}
+				sortBy="closed"
+				sortDirection="desc"
+				{searchText}
+			>
+				{#snippet cell(request, column)}
+					{#if column.id === 'subject'}
+						<strong>{request.subject}</strong>
+					{:else if column.id === 'closed'}
+						{formatDateTime(request.dateClosed)}
+					{:else if column.id === 'submitter'}
+						{request.submitter}
+					{:else if column.id === 'workDone'}
+						<span class="whitespace-pre-line">{request.workDone ?? ''}</span>
+					{/if}
+				{/snippet}
+				{#snippet empty()}
+					<EmptyState icon={IconTool} title="No closed maintenance requests" />
+				{/snippet}
+			</DataList>
+		</section>
+	{/if}
 </div>

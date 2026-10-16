@@ -19,7 +19,19 @@
 
 <div class="space-y-4 p-4 sm:p-6">
 	<PageHeader title="Dashboard" />
-	{#if isTenant && !data.userProperty}
+	{#if isTenant && data.notice?.kind === 'upcoming'}
+		<div class="card preset-tonal-primary space-y-2 p-5" role="status">
+			<strong
+				>Your lease at {data.notice.address} starts on {longDate(data.notice.startDate)}.</strong
+			>
+			{#if data.notice.owedCents > 0}
+				<p>{cents(data.notice.owedCents)} can be paid now.</p>
+				<a class="btn btn-sm preset-filled-primary-500" href="/payment">Make a payment</a>
+			{:else}
+				<p>Maintenance requests open once it starts. You can update your profile now.</p>
+			{/if}
+		</div>
+	{:else if isTenant && data.notice?.kind === 'none'}
 		<div class="card preset-tonal-warning p-5" role="status">
 			<strong>No property is assigned to your account yet.</strong>
 			<p>Please contact your property manager. You can still update your profile.</p>

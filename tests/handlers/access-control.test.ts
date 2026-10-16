@@ -335,3 +335,48 @@ describe('access-control: data is not shared between tenants', () => {
 		expect(second.data.userLeases.map((l: { id: string }) => l.id)).toEqual(['l2']);
 	});
 });
+
+// #165: a tenant whose only lease has not started was told no property is assigned.
+describe('access-control: dashboard notice for a tenant without a current lease', () => {
+	const upcoming = () => {
+		seedTenant('t1');
+		seedProperty('p1', {
+			streetAddress: '570 Maple Ave',
+			apartmentInfo: 'Apt 317',
+			city: 'Noblesville'
+		});
+		seedLease('soon', {
+			propertyId: 'p1',
+			tenantIds: ['t1'],
+			rent: 1600,
+			startDate: '2099-10-23',
+			deposit: { amount: 500, dueDate: '2099-10-23' }
+		});
+	};
+
+	it('Scenario: an upcoming lease is named with its start date and what is owed now', async () => {
+		upcoming();
+		const result = await call(homeLoad, { userID: 't1', parent: {} });
+		expect(result.data.notice).toEqual({
+			kind: 'upcoming',
+			address: '570 Maple Ave, Apt 317, Noblesville',
+			startDate: '2099-10-23',
+			owedCents: 50000
+		});
+	});
+
+	it('Scenario: no lease at all keeps the contact-your-manager notice', async () => {
+		seedTenant('t1');
+		const result = await call(homeLoad, { userID: 't1', parent: {} });
+		expect(result.data.notice).toEqual({ kind: 'none' });
+	});
+
+	it('Scenario: a tenant with a current property gets no notice', async () => {
+		upcoming();
+		const result = await call(homeLoad, {
+			userID: 't1',
+			parent: { userProperty: { id: 'p1', data: {} } }
+		});
+		expect(result.data.notice).toBeNull();
+	});
+});

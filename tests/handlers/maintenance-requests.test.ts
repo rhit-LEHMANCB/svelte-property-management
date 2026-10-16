@@ -160,12 +160,43 @@ describe('maintenance-requests: tenant request list (tenant page load)', () => {
 		expect(open[0].dateClosed).toBeUndefined();
 	});
 
-	it('Scenario: without a property in the layout data the page redirects to /', async () => {
+	// #165: the page used to redirect to / without saying why.
+	it('Scenario: without a property the page stays and explains why, naming an upcoming lease', async () => {
 		seedTenant('tenant-1');
+		seedProperty('prop-1', {
+			streetAddress: '570 Maple Ave',
+			apartmentInfo: '',
+			city: 'Noblesville'
+		});
+		seedLease('soon', { propertyId: 'prop-1', tenantIds: ['tenant-1'], startDate: '2099-10-23' });
 
+		const result = await call(tenantLoad, {
+			userID: 'tenant-1',
+			parent: {
+				userLeases: [
+					{
+						id: 'soon',
+						status: 'upcoming',
+						address: '570 Maple Ave, Noblesville',
+						startDate: '2099-10-23'
+					}
+				]
+			}
+		});
+
+		expect(result.status).toBe(200);
+		expect(result.data.noProperty).toEqual({
+			upcoming: { address: '570 Maple Ave, Noblesville', startDate: '2099-10-23' }
+		});
+		expect(result.data.openMaintenanceRequests).toEqual([]);
+		expect(result.data.closedMaintenanceRequests).toEqual([]);
+	});
+
+	it('Scenario: without any lease the page says no property is assigned', async () => {
+		seedTenant('tenant-1');
 		const result = await call(tenantLoad, { userID: 'tenant-1', parent: {} });
-
-		expect(result).toMatchObject({ status: 303, redirect: '/' });
+		expect(result.status).toBe(200);
+		expect(result.data.noProperty).toEqual({ upcoming: null });
 	});
 });
 

@@ -324,15 +324,67 @@ test.describe('access-control: a tenant without a property', () => {
 
 		await expect(page.getByText('No property is assigned to your account yet.')).toBeVisible();
 
+		// #165: Payment stays too, with nothing to pay.
 		await page.goto('/payment');
-		await expect(page).toHaveURL(/\/$/);
+		await expect(page).toHaveURL(/\/payment$/);
+		await expect(page.getByText('You have no lease to pay for.')).toBeVisible();
+		// #165: Maintenance stays and says why, rather than bouncing to the dashboard.
 		await page.goto('/maintenance');
-		await expect(page).toHaveURL(/\/$/);
+		await expect(page).toHaveURL(/\/maintenance$/);
+		await expect(page.getByRole('status')).toContainText(
+			'No property is assigned to your account yet.'
+		);
+		await expect(page.getByRole('button', { name: 'Add' })).toHaveCount(0);
 
 		for (const path of ['/profile', '/insurance']) {
 			const response = await page.goto(path);
 			expect(response?.status()).toBe(200);
 			await expect(page).toHaveURL(new RegExp(path));
+		}
+	});
+
+	// #165: a tenant whose lease has not started was told no property is assigned.
+	test('Scenario: Upcoming lease: the dashboard and Maintenance name it and its start date', async ({
+		page
+	}) => {
+		const db = adminDb();
+		await db.doc('properties/e2e-upcoming-property').set({
+			title: 'E2E Upcoming House',
+			streetAddress: '570 Maple Ave',
+			apartmentInfo: 'Apt 317',
+			city: 'Noblesville',
+			state: 'IN',
+			zip: '46060',
+			rent: 1600
+		});
+		await db.doc('leases/e2e-upcoming-lease').set({
+			propertyId: 'e2e-upcoming-property',
+			tenantIds: ['e2e-no-property'],
+			rent: 1600,
+			startDate: '2099-10-23',
+			endDate: null,
+			document: null,
+			deposit: { amount: 500, dueDate: '2099-10-23' }
+		});
+		try {
+			await signIn(page, { email: EMAIL, password: PASSWORD });
+			await page.waitForLoadState('networkidle');
+			const notice = page.getByRole('status').filter({ hasText: 'starts on' });
+			await expect(notice).toContainText(
+				'Your lease at 570 Maple Ave, Apt 317, Noblesville starts on October 23, 2099.'
+			);
+			await expect(notice).toContainText('$500.00 can be paid now.');
+			await expect(page.getByText('No property is assigned to your account yet.')).toHaveCount(0);
+			await notice.getByRole('link', { name: 'Make a payment' }).click();
+			await expect(page).toHaveURL(/\/payment$/);
+
+			await page.goto('/maintenance');
+			await expect(page.getByRole('status')).toContainText(
+				'Maintenance requests open when your lease starts.'
+			);
+		} finally {
+			await db.doc('leases/e2e-upcoming-lease').delete();
+			await db.doc('properties/e2e-upcoming-property').delete();
 		}
 	});
 });
