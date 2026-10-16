@@ -66,11 +66,12 @@ export function latestOpenCharge(charges: ChargeRecord[], uid?: string): ChargeS
  * 403, so lease ids cannot be probed.
  */
 export async function tenantLeaseOrError(leaseId: unknown, uid: string) {
+	// A lease id is one path segment; anything else could address another document.
 	const lease =
-		typeof leaseId === 'string' && leaseId !== ''
+		typeof leaseId === 'string' && /^[A-Za-z0-9_-]+$/.test(leaseId)
 			? ((await leaseRefOf(leaseId).get()).data() as LeaseDoc | undefined)
 			: undefined;
-	if (!lease || !lease.tenantIds.includes(uid)) {
+	if (!lease || !Array.isArray(lease.tenantIds) || !lease.tenantIds.includes(uid)) {
 		throw error(403, 'You can only manage autopay for a lease you are on.');
 	}
 	return { leaseId: leaseId as string, lease, leaseRef: leaseRefOf(leaseId as string) };

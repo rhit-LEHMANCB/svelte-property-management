@@ -10,7 +10,7 @@
 - [x] 2.2 Add `POST /api/autopay/setup` (Checkout setup mode, card and bank account, metadata, success URL with `{CHECKOUT_SESSION_ID}`) with the 401/403/400 rules. Verify: handler tests for each setup scenario.
 - [x] 2.3 Add `POST /api/autopay/complete` (retrieve the session, check owner, lease membership and completion, save once, keep the first `enrolledAt`). Verify: handler tests for complete, someone else's session, unfinished session, completing twice.
 - [x] 2.4 Add `PATCH` and `DELETE /api/autopay` for the caller's own enrollment. Verify: handler tests for amount change, `null`, turn off, other tenant untouched, 403/404, 401.
-- [ ] 2.5 Teach `fake-stripe.mjs` the setup-mode session, session retrieval with payment method details, invoices, invoice items, finalize, pay and void, with switches for decline and processing. Verify: used by tasks 4.x and 6.1; the existing e2e specs still pass.
+- [x] 2.5 Teach `fake-stripe.mjs` the setup-mode session, session retrieval with payment method details, invoices, invoice items, finalize, pay and void, with switches for decline and processing. Verify: used by tasks 4.x and 6.1; the existing e2e specs still pass.
 
 ## 3. Tenant UI
 
@@ -31,6 +31,6 @@
 
 ## 6. End to end and docs
 
-- [ ] 6.1 Add `tests/e2e/specs/autopay.spec.ts` against the fake Stripe: enroll, change amount, turn off, a job run that charges and is recorded by the webhook, decline and retry email, pending blocks a late fee, admin sees the state. Verify: `npm run test:e2e` passes.
-- [ ] 6.2 Update the README or docs that describe payments and the Stripe dashboard steps (ACH Direct Debit enabled, `invoice.payment_failed` on the webhook endpoint) for dev and production. Verify: the doc names both steps and no production secrets.
-- [ ] 6.3 Whole-change check. Verify: `npm run lint`, `npm run check`, unit and handler tests, `npm run build` and `openspec validate add-autopay --strict` all pass.
+- [x] 6.1 Add `tests/e2e/specs/autopay.spec.ts` against the fake Stripe: enroll, change amount, turn off, a job run that charges and is recorded by the webhook, decline and retry email, pending blocks a late fee, admin sees the state. Verify: `npm run test:e2e` passes.
+- [x] 6.2 Update the README or docs that describe payments and the Stripe dashboard steps (ACH Direct Debit enabled, `invoice.payment_failed` on the webhook endpoint) for dev and production. Verify: the doc names both steps and no production secrets.
+- [x] 6.3 Whole-change check. Verify: `npm run lint`, `npm run check`, unit and handler tests, `npm run build` and `openspec validate add-autopay --strict` all pass.

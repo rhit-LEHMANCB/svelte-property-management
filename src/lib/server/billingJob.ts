@@ -147,7 +147,10 @@ type Notices = {
 	lateFees: LateFeeNotice[];
 	reminders: Reminder[];
 	autopay: AutopayNotice[];
-	/** Tenants with autopay on, who get the autopay notice instead of the reminders. */
+	/**
+	 * Tenants autopay will charge, who get the autopay notice instead of the reminders. A tenant with
+	 * autopay on whom earlier tenants' amounts leave nothing to pay keeps the usual reminders.
+	 */
 	enrolled: string[];
 };
 
@@ -165,11 +168,14 @@ function noticesFor(
 	const link = `${PUBLIC_FRONTEND_URL}/payment`;
 	const today = ledger.today;
 	const enrollments = autopay.enrollments.filter((e) => lease.tenantIds.includes(e.uid));
+	// Charges already made count toward each tenant's share, so a tenant charged today but not yet
+	// recorded is not reminded of what they just paid.
+	const shares = projectedSplit(ledger.totalCents, enrollments);
 	const notices: Notices = {
 		lateFees: [],
 		reminders: [],
 		autopay: [],
-		enrolled: enrollments.map((e) => e.uid)
+		enrolled: enrollments.filter((e) => (shares.get(e.uid) ?? 0) > 0).map((e) => e.uid)
 	};
 	const recent = (day: string | null | undefined) =>
 		Boolean(day) && addDays(day!, NOTICE_RETRY_DAYS) >= today;

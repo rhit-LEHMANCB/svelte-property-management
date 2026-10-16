@@ -30,7 +30,7 @@ function methodDetails(method: Stripe.PaymentMethod) {
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const uid = getUserIdOrError(locals.userID);
 	const userData = await getUserDataOrError(uid);
-	const { sessionId } = await request.json();
+	const { sessionId } = await request.json().catch(() => ({}));
 	if (typeof sessionId !== 'string' || !/^cs_[A-Za-z0-9_]+$/.test(sessionId)) {
 		throw error(400, 'A setup session is required');
 	}
@@ -63,7 +63,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const ref = enrollmentRef(leaseRef, uid);
 	const saved = await adminDB.runTransaction(async (tx) => {
 		const existing = (await tx.get(ref)).data() as Omit<Enrollment, 'uid'> | undefined;
-		if (existing?.setupSessionId === sessionId) return { ...existing, uid };
+		// Completing the same session again, or an older one (a bookmarked return link), must not undo
+		// a later enrollment or amount change.
+		const older =
+			existing?.updatedAt !== undefined && session.created * 1000 < Date.parse(existing.updatedAt);
+		if (existing && (existing.setupSessionId === sessionId || older)) return { ...existing, uid };
 		const now = new Date().toISOString();
 		const enrollment: Omit<Enrollment, 'uid'> = {
 			paymentMethodId: method.id,

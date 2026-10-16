@@ -1,7 +1,7 @@
 # Lifecycle: add-autopay
 
 - Branch: `autopay-uopafj` (designated branch of the cloud session; `autopay` holds the same proposal commit)
-- Stage: 3 Implement
+- Stage: 4 Review
 - Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-15
@@ -73,7 +73,11 @@ Observations (not part of this change): `.env.example` lacks `JOBS_SECRET`, so `
 Correction to the interview summary: Firestore rules already deny all client access, so no rules deploy is needed. The earlier Rollout line saying rules deploy with the change is superseded by design.md.
 
 ## Review rounds
-(none yet; one line per round: blockers, majors, minors, nits, fixed, rejected with reason)
+(one line per round: blockers, majors, minors, nits, fixed, rejected with reason)
+
+Stage 3 done 2026-10-16: all tasks implemented; `npm run lint`, `npm run check`, `npm test` (672), `npm run build` pass; full `npm run test:e2e` passed except two insurance-visibility tests that relied on the users list's first page (fixed by searching; my new e2e tenants pushed the row to page 2). `develop` (PR #162, one reminder email per tenant) merged in; autopay reapplied on top of the grouped reminders.
+
+- Round 1 (2026-10-16): 1 blocker, 3 majors, 6 minors, 2 nits. Fixed: README merge-conflict markers (blocker); enrolled tenants with no share lost their reminders (now keep them); enrollments re-read before each charge (turn off mid-run); an older setup session completed later no longer overwrites a newer enrollment (`session.created` vs `updatedAt`); lease id shape and `tenantIds` checked (403 not 500); non-JSON bodies handled; pending charges checked with Stripe after a day and the webhook also fails a still-`claimed` charge; crashed claims keep their amounts and start over with new keys when the amount changed or Stripe reports an idempotency conflict; tasks ticked; design notes enrollment on ended leases. Rejected: (10) failure emails stop retrying after `NOTICE_RETRY_DAYS` (7), the same window the existing late-fee notices use, and longer than the 4-day retry span, so no change; (11) the insurance e2e edit stays in this change because this change's e2e tenants are what broke it; it is called out in the PR description.
 
 ## Out-of-scope observations
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)

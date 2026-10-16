@@ -15,7 +15,7 @@ import { stripe } from '$lib/server/stripe';
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const uid = getUserIdOrError(locals.userID);
 	const userData = await getUserDataOrError(uid);
-	const { leaseId, amount } = await request.json();
+	const { leaseId, amount } = await request.json().catch(() => ({}));
 
 	const { lease } = await tenantLeaseOrError(leaseId, uid);
 

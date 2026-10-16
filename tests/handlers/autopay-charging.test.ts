@@ -527,14 +527,22 @@ describe('autopay: Reminders for autopay tenants', () => {
 		expect(emails()).toEqual([['t2@example.com', 'Rent for November 2026 is due today']]);
 	});
 
-	it('a tenant whose amount covers nothing (earlier tenants pay it all) gets no notice', async () => {
+	it('a tenant with autopay on whom earlier tenants leave nothing to pay keeps the usual reminders', async () => {
 		setup();
 		enroll('t1');
 		enroll('t2', null, 'card', '2026-10-02T00:00:00.000Z');
 		await runOn('2026-10-25');
 		expect(emails()).toEqual([
-			['t1@example.com', 'Autopay will charge $1,029.30 on November 1, 2026']
+			['t1@example.com', 'Autopay will charge $1,029.30 on November 1, 2026'],
+			['t2@example.com', 'Rent for November 2026 is due on November 1, 2026']
 		]);
+	});
+
+	it('a tenant charged on the due date is not reminded before the webhook records the payment', async () => {
+		setup();
+		enroll('t1');
+		await runOn('2026-11-01');
+		expect(emails()).toEqual([['t2@example.com', 'Rent for November 2026 is due today']]);
 	});
 
 	it('late-fee notices still go to everyone', async () => {
@@ -545,5 +553,140 @@ describe('autopay: Reminders for autopay tenants', () => {
 		await runOn('2026-11-07');
 		expect(emails()).toContainEqual(['t1@example.com', 'Late fee added for November 2026']);
 		expect(emails()).toContainEqual(['t2@example.com', 'Late fee added for November 2026']);
+	});
+});
+
+describe('autopay: review fixes', () => {
+	it('Scenario: Turn off during a run: a tenant who turned autopay off is not charged', async () => {
+		setup();
+		enroll('t1', 30000);
+		enroll('t2', null, 'card', '2026-10-02T00:00:00.000Z');
+		// t2 turns autopay off while t1's charge is being made.
+		services.stripe.invoices.pay.mockImplementationOnce(async (id: string) => {
+			db.remove('leases/lease-1/autopay/t2');
+			return { id, status: 'paid' };
+		});
+		await runOn('2026-11-01');
+		expect(invoices().map((i) => i.metadata.uid)).toEqual(['t1']);
+	});
+
+	it('a lost payment_failed event: the next run asks Stripe, marks the charge failed and retries', async () => {
+		setup({ lateFee: 0 });
+		enroll('t1', null, 'us_bank_account');
+		processing();
+		await runOn('2026-11-01');
+		expect(charge('2026-11-01_t1')).toMatchObject({ state: 'pending' });
+
+		// Stripe says the invoice is open with a failed payment; the webhook never arrived.
+		services.stripe.invoices.retrieve.mockResolvedValue({
+			id: 'in_auto_1',
+			status: 'open',
+			payment_intent: {
+				status: 'requires_payment_method',
+				last_payment_error: { message: 'The account is closed.' }
+			}
+		});
+		services.stripe.invoices.pay.mockImplementation(async (id: string) => ({ id, status: 'paid' }));
+		await runOn('2026-11-05');
+
+		expect(services.stripe.invoices.voidInvoice).toHaveBeenCalledWith('in_auto_1');
+		expect(charge('2026-11-01_t1')).toMatchObject({ state: 'succeeded', attempts: 2 });
+		expect((charge('2026-11-01_t1')!.failures as unknown[])[0]).toMatchObject({
+			attempt: 1,
+			day: '2026-11-05',
+			error: 'The account is closed.'
+		});
+		expect(emails()).toContainEqual(['t1@example.com', 'Your autopay payment did not go through']);
+	});
+
+	it('a pending charge Stripe still shows as processing is left alone', async () => {
+		setup({ lateFee: 0 });
+		enroll('t1', null, 'us_bank_account');
+		processing();
+		await runOn('2026-11-01');
+		services.stripe.invoices.retrieve.mockResolvedValue({
+			id: 'in_auto_1',
+			status: 'open',
+			payment_intent: { status: 'processing' }
+		});
+		await runOn('2026-11-03');
+		expect(charge('2026-11-01_t1')).toMatchObject({ state: 'pending' });
+		expect(invoices()).toHaveLength(1);
+	});
+
+	it('a payment_failed event that beats the job’s own record of a decline is counted once', async () => {
+		setup({ lateFee: 0 });
+		enroll('t1');
+		services.stripe.invoices.pay.mockImplementationOnce(async () => {
+			// Stripe's event arrives while the job is still waiting for the pay call.
+			await send(invoiceEvent('invoice.payment_failed'));
+			throw Object.assign(new Error('Your card was declined.'), { type: 'StripeCardError' });
+		});
+		await runOn('2026-11-01');
+		const record = charge('2026-11-01_t1')!;
+		expect(record).toMatchObject({ state: 'failed', attempts: 1 });
+		expect(record.failures).toHaveLength(1);
+	});
+
+	it('a crashed claim whose amount no longer matches what is owed starts over under new keys', async () => {
+		setup();
+		enroll('t1');
+		db.seed('leases/lease-1/autopay_charges/2026-11-01_t1', {
+			uid: 't1',
+			cycleKey: '2026-11-01',
+			state: 'claimed',
+			attempts: 1,
+			lastAttemptDay: '2026-11-01',
+			claimedAt: '2026-11-01T10:00:00.000Z',
+			amountCents: 120000,
+			feeCents: 3510,
+			invoiceId: null
+		});
+		await runOn('2026-11-01');
+		expect(services.stripe.invoices.create.mock.calls[0][1]).toEqual({
+			idempotencyKey: 'autopay-lease-1-2026-11-01-t1-a1-r1-invoice'
+		});
+		expect(charge('2026-11-01_t1')).toMatchObject({
+			state: 'succeeded',
+			amountCents: 100000,
+			feeCents: 2930
+		});
+	});
+
+	it('a crashed claim whose invoice settled keeps the amount it was invoiced for', async () => {
+		setup();
+		enroll('t1');
+		db.seed('leases/lease-1/autopay_charges/2026-11-01_t1', {
+			uid: 't1',
+			cycleKey: '2026-11-01',
+			state: 'claimed',
+			attempts: 1,
+			lastAttemptDay: '2026-11-01',
+			claimedAt: '2026-11-01T10:00:00.000Z',
+			amountCents: 70000,
+			feeCents: 2060,
+			invoiceId: 'in_left'
+		});
+		services.stripe.invoices.retrieve.mockResolvedValue({ id: 'in_left', status: 'paid' });
+		await runOn('2026-11-01');
+		expect(charge('2026-11-01_t1')).toMatchObject({ state: 'succeeded', amountCents: 70000 });
+	});
+
+	it('an idempotency conflict on the invoice starts over once under new keys', async () => {
+		setup();
+		enroll('t1');
+		services.stripe.invoices.create.mockRejectedValueOnce(
+			Object.assign(
+				new Error('Keys for idempotent requests can only be used with the same parameters'),
+				{
+					type: 'StripeIdempotencyError'
+				}
+			)
+		);
+		await runOn('2026-11-01');
+		expect(services.stripe.invoices.create.mock.calls.map(([, key]) => key.idempotencyKey)).toEqual(
+			['autopay-lease-1-2026-11-01-t1-a1-r0-invoice', 'autopay-lease-1-2026-11-01-t1-a1-r1-invoice']
+		);
+		expect(charge('2026-11-01_t1')).toMatchObject({ state: 'succeeded', resume: 1 });
 	});
 });

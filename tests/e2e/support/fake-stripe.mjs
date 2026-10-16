@@ -88,7 +88,7 @@ const server = http.createServer(async (req, res) => {
 		const body = parseForm(raw);
 		requests.push({ path: pathname, body: Object.fromEntries(new URLSearchParams(raw)) });
 		const id = `cs_fake_setup_${sessions.size + 1}`;
-		sessions.set(id, { body, method: setupMethod });
+		sessions.set(id, { body, method: setupMethod, created: Math.floor(Date.now() / 1000) });
 		return send(res, 200, {
 			id,
 			object: 'checkout.session',
@@ -119,6 +119,7 @@ const server = http.createServer(async (req, res) => {
 			object: 'checkout.session',
 			mode: 'setup',
 			status: 'complete',
+			created: session.created,
 			customer: session.body.customer,
 			metadata: session.body.metadata ?? {},
 			setup_intent: {

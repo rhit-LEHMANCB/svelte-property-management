@@ -16,7 +16,8 @@ import {
 } from '$lib/server/billing';
 import { businessToday, leaseStatus, type LeaseDoc } from '$lib/server/leaseDates';
 import { leasesOfTenant } from '$lib/server/leases';
-import { chargeId, MAX_ATTEMPTS, type ChargeRecord } from '$lib/server/autopay';
+import { chargeId, type ChargeRecord } from '$lib/server/autopay';
+import { failPendingCharge } from '$lib/server/autopayCharge';
 import { chargesRef } from '$lib/server/autopayStore';
 
 /**
@@ -263,8 +264,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			break;
 		}
 		case 'invoice.payment_failed': {
-			// A pending autopay charge (ACH) that failed to settle. Charges that fail at once are handled
-			// by the daily job, which voids them itself; Checkout invoices never get here unpaid.
+			// An autopay charge that failed: usually ACH that did not settle. Checkout invoices never get
+			// here unpaid.
 			const invoice = event.data.object;
 			const leaseId = invoice.metadata?.leaseID;
 			const chargeRef = leaseId ? autopayChargeRef(invoice, leaseId) : undefined;
@@ -272,34 +273,16 @@ export const POST: RequestHandler = async ({ request }) => {
 				console.log('Not an autopay invoice; ignoring payment failure');
 				break;
 			}
-			const reason = 'Your bank did not complete the payment';
+			// The same wording for a card and a bank: the event does not say why.
+			const reason = 'The payment did not go through';
 			const day = businessToday(new Date(event.created * 1000));
 			try {
-				const failed = await adminDB.runTransaction(async (tx) => {
-					const charge = (await tx.get(chargeRef)).data() as ChargeRecord | undefined;
-					// Only a pending charge for this invoice: a redelivery, or a charge the job already
-					// settled, changes nothing.
-					if (charge?.state !== 'pending' || charge.invoiceId !== invoice.id) return false;
-					const failure = {
-						attempt: charge.attempts,
-						day,
-						error: reason,
-						amountCents: charge.amountCents
-					};
-					tx.set(
-						chargeRef,
-						charge.attempts >= MAX_ATTEMPTS
-							? {
-									state: 'gave-up',
-									gaveUpDay: day,
-									error: reason,
-									failures: FieldValue.arrayUnion(failure)
-								}
-							: { state: 'failed', error: reason, failures: FieldValue.arrayUnion(failure) },
-						{ merge: true }
-					);
-					return true;
-				});
+				// A pending charge for this invoice, or one the job is still making (the event can beat
+				// the job's own record of the decline). A redelivery, or a charge already settled,
+				// changes nothing.
+				const failed = invoice.id
+					? await failPendingCharge(chargeRef, invoice.id, day, reason)
+					: false;
 				// The tenant is emailed by the next daily run, which also retries the charge.
 				if (failed && invoice.id && invoice.status === 'open') {
 					await stripe.invoices.voidInvoice(invoice.id).catch((err) => {

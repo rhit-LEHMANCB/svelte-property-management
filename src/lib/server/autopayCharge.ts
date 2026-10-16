@@ -17,7 +17,7 @@ import {
 } from './autopay';
 import { chargesRef, loadCharges, loadEnrollments } from './autopayStore';
 import { loadLedgerRecords } from './balance';
-import { allocate, allocationParts, computeLedger, type Ledger } from './billing';
+import { addDays, allocate, allocationParts, computeLedger, type Ledger } from './billing';
 import { businessToday, type LeaseDoc } from './leaseDates';
 import { stripe } from './stripe';
 
@@ -199,7 +199,10 @@ async function settleLeftover(invoiceId: string) {
 	return 'start-over' as const;
 }
 
-/** Claims a charge for this run. Returns the claim's resume number and leftover invoice, or undefined when not ours. */
+/**
+ * Claims a charge for this run, or returns undefined when it is not ours to make. A crashed claim
+ * that is continued keeps the amounts it was claimed with, since its invoice may exist already.
+ */
 async function claim(
 	ref: DocumentReference,
 	planned: { uid: string; attempt: number; amountCents: number; feeCents: number },
@@ -222,13 +225,13 @@ async function claim(
 			uid: planned.uid,
 			cycleKey,
 			state: 'claimed',
-			attempts: planned.attempt,
+			attempts: continuing ? existing!.attempts : planned.attempt,
 			lastAttemptDay: today,
 			claimedAt: now.toISOString(),
 			claimToken: token,
 			resume: continuing ? (existing!.resume ?? 0) : 0,
-			amountCents: planned.amountCents,
-			feeCents: planned.feeCents,
+			amountCents: continuing ? existing!.amountCents : planned.amountCents,
+			feeCents: continuing ? existing!.feeCents : planned.feeCents,
 			invoiceId: continuing ? (existing!.invoiceId ?? null) : null,
 			error: null,
 			failures: existing?.failures ?? [],
@@ -236,7 +239,7 @@ async function claim(
 			recordedAt: null
 		};
 		tx.set(ref, record);
-		return { resume: record.resume ?? 0, leftover: record.invoiceId ?? null };
+		return record;
 	});
 }
 
@@ -253,12 +256,66 @@ async function finish(
 	});
 }
 
-const failureUpdate = (attempt: number, day: string, error: string, amountCents: number) => {
+export const failureUpdate = (attempt: number, day: string, error: string, amountCents: number) => {
 	const failure: ChargeFailure = { attempt, day, error, amountCents };
 	return attempt >= MAX_ATTEMPTS
 		? { state: 'gave-up' as const, gaveUpDay: day, error, failures: FieldValue.arrayUnion(failure) }
 		: { state: 'failed' as const, error, failures: FieldValue.arrayUnion(failure) };
 };
+
+/** Marks a pending charge failed, if it is still pending (or claimed) for this invoice. */
+export async function failPendingCharge(
+	ref: DocumentReference,
+	invoiceId: string,
+	day: string,
+	reason: string
+) {
+	return adminDB.runTransaction(async (tx) => {
+		const charge = (await tx.get(ref)).data() as ChargeRecord | undefined;
+		const open = charge?.state === 'pending' || charge?.state === 'claimed';
+		if (!charge || !open || charge.invoiceId !== invoiceId) return false;
+		tx.set(ref, failureUpdate(charge.attempts, day, reason, charge.amountCents), { merge: true });
+		return true;
+	});
+}
+
+/** A pending charge is checked with Stripe once it is this many days old, in case its webhook was lost. */
+const PENDING_CHECK_DAYS = 1;
+
+/**
+ * Settles pending charges whose `invoice.payment_failed` never arrived: a void or unpaid invoice is
+ * a failure, so its attempt counts, late fees resume and the charge is retried. A paid invoice is
+ * left to the webhook, which records the payment (Stripe redelivers for days).
+ */
+async function checkPendingCharges(
+	leaseRef: DocumentReference,
+	charges: ChargeRecord[],
+	today: string,
+	warnings: string[]
+) {
+	const due = charges.filter(
+		(c) =>
+			c.state === 'pending' && c.invoiceId && addDays(c.lastAttemptDay, PENDING_CHECK_DAYS) <= today
+	);
+	for (const charge of due) {
+		try {
+			const invoice = await stripe.invoices.retrieve(charge.invoiceId!, {
+				expand: ['payment_intent']
+			});
+			if (invoice.status === 'paid' || outcomeOf(invoice) === 'pending') continue;
+			const ref = chargesRef(leaseRef).doc(chargeId(charge.cycleKey, charge.uid));
+			const failed = await failPendingCharge(ref, charge.invoiceId!, today, declineReason(invoice));
+			if (failed && invoice.status === 'open') await voidQuietly(charge.invoiceId!);
+		} catch (err) {
+			warnings.push(
+				`lease ${leaseRef.id}: could not check pending autopay invoice ${charge.invoiceId}: ${errorMessage(err)}`
+			);
+		}
+	}
+}
+
+const isIdempotencyError = (err: unknown) =>
+	(err as { type?: string } | undefined)?.type === 'StripeIdempotencyError';
 
 /**
  * Charges the enrolled tenants of a lease that has money due. A declined charge moves on to the next
@@ -272,17 +329,20 @@ export async function chargeAutopay(
 ): Promise<{ charges: AutopayCharge[]; warnings: string[] }> {
 	const charges: AutopayCharge[] = [];
 	const warnings: string[] = [];
-	const enrollments = await loadEnrollments(leaseRef);
-	if (enrollments.length === 0) return { charges, warnings };
+	if ((await loadEnrollments(leaseRef)).length === 0) return { charges, warnings };
 	const today = businessToday(now);
+	await checkPendingCharges(leaseRef, await loadCharges(leaseRef), today, warnings);
 	const tried = new Set<string>();
 
-	for (let i = 0; i < enrollments.length; i++) {
+	for (;;) {
+		// Everything is read again before each charge: a tenant may turn autopay off or change the
+		// amount while the run is under way, and the previous charge changed what is owed.
 		const lease = (await leaseRef.get()).data() as LeaseDoc | undefined;
 		if (!lease) break;
-		const [records, existing] = await Promise.all([
+		const [records, existing, enrollments] = await Promise.all([
 			loadLedgerRecords(leaseRef),
-			loadCharges(leaseRef)
+			loadCharges(leaseRef),
+			loadEnrollments(leaseRef)
 		]);
 		const ledger = computeLedger({ lease, ...records, now });
 		const plan = planAutopay({
@@ -315,38 +375,65 @@ export async function chargeAutopay(
 			leaseId: leaseRef.id,
 			uid: next.uid,
 			cycleKey: plan.cycleKey,
-			attempt: next.attempt,
-			amountCents: next.amountCents,
-			feeCents,
+			attempt: claimed.attempts,
+			amountCents: claimed.amountCents,
+			feeCents: claimed.feeCents,
 			outcome: 'failed'
 		};
-		let resume = claimed.resume;
-		if (claimed.leftover) {
-			const settled = await settleLeftover(claimed.leftover);
+		let resume = claimed.resume ?? 0;
+		// A new invoice under new keys, for what is owed now (a crashed claim's amount may be stale).
+		const startOver = async () => {
+			resume += 1;
+			result.amountCents = next.amountCents;
+			result.feeCents = feeCents;
+			await ref.set(
+				{ resume, invoiceId: null, amountCents: next.amountCents, feeCents },
+				{ merge: true }
+			);
+		};
+		if (claimed.invoiceId) {
+			const settled = await settleLeftover(claimed.invoiceId);
 			if (settled !== 'start-over') {
 				await finish(ref, token, { state: settled, error: null });
 				charges.push({ ...result, outcome: settled });
 				continue;
 			}
-			resume += 1;
-			await ref.set({ resume, invoiceId: null }, { merge: true });
+			await startOver();
+		} else if (claimed.amountCents !== next.amountCents) {
+			// Continuing under the same keys needs the same request; the amount owed has changed.
+			await startOver();
 		}
 
-		const paid = await payInvoice({
+		const attempt = (): Attempt => ({
 			leaseId: leaseRef.id,
 			lease,
 			ledger,
-			cycleKey: plan.cycleKey,
+			cycleKey: plan.cycleKey!,
 			enrollment,
 			customer,
-			attempt: next.attempt,
+			attempt: result.attempt,
 			resume,
-			amountCents: next.amountCents,
-			feeCents,
+			amountCents: result.amountCents,
+			feeCents: result.feeCents,
 			chargeRef: ref
 		});
+		let paid;
+		try {
+			paid = await payInvoice(attempt());
+		} catch (err) {
+			// The same keys were used with a different request (a crash before the invoice id was
+			// saved, and the split changed since): start over under new keys.
+			if (!isIdempotencyError(err)) throw err;
+			await startOver();
+			paid = await payInvoice(attempt());
+		}
 		if (paid.outcome === 'declined') {
-			const update = failureUpdate(next.attempt, today, paid.error ?? 'Declined', next.amountCents);
+			const update = failureUpdate(
+				result.attempt,
+				today,
+				paid.error ?? 'Declined',
+				result.amountCents
+			);
 			await finish(ref, token, update);
 			charges.push({ ...result, outcome: update.state, error: paid.error });
 		} else {

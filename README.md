@@ -158,19 +158,13 @@ what has been recorded against it; nothing is written by a scheduled job.
 `POST /api/jobs/daily` (`src/lib/server/billingJob.ts`) runs once a day. Each run:
 
 1. Charges every late month that has no fee yet. A missed day is caught up on the next run.
-   <<<<<<< HEAD
 2. Charges autopay for leases with money due (see Autopay above).
 3. Emails each tenant on the lease a late-fee notice for every fee it charged, and each autopay
    tenant a notice when their charge fails or autopay gives up.
 4. Emails rent and deposit reminders 7 days before and on the due date, while the amount is unpaid.
-   A tenant with autopay gets one "autopay will charge" email 7 days before instead.
-   \=======
-5. Emails each tenant on the lease a late-fee notice for every fee it charged.
-6. Emails rent and deposit reminders 7 days before and on the due date, while the amount is unpaid.
-   A tenant gets one reminder email per lease per day, listing everything due; late-fee notices
-   are separate emails.
-
-> > > > > > > origin/develop
+   A tenant gets one reminder email per lease per day, listing everything due; late-fee and autopay
+   notices are separate emails. A tenant with autopay gets one "autopay will charge" email 7 days
+   before instead of the reminders.
 
 It sends every email once (records in `leases/{id}/notices`). Only one run proceeds at a time (lock
 in `_jobs/daily`). Each run appends a summary to `_jobs/daily/runs/{YYYY-MM-DD}`: the fees charged,

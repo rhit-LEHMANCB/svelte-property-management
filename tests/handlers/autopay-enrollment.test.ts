@@ -438,3 +438,64 @@ describe('autopay: Admin visibility', () => {
 		expect(lease.autopayStatus).toBeNull();
 	});
 });
+
+describe('autopay: review fixes (enrollment input)', () => {
+	it('an older setup session completed later does not undo a newer enrollment or amount', async () => {
+		setupLease();
+		// Session B (new card) was completed, then the amount was changed after both sessions.
+		db.seed('leases/lease-1/autopay/t1', {
+			paymentMethodId: 'pm_new',
+			type: 'card',
+			brand: 'visa',
+			last4: '9999',
+			amountCents: 20000,
+			enrolledAt: '2026-02-01T00:00:00.000Z',
+			setupSessionId: 'cs_test_b',
+			updatedAt: '2026-03-05T00:00:00.000Z'
+		});
+		// Session A was created before that.
+		services.stripe.checkout.sessions.retrieve.mockResolvedValue(
+			session({ id: 'cs_test_a', created: Date.parse('2026-03-01T00:00:00Z') / 1000 })
+		);
+		const result = await finish('t1', 'cs_test_a');
+		expect(result.status).toBe(200);
+		expect(db.peek('leases/lease-1/autopay/t1')).toMatchObject({
+			paymentMethodId: 'pm_new',
+			amountCents: 20000
+		});
+
+		// A session created after the last change does replace the method.
+		services.stripe.checkout.sessions.retrieve.mockResolvedValue(
+			session({ id: 'cs_test_c', created: Date.parse('2026-03-06T00:00:00Z') / 1000 })
+		);
+		await finish('t1', 'cs_test_c');
+		expect(db.peek('leases/lease-1/autopay/t1')).toMatchObject({ paymentMethodId: 'pm_card_1' });
+	});
+
+	it('a lease id that is not a single path segment is 403, not a server error', async () => {
+		setupLease();
+		db.seed('leases/lease-1/autopay/t1', { amountCents: null });
+		for (const leaseId of ['a/b', 'lease-1/autopay/t1', '', 42, null]) {
+			expect((await start({ leaseId })).status).toBe(403);
+			const patch = await call(change, {
+				userID: 't1',
+				method: 'PATCH',
+				body: { leaseId, amount: 5 }
+			});
+			expect(patch.status).toBe(403);
+		}
+		expect(services.stripe.checkout.sessions.create).not.toHaveBeenCalled();
+	});
+
+	it('a body that is not JSON gets the usual 403 or 400, not a server error', async () => {
+		setupLease();
+		const raw = (handler: typeof setup | typeof complete) =>
+			call(handler, {
+				userID: 't1',
+				rawBody: 'not json',
+				headers: { 'content-type': 'text/plain' }
+			});
+		expect((await raw(setup)).status).toBe(403);
+		expect((await raw(complete)).status).toBe(400);
+	});
+});
