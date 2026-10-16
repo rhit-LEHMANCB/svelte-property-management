@@ -34,19 +34,29 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		uid,
 		amountCents: amountCents === null ? '' : String(amountCents)
 	};
-	const params = {
-		mode: 'setup',
-		customer: userData.stripeID,
-		currency: 'usd',
-		// The pinned API version (see stripe.ts) takes `payment_method_types`; the SDK's types follow
-		// the newest version, which dropped it, hence the cast.
-		payment_method_types: ['card', 'us_bank_account'],
-		metadata,
-		setup_intent_data: { metadata },
-		success_url: `${PUBLIC_FRONTEND_URL}/payment?autopay_session={CHECKOUT_SESSION_ID}`,
-		cancel_url: `${PUBLIC_FRONTEND_URL}/payment`
-	} as Stripe.Checkout.SessionCreateParams;
-	const session = await stripe.checkout.sessions.create(params);
+	const params = (types: string[]) =>
+		({
+			mode: 'setup',
+			customer: userData.stripeID,
+			currency: 'usd',
+			// The pinned API version (see stripe.ts) takes `payment_method_types`; the SDK's types follow
+			// the newest version, which dropped it, hence the cast.
+			payment_method_types: types,
+			metadata,
+			setup_intent_data: { metadata },
+			success_url: `${PUBLIC_FRONTEND_URL}/payment?autopay_session={CHECKOUT_SESSION_ID}`,
+			cancel_url: `${PUBLIC_FRONTEND_URL}/payment`
+		}) as Stripe.Checkout.SessionCreateParams;
+	let session: Stripe.Checkout.Session;
+	try {
+		session = await stripe.checkout.sessions.create(params(['card', 'us_bank_account']));
+	} catch (err) {
+		// An account without ACH Direct Debit turned on refuses `us_bank_account`; cards still work.
+		const e = err as { param?: string; message?: string };
+		if (e?.param !== 'payment_method_types' && !/us_bank_account/.test(e?.message ?? '')) throw err;
+		console.warn('ACH Direct Debit is not enabled in Stripe; autopay setup offers cards only.');
+		session = await stripe.checkout.sessions.create(params(['card']));
+	}
 
 	if (!session.url) throw error(500, 'Failed to create the autopay setup session');
 	return json({ url: session.url });

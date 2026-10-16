@@ -65,6 +65,27 @@ describe('autopay: Save a payment method and enroll', () => {
 		});
 	});
 
+	it('an account without ACH Direct Debit gets a card-only setup; other errors are not retried', async () => {
+		setupLease();
+		services.stripe.checkout.sessions.create.mockRejectedValueOnce(
+			Object.assign(new Error('The payment method type "us_bank_account" is invalid.'), {
+				param: 'payment_method_types'
+			})
+		);
+		const result = await start({ leaseId: 'lease-1' });
+		expect(result.status).toBe(200);
+		const calls = services.stripe.checkout.sessions.create.mock.calls;
+		expect(calls.map(([args]) => args.payment_method_types)).toEqual([
+			['card', 'us_bank_account'],
+			['card']
+		]);
+
+		services.stripe.checkout.sessions.create.mockReset();
+		services.stripe.checkout.sessions.create.mockRejectedValueOnce(new Error('Stripe is down'));
+		await expect(start({ leaseId: 'lease-1' })).rejects.toThrow('Stripe is down');
+		expect(services.stripe.checkout.sessions.create).toHaveBeenCalledOnce();
+	});
+
 	it('no amount means the full balance', async () => {
 		setupLease();
 		await start({ leaseId: 'lease-1' });

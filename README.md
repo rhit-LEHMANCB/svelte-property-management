@@ -143,14 +143,26 @@ what has been recorded against it; nothing is written by a scheduled job.
 - **Paying**: one amount is applied to late fees, then the deposit, then the oldest rent. Checkout
   shows a line per part and the invoice metadata carries `lateFeeCents`, `depositCents`,
   `rentCents` and `feeCents`; the webhook recomputes the split when it records the payment.
+- **Fees**: card payments (Checkout and autopay) add 2.9% + $0.30 (`cardFeeCents` in
+  `src/lib/server/autopay.ts`); autopay from a bank account (ACH) has no fee.
+- **Autopay**: each tenant on a lease can save a card or bank account and enroll with an optional
+  amount cap (`leases/{id}/autopay/{uid}`). The daily job charges enrolled tenants in enrollment
+  order when money is due, never more than is owed, and keeps one record per due date and tenant in
+  `leases/{id}/autopay_charges/{dueDate}_{uid}` (`claimed`, `pending`, `succeeded`, `failed`,
+  `gave-up`). A declined charge moves to the next tenant and is retried on the next 3 daily runs.
+  While a charge is `pending` (ACH settling), the lease is not charged late fees. Stripe dashboard
+  steps are in [docs/stripe-setup.md](docs/stripe-setup.md#autopay).
 
 ### Daily billing job
 
 `POST /api/jobs/daily` (`src/lib/server/billingJob.ts`) runs once a day. Each run:
 
 1. Charges every late month that has no fee yet. A missed day is caught up on the next run.
-2. Emails each tenant on the lease a late-fee notice for every fee it charged.
-3. Emails rent and deposit reminders 7 days before and on the due date, while the amount is unpaid.
+2. Charges autopay for leases with money due (see Autopay above).
+3. Emails each tenant on the lease a late-fee notice for every fee it charged, and each autopay
+   tenant a notice when their charge fails or autopay gives up.
+4. Emails rent and deposit reminders 7 days before and on the due date, while the amount is unpaid.
+   A tenant with autopay gets one "autopay will charge" email 7 days before instead.
 
 It sends every email once (records in `leases/{id}/notices`). Only one run proceeds at a time (lock
 in `_jobs/daily`). Each run appends a summary to `_jobs/daily/runs/{YYYY-MM-DD}`: the fees charged,

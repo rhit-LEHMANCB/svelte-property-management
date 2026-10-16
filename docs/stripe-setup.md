@@ -12,7 +12,8 @@ environment in GitHub (`develop` and `production` environments) and in `.env` fo
 | Production    | the production project | live-mode key (`sk_live_` / `rk_live_`) once live mode is active | `<production domain>/api/stripe/webhook`               |
 
 `STRIPE_ENDPOINT_SECRET` is the signing secret (`whsec_...`) of the webhook endpoint in the same
-Stripe account and mode as the key. Listen for `invoice.payment_succeeded`.
+Stripe account and mode as the key. Listen for `invoice.payment_succeeded` and
+`invoice.payment_failed` (autopay bank payments that fail to settle).
 
 ## What the app enforces at startup
 
@@ -30,9 +31,12 @@ Until now dev and production shared one test account, so dev and production paym
 1. In the Stripe dashboard, create a new sandbox account (Account menu, then Create sandbox).
 2. In the sandbox, create a secret or restricted key; add it as `STRIPE_API_KEY` in the `develop`
    GitHub environment.
-3. Add a webhook endpoint for the dev URL above (event `invoice.payment_succeeded`); add its signing
-   secret as `STRIPE_ENDPOINT_SECRET` in the `develop` environment.
-4. Customers are per Stripe account. Dev users need `stripeID` values (`cus_...`) created in the
+3. Add a webhook endpoint for the dev URL above (events `invoice.payment_succeeded` and
+   `invoice.payment_failed`); add its signing secret as `STRIPE_ENDPOINT_SECRET` in the `develop`
+   environment.
+4. Turn on **ACH Direct Debit** (Settings, Payment methods) so tenants can save a bank account for
+   autopay. Cards work without any setting.
+5. Customers are per Stripe account. Dev users need `stripeID` values (`cus_...`) created in the
    sandbox; production users' ids from the old shared test account do not exist there.
 
 ## Activate the account for live mode
@@ -45,4 +49,22 @@ bank account in the dashboard). Then:
    redeploy. The startup warning stops once the key is live.
 3. Customer ids created in test mode do not exist in live mode. Create live customers and replace
    each user's `stripeID` in Firestore before anyone pays.
-4. Make one small real payment and confirm it appears in `payment_history`.
+4. Turn on **ACH Direct Debit** in the live account, and make sure the live webhook endpoint
+   listens for `invoice.payment_failed` as well as `invoice.payment_succeeded`.
+5. Make one small real payment and confirm it appears in `payment_history`.
+
+## Autopay
+
+Tenants turn on autopay on `/payment`. Saving the payment method is a Stripe Checkout session in
+setup mode (card or `us_bank_account`); card and bank details never reach the app. The daily
+billing job then charges enrolled tenants with an off-session invoice that carries the same metadata
+as a Checkout payment, so the webhook records it the same way.
+
+Two dashboard settings are needed in each account (dev sandbox and live), and nothing else:
+
+- **ACH Direct Debit** turned on. Without it, setup offers cards only.
+- The webhook endpoint subscribed to **`invoice.payment_failed`**. Without it, a bank payment that
+  fails days later stays "pending" (and holds off late fees) until someone looks.
+
+In test mode, use card `4242 4242 4242 4242` (works), `4000 0000 0000 0341` (saves, then declines)
+and the test bank account Stripe offers in the setup page.
