@@ -658,7 +658,8 @@ describe('rent-payments: balance and due date (/payment load)', () => {
 				balanceCents: 100000,
 				dueDate: monthStart(),
 				owed: { lateFeesCents: 0, depositCents: 0, rentCents: 100000 },
-				creditCents: 0
+				creditCents: 0,
+				autopay: { enrollment: null, charge: null }
 			}
 		]);
 	});

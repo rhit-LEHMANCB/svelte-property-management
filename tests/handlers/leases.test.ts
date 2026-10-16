@@ -858,7 +858,9 @@ describe('leases: Admin lease list (property edit page)', () => {
 				status: 'current',
 				tenants: [{ id: 'tenant-1', name: 'Tom Tenant', email: 'tenant-1@example.com' }],
 				hasDocument: false,
-				billing: expect.objectContaining({ creditCents: 0, lateFees: [] })
+				billing: expect.objectContaining({ creditCents: 0, lateFees: [] }),
+				autopay: [],
+				autopayStatus: null
 			},
 			expect.objectContaining({ id: 'ended', status: 'ended', rent: 1000 })
 		]);
