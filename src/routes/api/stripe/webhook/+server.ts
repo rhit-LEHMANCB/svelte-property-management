@@ -16,6 +16,32 @@ import {
 } from '$lib/server/billing';
 import { businessToday, leaseStatus, type LeaseDoc } from '$lib/server/leaseDates';
 import { leasesOfTenant } from '$lib/server/leases';
+import { chargeId, type ChargeRecord } from '$lib/server/autopay';
+import { declineReason, failPendingCharge } from '$lib/server/autopayCharge';
+import { chargesRef } from '$lib/server/autopayStore';
+
+/**
+ * The autopay charge record an invoice was made for, or undefined for any other invoice (Checkout,
+ * or created before autopay existed).
+ */
+function autopayChargeRef(invoice: Stripe.Invoice, leaseId: string) {
+	const { autopay, cycleKey, uid } = invoice.metadata ?? {};
+	if (autopay !== 'true' || !cycleKey || !uid) return undefined;
+	return chargesRef(adminDB.collection('leases').doc(leaseId)).doc(chargeId(cycleKey, uid));
+}
+
+/**
+ * Why an autopay invoice's payment failed, from its payment intent (the event's invoice carries only
+ * the intent's id). The tenant's failure email quotes it.
+ */
+async function failureReason(invoiceId: string | undefined) {
+	if (!invoiceId) return 'The payment did not go through';
+	try {
+		return declineReason(await stripe.invoices.retrieve(invoiceId, { expand: ['payment_intent'] }));
+	} catch {
+		return 'The payment did not go through';
+	}
+}
 
 const wholeCents = (value: string | undefined) =>
 	value !== undefined && /^\d+$/.test(value) ? Number(value) : undefined;
@@ -139,6 +165,11 @@ export const POST: RequestHandler = async ({ request }) => {
 					if (!lease) {
 						return 'unknown-lease';
 					}
+					// An autopay charge is marked succeeded in the same commit that records its payment.
+					const chargeRef = autopayChargeRef(invoice, leaseId);
+					const charge = chargeRef
+						? ((await tx.get(chargeRef)).data() as ChargeRecord | undefined)
+						: undefined;
 
 					// The payment goes to late fees, then the deposit, then the oldest unpaid rent, against
 					// what the lease owed when the invoice was created.
@@ -222,6 +253,13 @@ export const POST: RequestHandler = async ({ request }) => {
 					if (recordedRef) {
 						tx.set(recordedRef, { recordedAt: eventDate });
 					}
+					if (chargeRef && charge && (!charge.invoiceId || charge.invoiceId === invoice.id)) {
+						tx.set(
+							chargeRef,
+							{ state: 'succeeded', recordedAt: new Date().toISOString(), error: null },
+							{ merge: true }
+						);
+					}
 					return 'recorded';
 				});
 
@@ -238,7 +276,37 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 			break;
 		}
-		// ... handle other event types
+		case 'invoice.payment_failed': {
+			// An autopay charge that failed: usually ACH that did not settle. Checkout invoices never get
+			// here unpaid.
+			const invoice = event.data.object;
+			const leaseId = invoice.metadata?.leaseID;
+			const chargeRef = leaseId ? autopayChargeRef(invoice, leaseId) : undefined;
+			if (!chargeRef) {
+				console.log('Not an autopay invoice; ignoring payment failure');
+				break;
+			}
+			const reason = await failureReason(invoice.id);
+			const day = businessToday(new Date(event.created * 1000));
+			try {
+				// A pending charge for this invoice, or one the job is still making (the event can beat
+				// the job's own record of the decline). A redelivery, or a charge already settled,
+				// changes nothing.
+				const failed = invoice.id
+					? await failPendingCharge(chargeRef, invoice.id, day, reason)
+					: false;
+				// The tenant is emailed by the next daily run, which also retries the charge.
+				if (failed && invoice.id && invoice.status === 'open') {
+					await stripe.invoices.voidInvoice(invoice.id).catch((err) => {
+						console.error(`Could not void failed autopay invoice ${invoice.id}: ${err?.message}`);
+					});
+				}
+			} catch (err) {
+				console.log(err instanceof Error ? err.message : err);
+				throw error(500, 'Failed to record the payment failure');
+			}
+			break;
+		}
 		default: {
 			console.log(`Unhandled event type ${event.type}`);
 		}

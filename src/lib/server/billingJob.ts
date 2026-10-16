@@ -10,8 +10,22 @@ import {
 	type LateFeeRecord,
 	type Ledger
 } from './billing';
+import {
+	MAX_ATTEMPTS,
+	autopayFeeCents,
+	inFlightCents,
+	methodLabel,
+	projectedSplit,
+	type ChargeRecord,
+	type Enrollment
+} from './autopay';
+import { chargeAutopay, hasPendingCharge, type AutopayCharge } from './autopayCharge';
+import { loadCharges, loadEnrollments } from './autopayStore';
 import { sendEmail } from './email';
 import {
+	renderAutopayFailedEmail,
+	renderAutopayGaveUpEmail,
+	renderAutopayNoticeEmail,
 	renderDueReminderEmail,
 	renderLateFeeEmail,
 	type EmailContent,
@@ -21,9 +35,11 @@ import { businessToday, leaseStatus, type LeaseDoc } from './leaseDates';
 import { propertyAddress } from './leases';
 
 /**
- * The daily billing job: charges late fees for months that became late, emails a notice for each
- * fee charged, and emails due-date reminders 7 days before and on the due date. It is safe to run
- * again: fees are created only when missing, and every email is recorded once sent.
+ * The daily billing job: charges late fees for months that became late, charges autopay for leases
+ * with money due, emails a notice for each fee charged and each autopay failure, and emails due-date
+ * reminders 7 days before and on the due date (autopay tenants get one autopay notice instead). It
+ * is safe to run again: fees are created only when missing, autopay charges are claimed once per
+ * due date, tenant and attempt, and every email is recorded once sent.
  */
 
 const LOCK_MINUTES = 10;
@@ -40,6 +56,7 @@ export type JobSummary = {
 	runBy: string;
 	leases: number;
 	feesCharged: ChargedFee[];
+	autopayCharges: AutopayCharge[];
 	emailsSent: { leaseId: string; notice: string; to: string }[];
 	errors: string[];
 	/** Things a retry cannot fix (a tenant with no email address); they do not fail the run. */
@@ -102,7 +119,10 @@ async function chargeLateFees(
 		const before = computeLedger({ lease, ...records, now });
 		const charged: ChargedFee[] = [];
 		const lateFees = { ...records.lateFees };
-		for (const fee of before.unchargedLateFees) {
+		// While an autopay charge is settling (ACH takes days), the lease is not charged late fees. Once
+		// it settles, the payment is dated when the charge started; if it fails, fees resume next run.
+		const autopayPending = await hasPendingCharge(leaseRef, (query) => tx.get(query));
+		for (const fee of autopayPending ? [] : before.unchargedLateFees) {
 			const record: LateFeeRecord = {
 				amount: fee.amountCents / 100,
 				paid: 0,
@@ -121,18 +141,90 @@ async function chargeLateFees(
 
 type LateFeeNotice = { key: string; content: EmailContent };
 type Reminder = { key: string; item: ReminderItem };
-type Notices = { lateFees: LateFeeNotice[]; reminders: Reminder[] };
+/** An autopay email to one tenant: the 7-day notice, a failure or a give-up. */
+type AutopayNotice = { key: string; uid: string; content: EmailContent };
+type Notices = {
+	lateFees: LateFeeNotice[];
+	reminders: Reminder[];
+	autopay: AutopayNotice[];
+	/**
+	 * Tenants autopay will charge, who get the autopay notice instead of the reminders. A tenant with
+	 * autopay on whom earlier tenants' amounts leave nothing to pay keeps the usual reminders.
+	 */
+	enrolled: string[];
+};
+
+/** A lease's autopay state, for the notices. */
+type AutopayContext = { enrollments: Enrollment[]; charges: ChargeRecord[] };
 
 /** The emails a lease is due today, before removing those already sent. */
 function noticesFor(
 	lease: LeaseDoc,
 	ledger: Ledger,
 	address: string,
-	lateFeeRecords: Record<string, LateFeeRecord>
+	lateFeeRecords: Record<string, LateFeeRecord>,
+	autopay: AutopayContext
 ): Notices {
 	const link = `${PUBLIC_FRONTEND_URL}/payment`;
 	const today = ledger.today;
-	const notices: Notices = { lateFees: [], reminders: [] };
+	const enrollments = autopay.enrollments.filter((e) => lease.tenantIds.includes(e.uid));
+	// Each enrolled tenant's share of what is owed, after charges already on their way. A tenant
+	// with a share, or whose own charge is on its way, gets autopay notices instead of reminders.
+	const shares = projectedSplit(
+		Math.max(0, ledger.totalCents - inFlightCents(autopay.charges)),
+		enrollments
+	);
+	const charging = (uid: string) =>
+		autopay.charges.some(
+			(c) =>
+				c.uid === uid &&
+				(c.state === 'pending' ||
+					c.state === 'claimed' ||
+					(c.state === 'succeeded' && !c.recordedAt))
+		);
+	const notices: Notices = {
+		lateFees: [],
+		reminders: [],
+		autopay: [],
+		enrolled: enrollments
+			.filter((e) => (shares.get(e.uid) ?? 0) > 0 || charging(e.uid))
+			.map((e) => e.uid)
+	};
+	const recent = (day: string | null | undefined) =>
+		Boolean(day) && addDays(day!, NOTICE_RETRY_DAYS) >= today;
+
+	// Autopay failures and give-ups, to the tenant whose charge it was; retried for a few days.
+	for (const charge of autopay.charges) {
+		const enrollment = autopay.enrollments.find((e) => e.uid === charge.uid);
+		const method = enrollment ? methodLabel(enrollment) : 'saved payment method';
+		for (const failure of charge.failures ?? []) {
+			if (failure.attempt >= MAX_ATTEMPTS || !recent(failure.day)) continue;
+			notices.autopay.push({
+				key: `autopay-failed-${charge.cycleKey}-${failure.attempt}`,
+				uid: charge.uid,
+				content: renderAutopayFailedEmail({
+					address,
+					amountCents: failure.amountCents,
+					method,
+					reason: failure.error,
+					link
+				})
+			});
+		}
+		if (charge.state === 'gave-up' && recent(charge.gaveUpDay)) {
+			notices.autopay.push({
+				key: `autopay-gave-up-${charge.cycleKey}`,
+				uid: charge.uid,
+				content: renderAutopayGaveUpEmail({
+					address,
+					amountCents: charge.amountCents,
+					method,
+					reason: charge.error ?? 'the payment was declined',
+					link
+				})
+			});
+		}
+	}
 
 	// Late-fee notices, for fees the job charged; retried for a few days if sending failed.
 	for (const fee of ledger.lateFees) {
@@ -160,9 +252,14 @@ function noticesFor(
 			: addDays(dueDate, -PAYABLE_DAYS_BEFORE_DUE) === today
 				? '7d'
 				: undefined;
+	// Autopay tenants get one autopay notice 7 days before a due date instead of the reminders.
+	const autopayDue = new Map<string, string[]>();
+	const addAutopayDue = (dueDate: string, what: string) =>
+		autopayDue.set(dueDate, [...(autopayDue.get(dueDate) ?? []), what]);
 	for (const row of ledger.rent) {
 		const day = reminderDay(row.dueDate);
 		if (!day || row.owedCents <= 0) continue;
+		if (day === '7d') addAutopayDue(row.dueDate, `Rent for ${monthLabel(row.month)}`);
 		notices.reminders.push({
 			key: `rent-${day}-${row.month.key}`,
 			item: {
@@ -176,6 +273,7 @@ function noticesFor(
 	const deposit = ledger.deposit;
 	const depositDay = deposit.dueDate ? reminderDay(deposit.dueDate) : undefined;
 	if (depositDay && deposit.owedCents > 0) {
+		if (depositDay === '7d') addAutopayDue(deposit.dueDate!, 'Security deposit');
 		notices.reminders.push({
 			key: `deposit-${depositDay}-${deposit.dueDate}`,
 			item: {
@@ -185,6 +283,28 @@ function noticesFor(
 				dueToday: depositDay === 'due'
 			}
 		});
+	}
+	if (autopayDue.size > 0 && enrollments.length > 0) {
+		for (const [dueDate, what] of autopayDue) {
+			for (const enrollment of enrollments) {
+				const cents = shares.get(enrollment.uid) ?? 0;
+				if (cents <= 0) continue;
+				const feeCents = autopayFeeCents(enrollment.type, cents);
+				notices.autopay.push({
+					key: `autopay-7d-${dueDate}`,
+					uid: enrollment.uid,
+					content: renderAutopayNoticeEmail({
+						address,
+						what: what.join(' and '),
+						amountCents: cents + feeCents,
+						feeCents,
+						dueDate,
+						method: methodLabel(enrollment),
+						link
+					})
+				});
+			}
+		}
 	}
 	return notices;
 }
@@ -199,6 +319,7 @@ export async function runDailyJob(now = new Date(), runBy = 'scheduler'): Promis
 		runBy,
 		leases: 0,
 		feesCharged: [],
+		autopayCharges: [],
 		emailsSent: [],
 		errors: [],
 		warnings: []
@@ -211,7 +332,29 @@ export async function runDailyJob(now = new Date(), runBy = 'scheduler'): Promis
 				if (!result) continue;
 				summary.leases++;
 				summary.feesCharged.push(...result.charged);
-				await sendNotices(doc.ref, result, summary, now);
+				let ledger = result.ledger;
+				try {
+					const autopay = await chargeAutopay(doc.ref, now, token);
+					summary.autopayCharges.push(...autopay.charges);
+					summary.warnings.push(...autopay.warnings);
+					if (autopay.error) summary.errors.push(`lease ${doc.id}: autopay: ${autopay.error}`);
+					if (autopay.charges.length > 0) {
+						// Paid charges may be recorded already; reminders go by what is owed now.
+						const records = await loadLedgerRecords(doc.ref);
+						ledger = computeLedger({ lease: result.lease, ...records, now });
+					}
+				} catch (err) {
+					// Declines are not errors; this is Stripe or Firestore failing. The claim is continued
+					// by a later run, and the lease's notices still go out.
+					summary.errors.push(
+						`lease ${doc.id}: autopay: ${err instanceof Error ? err.message : String(err)}`
+					);
+				}
+				const [enrollments, charges] = await Promise.all([
+					loadEnrollments(doc.ref),
+					loadCharges(doc.ref)
+				]);
+				await sendNotices(doc.ref, { ...result, ledger }, { enrollments, charges }, summary, now);
 			} catch (err) {
 				summary.errors.push(`lease ${doc.id}: ${err instanceof Error ? err.message : String(err)}`);
 			}
@@ -247,14 +390,15 @@ const isStaleClaim = (data: { sentAt?: string; claimedAt?: string }, now: Date) 
 async function sendNotices(
 	leaseRef: DocumentReference,
 	charged: { lease: LeaseDoc; ledger: Ledger; lateFees: Record<string, LateFeeRecord> },
+	autopay: AutopayContext,
 	summary: JobSummary,
 	now: Date
 ) {
 	const { lease, ledger } = charged;
 	// Which notices are due does not depend on the address, so the reads below happen only when
 	// there is something to send.
-	const due = noticesFor(lease, ledger, '', charged.lateFees);
-	if (due.lateFees.length === 0 && due.reminders.length === 0) return;
+	const due = noticesFor(lease, ledger, '', charged.lateFees, autopay);
+	if (due.lateFees.length === 0 && due.reminders.length === 0 && due.autopay.length === 0) return;
 	const [leaseNow, property, sentDocs] = await Promise.all([
 		leaseRef.get(),
 		adminDB.collection('properties').doc(lease.propertyId).get(),
@@ -263,7 +407,7 @@ async function sendNotices(
 	// The lease may have been deleted since its fees were charged.
 	if (!leaseNow.exists) return;
 	const address = propertyAddress(property.data());
-	const notices = noticesFor(lease, ledger, address, charged.lateFees);
+	const notices = noticesFor(lease, ledger, address, charged.lateFees, autopay);
 	const link = `${PUBLIC_FRONTEND_URL}/payment`;
 
 	const sent = new Set(
@@ -335,6 +479,10 @@ async function sendNotices(
 		for (const notice of notices.lateFees) {
 			await sendOnce(to, [notice], () => notice.content);
 		}
+		for (const notice of notices.autopay.filter((n) => n.uid === tenant.uid)) {
+			await sendOnce(to, [notice], () => notice.content);
+		}
+		if (notices.enrolled.includes(tenant.uid)) continue;
 		await sendOnce(to, notices.reminders, (claimed) =>
 			renderDueReminderEmail({ address, items: claimed.map((r) => r.item), link })
 		);

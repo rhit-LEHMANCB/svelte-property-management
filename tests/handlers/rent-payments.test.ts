@@ -92,6 +92,10 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 		expect(rent.price_data.unit_amount).toBe(100000);
 		expect(rent.price_data.currency).toBe('usd');
 		expect(fee.price_data.product_data.name).toBe('Transaction Fee');
+		// autopay: the fee line no longer says that auto-pay waives it.
+		expect(fee.price_data.product_data.description).toBe(
+			'Transaction fee for one-time card payment.'
+		);
 		// $1000 * 2.9% + $0.30 = $29.30
 		expect(fee.price_data.unit_amount).toBe(2930);
 		expect(session.invoice_creation.invoice_data.metadata).toEqual({
@@ -654,7 +658,8 @@ describe('rent-payments: balance and due date (/payment load)', () => {
 				balanceCents: 100000,
 				dueDate: monthStart(),
 				owed: { lateFeesCents: 0, depositCents: 0, rentCents: 100000 },
-				creditCents: 0
+				creditCents: 0,
+				autopay: { enrollment: null, charge: null }
 			}
 		]);
 	});

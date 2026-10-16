@@ -14,6 +14,8 @@ import {
 import { createTenantAccount, type CreatedAccount } from './users';
 import { depositRef, loadLeaseLedger } from './balance';
 import { toCents, type DepositLedger, type Ledger } from './billing';
+import { methodLabel } from './autopay';
+import { latestOpenCharge, loadCharges, loadEnrollments } from './autopayStore';
 import type {
 	EmailProblem,
 	LeaseBilling,
@@ -114,11 +116,34 @@ export async function listPropertyLeases(
 	return Promise.all(
 		snapshot.docs.map(async (doc) => {
 			const lease = doc.data() as LeaseDoc;
-			const [summary, ledger] = await Promise.all([
+			const [summary, ledger, enrollments, charges] = await Promise.all([
 				summarizeLease(doc.id, lease, today),
-				loadLeaseLedger(doc.id, lease, now)
+				loadLeaseLedger(doc.id, lease, now),
+				loadEnrollments(doc.ref),
+				loadCharges(doc.ref)
 			]);
-			return { ...summary, billing: leaseBilling(ledger) };
+			const nameOf = (uid: string) =>
+				summary.tenants.find((t) => t.id === uid)?.name || 'A former tenant';
+			const status = latestOpenCharge(charges, { owedCents: ledger.totalCents });
+			return {
+				...summary,
+				billing: leaseBilling(ledger),
+				autopay: enrollments
+					.filter((e) => lease.tenantIds.includes(e.uid))
+					.map((e) => ({
+						tenantId: e.uid,
+						name: nameOf(e.uid),
+						method: methodLabel(e),
+						amountCents: e.amountCents
+					})),
+				autopayStatus: status && {
+					state: status.state,
+					name: nameOf(status.uid),
+					day: status.day,
+					amountCents: status.amountCents,
+					attempts: status.attempts
+				}
+			};
 		})
 	);
 }

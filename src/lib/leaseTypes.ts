@@ -58,6 +58,27 @@ export type LeaseSummary = {
 	tenants: TenantSummary[];
 	hasDocument: boolean;
 	billing?: LeaseBilling;
+	/** Tenants with autopay on, for the admin lease list (read-only). */
+	autopay?: AutopaySummary[];
+	/** The latest autopay charge that is processing or failed, if any. */
+	autopayStatus?: AutopayStatus | null;
+};
+
+export type AutopaySummary = {
+	tenantId: string;
+	name: string;
+	/** `Visa ending 4242` */
+	method: string;
+	/** Null for the full balance. */
+	amountCents: number | null;
+};
+
+export type AutopayStatus = {
+	state: 'claimed' | 'pending' | 'failed' | 'gave-up';
+	name: string;
+	day: string;
+	amountCents: number;
+	attempts: number;
 };
 
 /** A lease as its tenant sees it on the dashboard and payment page. */

@@ -178,3 +178,77 @@ Pay online: ${link}
 Lehman Family LLC`
 	};
 };
+
+/** An autopay charge coming up on a due date, sent 7 days before instead of the usual reminders. */
+export type AutopayNotice = {
+	address: string;
+	/** What the charge pays for: `Rent for November 2026`, `Security deposit`, or both. */
+	what: string;
+	/** What will be charged, including any transaction fee. */
+	amountCents: number;
+	feeCents: number;
+	dueDate: string;
+	/** `Visa ending 4242` */
+	method: string;
+	link: string;
+};
+
+export const renderAutopayNoticeEmail = (notice: AutopayNotice): EmailContent => {
+	const subject = `Autopay will charge ${money(notice.amountCents)} on ${longDate(notice.dueDate)}`;
+	const fee =
+		notice.feeCents > 0 ? `, including a ${money(notice.feeCents)} card transaction fee` : '';
+	const intro = `${notice.what} for your lease at ${notice.address} is due on ${longDate(notice.dueDate)}. Autopay will charge ${money(notice.amountCents)} to your ${notice.method}${fee} on that day. You do not need to do anything; to change the amount or turn autopay off, visit the payment page.`;
+	return {
+		subject,
+		html: layout(subject, intro, 'Manage autopay', notice.link),
+		text: `${subject}
+
+${intro}
+
+Manage autopay: ${notice.link}
+
+Lehman Family LLC`
+	};
+};
+
+/** An autopay charge that did not go through and will be tried again. */
+export type AutopayFailure = {
+	address: string;
+	amountCents: number;
+	method: string;
+	reason: string;
+	link: string;
+};
+
+export const renderAutopayFailedEmail = (failure: AutopayFailure): EmailContent => {
+	const subject = 'Your autopay payment did not go through';
+	const intro = `Autopay could not charge ${money(failure.amountCents)} to your ${failure.method} for your lease at ${failure.address}: ${failure.reason}. We will try again tomorrow. To avoid a late fee, you can also pay on the payment page or update your payment method there.`;
+	return {
+		subject,
+		html: layout(subject, intro, 'Make a payment', failure.link),
+		text: `${subject}
+
+${intro}
+
+Pay online: ${failure.link}
+
+Lehman Family LLC`
+	};
+};
+
+/** Autopay tried the most times it will for a due date and stopped. */
+export const renderAutopayGaveUpEmail = (failure: AutopayFailure): EmailContent => {
+	const subject = 'Autopay stopped for this payment';
+	const intro = `Autopay tried several times and could not charge ${money(failure.amountCents)} to your ${failure.method} for your lease at ${failure.address} (last error: ${failure.reason}). It will not try again for this payment, so please pay on the payment page. Autopay stays on for your next due date.`;
+	return {
+		subject,
+		html: layout(subject, intro, 'Make a payment', failure.link),
+		text: `${subject}
+
+${intro}
+
+Pay online: ${failure.link}
+
+Lehman Family LLC`
+	};
+};

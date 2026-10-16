@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+	renderAutopayFailedEmail,
+	renderAutopayGaveUpEmail,
+	renderAutopayNoticeEmail,
 	renderDueReminderEmail,
 	renderLateFeeEmail,
 	renderPasswordResetEmail,
@@ -144,5 +147,54 @@ describe('billing-jobs: email templates', () => {
 		expect(email.html).not.toContain('<b>1 Main</b>');
 		expect(email.html).toContain('&lt;b&gt;1 Main&lt;/b&gt;');
 		expect(email.html).toContain('&lt;i&gt;x&lt;/i&gt;');
+	});
+});
+
+describe('autopay: email templates', () => {
+	const failure = {
+		address: '1 Main St <b>',
+		amountCents: 100000,
+		method: 'Visa ending 4242',
+		reason: 'Your card was declined.',
+		link: 'https://example.test/payment'
+	};
+
+	it('the 7-day notice names the amount, date, method and fee, signed Lehman Family LLC', () => {
+		const email = renderAutopayNoticeEmail({
+			address: '1 Main St',
+			what: 'Rent for November 2026',
+			amountCents: 102930,
+			feeCents: 2930,
+			dueDate: '2026-11-01',
+			method: 'Visa ending 4242',
+			link: 'https://example.test/payment'
+		});
+		expect(email.subject).toBe('Autopay will charge $1,029.30 on November 1, 2026');
+		expect(email.text).toContain('Visa ending 4242, including a $29.30 card transaction fee');
+		expect(email.text).toContain('Lehman Family LLC');
+		const bank = renderAutopayNoticeEmail({
+			address: '1 Main St',
+			what: 'Security deposit',
+			amountCents: 50000,
+			feeCents: 0,
+			dueDate: '2026-11-01',
+			method: 'Bank account ending 6789',
+			link: 'https://example.test/payment'
+		});
+		expect(bank.text).not.toContain('transaction fee');
+	});
+
+	it('failure and give-up emails say what happens next, with the HTML escaped', () => {
+		const failed = renderAutopayFailedEmail(failure);
+		expect(failed.subject).toBe('Your autopay payment did not go through');
+		expect(failed.text).toContain('We will try again tomorrow');
+		expect(failed.html).toContain('1 Main St &lt;b&gt;');
+		expect(failed.html).not.toContain('<b>');
+
+		const gaveUp = renderAutopayGaveUpEmail(failure);
+		expect(gaveUp.subject).toBe('Autopay stopped for this payment');
+		expect(gaveUp.text).toContain('please pay on the payment page');
+		expect(gaveUp.text).toContain('Autopay stays on for your next due date');
+		expect(gaveUp.html).not.toContain('<b>');
 	});
 });
