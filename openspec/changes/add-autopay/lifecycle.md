@@ -1,9 +1,9 @@
 # Lifecycle: add-autopay
 
 - Branch: `autopay-uopafj` (designated branch of the cloud session; `autopay` holds the same proposal commit)
-- Stage: 5 Ship to develop (waiting on PR checks)
+- Stage: 7 Production PR (Gate B: waiting on the human)
 - Review round: 2 of 5
-- QA cycle: 0 of 3
+- QA cycle: 1 of 3
 - Started: 2026-10-15
 
 ## Interview summary
@@ -81,13 +81,52 @@ Stage 3 done 2026-10-16: all tasks implemented; `npm run lint`, `npm run check`,
 - Round 2 (2026-10-16): 0 blockers, 0 majors, 7 minors, 1 nit; all fixed, none rejected: an old setup link no longer re-enables autopay after it was turned off (`autopay_off/{uid}` tombstone, 409); re-enrollment compares against `methodUpdatedAt`, not the amount change; pending charges are checked with Stripe even with no enrollments; charges made before an unexpected error stay in the run summary; the webhook stores Stripe's failure reason; amounts capped at $999,999.99; one share rule decides both the autopay notice and who skips reminders; a failed charge stops showing once nothing is owed. No blockers or majors: review loop exits after round 2.
 
 ## Out-of-scope observations
-(only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)
+- low: `/payment` does not list a tenant's ended lease with a zero balance, so autopay cannot be set up on it. Intended (nothing to pay); no issue needed.
+- low: one-time Checkout offers Cash App Pay: Stripe account configuration, not this change.
 
 ## QA report
-(filled in stage 6; link to the QA evidence branch)
+- Deployed commit: `0946caf` on `develop` (dev site: https://lehman-realty-dev.web.app); deploy run 38850360461 succeeded.
+- QA cycle: 1 of 3, run 2026-10-16 by an independent agent (Playwright `qa` project, specs in `tests/qa/add-autopay/`).
+- Result: **PASS**. 17 tests in 3 spec files, 0 failures. One earlier run timed out signing in as admin (transient) and passed on rerun.
+- Evidence: branch [`qa-evidence/add-autopay`](https://github.com/rhit-LEHMANCB/svelte-property-management/tree/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots). One screenshot showed the QA tenant's email on Stripe's page and was masked before pushing.
+- Cleanup: autopay is off again for the QA tenant (enrolled on the QA lease "payments QA Way" only during the run). The daily job was not run on dev, and Firestore was not written directly.
+- ACH Direct Debit is on in the dev Stripe sandbox (Checkout setup offers a US bank account).
+
+| Capability | Scenario | Result | Evidence |
+|---|---|---|---|
+| autopay | Start setup (setup-mode Checkout, card and bank offered) [tenant] | pass | ![autopay-start-setup-stripe-page](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-start-setup-stripe-page.png) |
+| autopay | Not the tenant's lease or bad amount: 403 / 400 [tenant] | pass | ![autopay-setup-validation-errors](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-setup-validation-errors.png) |
+| autopay | Complete enrollment: Visa ending 4242, $100.50 [tenant] | pass | ![autopay-controls-enrolled](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-controls-enrolled.png) |
+| autopay | Someone else's or unfinished session: 400 [tenant] | pass | ![autopay-complete-unfinished-session](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-complete-unfinished-session.png) |
+| autopay | Completing twice: 200, display unchanged (enrollment time not visible: partial) [tenant] | pass | ![autopay-complete-twice](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-complete-twice.png) |
+| autopay | Payment method details stay server-side: no `pm_` anywhere [tenant, admin] | pass | ![autopay-no-payment-method-id](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-no-payment-method-id.png) |
+| autopay | Change amount: $100.50 to $250.25, blank to Full balance, -1 is 400 [tenant] | pass | ![autopay-change-amount](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-change-amount.png) |
+| autopay | Turn off: enrollment removed, Set up autopay returns [tenant] | pass | ![autopay-turn-off](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-turn-off.png) |
+| autopay | Only your own: 404 without enrollment, 403 on another lease [tenant] | pass | ![autopay-change-only-your-own](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-change-only-your-own.png) |
+| autopay | Tenant controls, not enrolled [tenant] | pass | ![autopay-controls-not-enrolled](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-controls-not-enrolled.png) |
+| autopay | Checkout copy: fee line says 'Transaction fee for one-time card payment.' [tenant] | pass | ![autopay-checkout-fee-line](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-checkout-fee-line.png) |
+| autopay | Admin lease list: 'Autopay: New User, Visa ending 4242, full balance' [admin] | pass | ![autopay-admin-lease-list](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-admin-lease-list.png) |
+| autopay | Admin read-only: no controls; setup/PATCH/DELETE as admin 403 [admin] | pass | ![autopay-admin-read-only-api](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-admin-read-only-api.png) |
+| autopay | Access, not signed in: all autopay routes 401 [anonymous] | pass | ![autopay-access-not-signed-in](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-access-not-signed-in.png) |
+| autopay | Regression: tenant pages load without errors [tenant] | pass | ![autopay-regression-tenant-home](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-regression-tenant-home.png) |
+| autopay | Regression: admin pages load without errors [admin] | pass | ![autopay-regression-admin-home](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-regression-admin-home.png) |
+| autopay | Regression: signed-out /payment redirects to /signin [anonymous] | pass | ![autopay-regression-signed-out](https://github.com/rhit-LEHMANCB/svelte-property-management/raw/qa-evidence/add-autopay/openspec/changes/add-autopay/qa/screenshots/autopay-regression-signed-out.png) |
+| autopay | Pending, failed or gave-up charge notes on /payment and admin | not covered | needs a job run |
+| autopay | Another tenant's data on /payment | not covered | one tenant account |
+
+**Not covered by automation on the dev site:** everything that needs the daily job or a Stripe webhook. That is the charge itself (due date, caps, never above balance, early rent, ended lease, $0.50 minimum, one lease failing), the fee on a real autopay invoice, idempotency, pending and settled state, declines, retries and giving up, reminder emails, and late fees with a pending charge. Running the job on dev would charge fees and email every dev tenant. Also not covered: bank-account enrollment (Stripe's bank flow cannot be scripted), a second tenant on the same lease, real email delivery, and phone layout. The handler tests (690) and the emulator e2e spec `tests/e2e/specs/autopay.spec.ts` cover the job and webhook paths against the fake Stripe.
 
 ## Verification checklist for the human
-(filled in stage 7)
+Ranked by risk. Use the dev site with Stripe test mode unless noted.
+
+1. **Daily job charges a card with the cap and fee** (high). On a QA-only lease with rent due today, enroll one tenant at $300 and another with no amount (lease owes $1,000). Run the daily job as admin (`await fetch('/api/jobs/daily', {method: 'POST'})`). Expect invoices of $300 + $9.00 fee and $700 + $20.60 fee in the Stripe test dashboard, payments recorded on the lease, and nothing new on a same-day rerun. (Note: the job acts on every dev lease.)
+2. **Declined card, retries and giving up** (high). Enroll with test card 4000 0000 0000 0341, run the job on the due date and the next 3 days. Expect the invoice voided, a failure email each day, a final "Autopay stopped for this payment" email, and autopay still on.
+3. **ACH pending: no late fee, settles on time** (high). Enroll a test bank account, run the job on the due date and again after the grace period, then settle or fail the payment in the Stripe dashboard. Expect no late fee while pending, and the payment dated at charge start. If it fails, expect an email and late fees resuming. Requires `invoice.payment_failed` on the dev webhook endpoint.
+4. **Production-only setup** (high). Before merging: turn on ACH Direct Debit in the live Stripe account and add `invoice.payment_failed` to the live webhook endpoint (`docs/stripe-setup.md#autopay`). No new environment variables. After deploy: set up autopay with a real card on a test lease, then turn it off.
+5. **Bank account enrollment and display** (medium). Set up autopay with a test bank account. Expect "Bank account ending NNNN", no card-fee note, and no fee line on its charges.
+6. **Reminder emails** (medium). 7 days before a due date, one tenant enrolled and one not. Expect the enrolled tenant to get only "Autopay will charge $X on <date>" (card fee included), and the other the usual reminder. A rerun sends nothing.
+7. **Two tenants on one lease** (medium). Each sees and changes only their own enrollment; the admin list shows both.
+8. **Phone layout, keyboard and wording** (low). Use the autopay controls and dialogs on a phone and by keyboard. Read the autopay copy, fee notes and emails (company shown as "Lehman Family LLC").
 
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
