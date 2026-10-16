@@ -74,7 +74,15 @@ The user chose to hold production PR #157 and move late fees to a daily schedule
 4. Rollout: a new private secret `JOBS_SECRET` goes in the GitHub `develop` and `production` environments. A Cloud Scheduler job is created in each project, which is a human step with a documented `gcloud` command. Until the scheduler exists, no fees are charged and no emails go out.
 5. PR #157 stays open and on hold. Its head is `develop`, so it picks up the rework once that is merged to `develop`. The QA and checklist are then redone.
 
-## Gate A
+## Amendment 2 (2026-10-16, while PR #157 waits at Gate B; approved: yes, 2026-10-16)
+
+The user asked why a lease with rent and a deposit due on the same day sends two reminder emails, and chose to combine reminders only.
+
+**Decisions**
+- Each tenant gets at most one reminder email per lease per run. It lists every rent month and deposit reminded that day, each with its amount and due date, and the total.
+- A late-fee notice stays its own email, even on a day with reminders.
+- Records stay per reminder, so at-most-once delivery, stale-claim recovery and the per-reminder summary are unchanged. A failed send releases every claim in that email.
+
 Approved: yes, 2026-10-15 (by the user in session, after the proposal and preflight were presented)
 Accepted preflight gaps: none
 

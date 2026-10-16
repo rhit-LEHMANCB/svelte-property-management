@@ -11,7 +11,12 @@ import {
 	type Ledger
 } from './billing';
 import { sendEmail } from './email';
-import { renderDueReminderEmail, renderLateFeeEmail, type EmailContent } from './email-templates';
+import {
+	renderDueReminderEmail,
+	renderLateFeeEmail,
+	type EmailContent,
+	type ReminderItem
+} from './email-templates';
 import { businessToday, leaseStatus, type LeaseDoc } from './leaseDates';
 import { propertyAddress } from './leases';
 
@@ -114,7 +119,9 @@ async function chargeLateFees(
 	});
 }
 
-type Notice = { key: string; content: EmailContent };
+type LateFeeNotice = { key: string; content: EmailContent };
+type Reminder = { key: string; item: ReminderItem };
+type Notices = { lateFees: LateFeeNotice[]; reminders: Reminder[] };
 
 /** The emails a lease is due today, before removing those already sent. */
 function noticesFor(
@@ -122,10 +129,10 @@ function noticesFor(
 	ledger: Ledger,
 	address: string,
 	lateFeeRecords: Record<string, LateFeeRecord>
-): Notice[] {
+): Notices {
 	const link = `${PUBLIC_FRONTEND_URL}/payment`;
 	const today = ledger.today;
-	const notices: Notice[] = [];
+	const notices: Notices = { lateFees: [], reminders: [] };
 
 	// Late-fee notices, for fees the job charged; retried for a few days if sending failed.
 	for (const fee of ledger.lateFees) {
@@ -133,7 +140,7 @@ function noticesFor(
 		if (!record?.chargedAt || fee.waived) continue;
 		const chargedDay = businessToday(new Date(record.chargedAt));
 		if (addDays(chargedDay, NOTICE_RETRY_DAYS) < today) continue;
-		notices.push({
+		notices.lateFees.push({
 			key: `late-fee-${fee.month.key}`,
 			content: renderLateFeeEmail({
 				address,
@@ -156,31 +163,27 @@ function noticesFor(
 	for (const row of ledger.rent) {
 		const day = reminderDay(row.dueDate);
 		if (!day || row.owedCents <= 0) continue;
-		notices.push({
+		notices.reminders.push({
 			key: `rent-${day}-${row.month.key}`,
-			content: renderDueReminderEmail({
-				address,
+			item: {
 				what: `Rent for ${monthLabel(row.month)}`,
 				amountCents: row.owedCents,
 				dueDate: row.dueDate,
-				dueToday: day === 'due',
-				link
-			})
+				dueToday: day === 'due'
+			}
 		});
 	}
 	const deposit = ledger.deposit;
 	const depositDay = deposit.dueDate ? reminderDay(deposit.dueDate) : undefined;
 	if (depositDay && deposit.owedCents > 0) {
-		notices.push({
+		notices.reminders.push({
 			key: `deposit-${depositDay}-${deposit.dueDate}`,
-			content: renderDueReminderEmail({
-				address,
+			item: {
 				what: 'Security deposit',
 				amountCents: deposit.owedCents,
 				dueDate: deposit.dueDate!,
-				dueToday: depositDay === 'due',
-				link
-			})
+				dueToday: depositDay === 'due'
+			}
 		});
 	}
 	return notices;
@@ -250,7 +253,8 @@ async function sendNotices(
 	const { lease, ledger } = charged;
 	// Which notices are due does not depend on the address, so the reads below happen only when
 	// there is something to send.
-	if (noticesFor(lease, ledger, '', charged.lateFees).length === 0) return;
+	const due = noticesFor(lease, ledger, '', charged.lateFees);
+	if (due.lateFees.length === 0 && due.reminders.length === 0) return;
 	const [leaseNow, property, sentDocs] = await Promise.all([
 		leaseRef.get(),
 		adminDB.collection('properties').doc(lease.propertyId).get(),
@@ -258,7 +262,9 @@ async function sendNotices(
 	]);
 	// The lease may have been deleted since its fees were charged.
 	if (!leaseNow.exists) return;
-	const notices = noticesFor(lease, ledger, propertyAddress(property.data()), charged.lateFees);
+	const address = propertyAddress(property.data());
+	const notices = noticesFor(lease, ledger, address, charged.lateFees);
+	const link = `${PUBLIC_FRONTEND_URL}/payment`;
 
 	const sent = new Set(
 		sentDocs.docs
@@ -279,31 +285,58 @@ async function sendNotices(
 	for (const tenant of tenants.filter((t) => !t.email)) {
 		summary.warnings.push(`lease ${leaseRef.id}: tenant ${tenant.uid} has no email address`);
 	}
-	for (const notice of notices) {
-		for (const tenant of tenants) {
+
+	/**
+	 * Claims each notice not yet sent to the tenant, then sends one email for the claimed ones.
+	 * `create` fails if another run already claimed a notice, so a second run (an overlapping
+	 * retry) can never send the same notice twice.
+	 */
+	const sendOnce = async <T extends { key: string }>(
+		tenant: { uid: string; email: string },
+		group: T[],
+		render: (claimed: T[]) => EmailContent
+	) => {
+		const claimed: { notice: T; ref: DocumentReference }[] = [];
+		for (const notice of group) {
 			const id = `${notice.key}-${tenant.uid}`;
-			if (sent.has(id) || !tenant.email) continue;
-			// Claim the notice before sending: `create` fails if another run already claimed it, so a
-			// second run (an overlapping retry) can never send the same email twice.
-			const claim = leaseRef.collection('notices').doc(id);
+			if (sent.has(id)) continue;
+			const ref = leaseRef.collection('notices').doc(id);
 			try {
-				if (stale.has(id)) await claim.delete();
-				await claim.create({ notice: notice.key, uid: tenant.uid, claimedAt: now.toISOString() });
+				if (stale.has(id)) await ref.delete();
+				await ref.create({ notice: notice.key, uid: tenant.uid, claimedAt: now.toISOString() });
+				claimed.push({ notice, ref });
 			} catch {
 				continue;
 			}
-			try {
-				await sendEmail({ to: tenant.email, ...notice.content });
-			} catch (err) {
-				fail(`${notice.key} to ${tenant.uid}`, err);
-				// Unclaimed again, so the next run retries it.
-				await claim.delete().catch((e) => fail(`releasing ${id}`, e));
-				continue;
-			}
-			await claim
-				.set({ sentAt: new Date().toISOString() }, { merge: true })
-				.catch((e) => fail(`recording ${id}`, e));
-			summary.emailsSent.push({ leaseId: leaseRef.id, notice: notice.key, to: tenant.uid });
 		}
+		if (claimed.length === 0) return;
+		const keys = claimed.map((c) => c.notice.key).join('+');
+		try {
+			await sendEmail({ to: tenant.email, ...render(claimed.map((c) => c.notice)) });
+		} catch (err) {
+			fail(`${keys} to ${tenant.uid}`, err);
+			// Unclaimed again, so the next run retries them.
+			for (const { ref } of claimed) {
+				await ref.delete().catch((e) => fail(`releasing ${ref.id}`, e));
+			}
+			return;
+		}
+		const sentAt = new Date().toISOString();
+		for (const { ref } of claimed) {
+			await ref.set({ sentAt }, { merge: true }).catch((e) => fail(`recording ${ref.id}`, e));
+		}
+		summary.emailsSent.push({ leaseId: leaseRef.id, notice: keys, to: tenant.uid });
+	};
+
+	for (const tenant of tenants) {
+		if (!tenant.email) continue;
+		const to = { uid: tenant.uid, email: tenant.email };
+		// Each late-fee notice is its own email; the day's reminders go together in one.
+		for (const notice of notices.lateFees) {
+			await sendOnce(to, [notice], () => notice.content);
+		}
+		await sendOnce(to, notices.reminders, (claimed) =>
+			renderDueReminderEmail({ address, items: claimed.map((r) => r.item), link })
+		);
 	}
 }

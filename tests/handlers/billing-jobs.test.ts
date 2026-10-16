@@ -294,20 +294,103 @@ describe('billing-jobs: Due-date reminders', () => {
 	});
 
 	it('Scenario: Deposit due: a reminder 7 days before', async () => {
-		setup({ startDate: '2026-11-15', deposit: { amount: 1000, dueDate: '2026-11-15' } });
-		db.seed('leases/lease-1/payment_history/2026', {});
+		paidOctober();
+		db.seed('leases/lease-1/payment_history/2026', {
+			October: { transactions: [{ amount: 1500, date: ts('2026-10-01') }] },
+			November: { transactions: [{ amount: 1500, date: ts('2026-10-20') }] }
+		});
+		db.seed('leases/lease-1', {
+			...(db.peek('leases/lease-1') as object),
+			deposit: { amount: 1000, dueDate: '2026-11-15' }
+		});
 		setNow('2026-11-08');
 		await run();
-		// The prorated first month is payable, and reminded, from the same day.
-		expect(emails()).toHaveLength(4);
-		expect(emails()).toEqual(
-			expect.arrayContaining([
-				['t1@example.com', 'Security deposit is due on November 15, 2026'],
-				['t2@example.com', 'Security deposit is due on November 15, 2026'],
-				['t1@example.com', 'Rent for November 2026 is due on November 15, 2026'],
-				['t2@example.com', 'Rent for November 2026 is due on November 15, 2026']
-			])
-		);
+		expect(emails()).toEqual([
+			['t1@example.com', 'Security deposit is due on November 15, 2026'],
+			['t2@example.com', 'Security deposit is due on November 15, 2026']
+		]);
+	});
+
+	/** A lease starting 2026-11-15: prorated November ($800.00) and a $1,000 deposit, both due that day. */
+	const startsNov15 = () => {
+		setup({ startDate: '2026-11-15', deposit: { amount: 1000, dueDate: '2026-11-15' } });
+		db.seed('leases/lease-1/payment_history/2026', {});
+	};
+
+	it('Scenario: Rent and deposit on the same day: one email per tenant listing both', async () => {
+		startsNov15();
+		setNow('2026-11-08');
+		const result = await run();
+		expect(emails()).toEqual([
+			['t1@example.com', 'Payments due on November 15, 2026'],
+			['t2@example.com', 'Payments due on November 15, 2026']
+		]);
+		const text = services.sendEmail.mock.calls[0][0].text;
+		expect(text).toContain('- Rent for November 2026: $800.00, due on November 15, 2026');
+		expect(text).toContain('- Security deposit: $1,000.00, due on November 15, 2026');
+		expect(text).toContain('$1,800.00 is still to be paid in total');
+		// Each reminder keeps its own sent record.
+		for (const id of ['rent-7d-2026-11-t1', 'deposit-7d-2026-11-15-t1', 'rent-7d-2026-11-t2']) {
+			expect(db.peek(`leases/lease-1/notices/${id}`)).toMatchObject({ sentAt: expect.any(String) });
+		}
+		expect(result.json).toMatchObject({ errors: 0 });
+		const record = db.peek('_jobs/daily/runs/2026-11-08') as {
+			runs: { emailsSent: { notice: string }[] }[];
+		};
+		expect(record.runs[0].emailsSent.map((e) => e.notice)).toEqual([
+			'rent-7d-2026-11+deposit-7d-2026-11-15',
+			'rent-7d-2026-11+deposit-7d-2026-11-15'
+		]);
+		await run();
+		expect(services.sendEmail).toHaveBeenCalledTimes(2);
+	});
+
+	it('Scenario: Late fee on a reminder day: the notice and the reminder are separate emails', async () => {
+		// November is short $500 and late on 2026-11-07, the day the deposit is 7 days from due.
+		setup({ deposit: { amount: 1000, dueDate: '2026-11-14' } });
+		setNow('2026-11-07');
+		await run();
+		expect(emails()).toEqual([
+			['t1@example.com', 'Late fee added for November 2026'],
+			['t1@example.com', 'Security deposit is due on November 14, 2026'],
+			['t2@example.com', 'Late fee added for November 2026'],
+			['t2@example.com', 'Security deposit is due on November 14, 2026']
+		]);
+	});
+
+	it('a reminder already sent is left out of the combined email', async () => {
+		startsNov15();
+		db.seed('leases/lease-1/notices/rent-7d-2026-11-t1', {
+			notice: 'rent-7d-2026-11',
+			uid: 't1',
+			claimedAt: '2026-11-08T11:00:00.000Z',
+			sentAt: '2026-11-08T11:00:01.000Z'
+		});
+		setNow('2026-11-08');
+		await run();
+		expect(emails()).toEqual([
+			['t1@example.com', 'Security deposit is due on November 15, 2026'],
+			['t2@example.com', 'Payments due on November 15, 2026']
+		]);
+	});
+
+	it('a failed combined email releases every reminder in it', async () => {
+		startsNov15();
+		services.sendEmail.mockImplementation(async (m: { to: string }) => {
+			if (m.to === 't1@example.com') throw new Error('Email delivery failed: boom');
+		});
+		setNow('2026-11-08');
+		const result = await run();
+		expect(result.status).toBe(500);
+		expect(db.peek('leases/lease-1/notices/rent-7d-2026-11-t1')).toBeUndefined();
+		expect(db.peek('leases/lease-1/notices/deposit-7d-2026-11-15-t1')).toBeUndefined();
+		expect(db.peek('leases/lease-1/notices/deposit-7d-2026-11-15-t2')).toMatchObject({
+			sentAt: expect.any(String)
+		});
+		const record = db.peek('_jobs/daily/runs/2026-11-08') as { runs: { errors: string[] }[] };
+		expect(record.runs[0].errors).toEqual([
+			'lease lease-1: rent-7d-2026-11+deposit-7d-2026-11-15 to t1: Email delivery failed: boom'
+		]);
 	});
 
 	it('Scenario: Ended lease: no reminders, even for an amount due that day', async () => {
