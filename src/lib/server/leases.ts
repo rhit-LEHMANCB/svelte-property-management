@@ -124,7 +124,7 @@ export async function listPropertyLeases(
 			]);
 			const nameOf = (uid: string) =>
 				summary.tenants.find((t) => t.id === uid)?.name || 'A former tenant';
-			const status = latestOpenCharge(charges);
+			const status = latestOpenCharge(charges, { owedCents: ledger.totalCents });
 			return {
 				...summary,
 				billing: leaseBilling(ledger),

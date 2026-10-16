@@ -690,3 +690,96 @@ describe('autopay: review fixes', () => {
 		expect(charge('2026-11-01_t1')).toMatchObject({ state: 'succeeded', resume: 1 });
 	});
 });
+
+describe('autopay: review round 2 fixes', () => {
+	const pendingAch = () =>
+		db.seed('leases/lease-1/autopay_charges/2026-11-01_t1', {
+			uid: 't1',
+			cycleKey: '2026-11-01',
+			state: 'pending',
+			attempts: 1,
+			lastAttemptDay: '2026-11-01',
+			claimedAt: '2026-11-01T11:00:00.000Z',
+			amountCents: 100000,
+			feeCents: 0,
+			invoiceId: 'in_ach'
+		});
+
+	it('a pending charge is checked with Stripe even after the tenant turned autopay off', async () => {
+		setup();
+		pendingAch();
+		services.stripe.invoices.retrieve.mockResolvedValue({
+			id: 'in_ach',
+			status: 'open',
+			payment_intent: { status: 'requires_payment_method' }
+		});
+		await runOn('2026-11-04');
+		expect(charge('2026-11-01_t1')).toMatchObject({ state: 'failed' });
+		// Late fees are no longer held off: the 2026-11-07 run charges November's.
+		await runOn('2026-11-07');
+		expect(db.peek('leases/lease-1/late_fees/2026-11')).toMatchObject({ amount: 50 });
+	});
+
+	it('an unexpected error on a later tenant keeps the earlier charge in the run summary', async () => {
+		setup();
+		enroll('t1', 30000);
+		enroll('t2', null, 'card', '2026-10-02T00:00:00.000Z');
+		services.stripe.invoices.create
+			.mockImplementationOnce(async (args: Record<string, unknown>) => ({
+				id: 'in_auto_1',
+				status: 'draft',
+				...args
+			}))
+			.mockRejectedValueOnce(new Error('Stripe is down'));
+		const result = await runOn('2026-11-01');
+		expect(result.status).toBe(500);
+		const summary = (
+			db.peek('_jobs/daily/runs/2026-11-01') as {
+				runs: { autopayCharges: { uid: string; outcome: string }[]; errors: string[] }[];
+			}
+		).runs[0];
+		expect(summary.autopayCharges).toMatchObject([{ uid: 't1', outcome: 'succeeded' }]);
+		expect(summary.errors).toEqual(['lease lease-1: autopay: Stripe is down']);
+	});
+
+	it('the webhook records the reason Stripe gives for a failed payment', async () => {
+		setup({ lateFee: 0 });
+		enroll('t1', null, 'us_bank_account');
+		processing();
+		await runOn('2026-11-01');
+		services.stripe.invoices.retrieve.mockResolvedValue({
+			id: 'in_auto_1',
+			status: 'open',
+			payment_intent: {
+				status: 'requires_payment_method',
+				last_payment_error: { message: 'Insufficient funds in the account.' }
+			}
+		});
+		await send(invoiceEvent('invoice.payment_failed'));
+		expect(charge('2026-11-01_t1')).toMatchObject({
+			state: 'failed',
+			error: 'Insufficient funds in the account.'
+		});
+	});
+
+	it('a tenant whose share is covered by a pending charge gets neither the autopay notice nor stray reminders', async () => {
+		setup();
+		enroll('t1', null, 'us_bank_account');
+		// A bank payment from the start of the lease still settling covers November too.
+		db.seed('leases/lease-1/autopay_charges/2026-10-01_t1', {
+			uid: 't1',
+			cycleKey: '2026-10-01',
+			state: 'pending',
+			attempts: 1,
+			lastAttemptDay: '2026-10-25',
+			claimedAt: '2026-10-25T11:00:00.000Z',
+			amountCents: 100000,
+			feeCents: 0,
+			invoiceId: 'in_ach'
+		});
+		await runOn('2026-10-25');
+		expect(emails()).toEqual([
+			['t2@example.com', 'Rent for November 2026 is due on November 1, 2026']
+		]);
+	});
+});

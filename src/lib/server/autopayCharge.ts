@@ -99,7 +99,7 @@ function outcomeOf(invoice: Stripe.Invoice): 'succeeded' | 'pending' | 'declined
 	return 'declined';
 }
 
-const declineReason = (invoice: Stripe.Invoice) => {
+export const declineReason = (invoice: Stripe.Invoice) => {
 	const intent = paymentIntentOf(invoice);
 	return (
 		(intent && typeof intent !== 'string' && intent.last_payment_error?.message) ||
@@ -326,12 +326,34 @@ export async function chargeAutopay(
 	leaseRef: DocumentReference,
 	now: Date,
 	token: string
-): Promise<{ charges: AutopayCharge[]; warnings: string[] }> {
+): Promise<{ charges: AutopayCharge[]; warnings: string[]; error?: string }> {
 	const charges: AutopayCharge[] = [];
 	const warnings: string[] = [];
-	if ((await loadEnrollments(leaseRef)).length === 0) return { charges, warnings };
+	try {
+		await chargeLease(leaseRef, now, token, charges, warnings);
+	} catch (err) {
+		// Charges already made in this run stay in the summary next to the error.
+		return { charges, warnings, error: errorMessage(err) };
+	}
+	return { charges, warnings };
+}
+
+async function chargeLease(
+	leaseRef: DocumentReference,
+	now: Date,
+	token: string,
+	charges: AutopayCharge[],
+	warnings: string[]
+) {
 	const today = businessToday(now);
-	await checkPendingCharges(leaseRef, await loadCharges(leaseRef), today, warnings);
+	// Pending charges are checked even when nobody is enrolled any more: a tenant may have turned
+	// autopay off while a bank payment was settling, and a stuck one would hold off late fees.
+	const [enrolled, existingCharges] = await Promise.all([
+		loadEnrollments(leaseRef),
+		loadCharges(leaseRef)
+	]);
+	await checkPendingCharges(leaseRef, existingCharges, today, warnings);
+	if (enrolled.length === 0) return;
 	const tried = new Set<string>();
 
 	for (;;) {
@@ -441,7 +463,6 @@ export async function chargeAutopay(
 			charges.push({ ...result, outcome: paid.outcome });
 		}
 	}
-	return { charges, warnings };
 }
 
 /** Whether any autopay charge on the lease is still pending (ACH settling). Read inside a transaction. */

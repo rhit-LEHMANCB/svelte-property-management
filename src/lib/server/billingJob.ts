@@ -168,14 +168,27 @@ function noticesFor(
 	const link = `${PUBLIC_FRONTEND_URL}/payment`;
 	const today = ledger.today;
 	const enrollments = autopay.enrollments.filter((e) => lease.tenantIds.includes(e.uid));
-	// Charges already made count toward each tenant's share, so a tenant charged today but not yet
-	// recorded is not reminded of what they just paid.
-	const shares = projectedSplit(ledger.totalCents, enrollments);
+	// Each enrolled tenant's share of what is owed, after charges already on their way. A tenant
+	// with a share, or whose own charge is on its way, gets autopay notices instead of reminders.
+	const shares = projectedSplit(
+		Math.max(0, ledger.totalCents - inFlightCents(autopay.charges)),
+		enrollments
+	);
+	const charging = (uid: string) =>
+		autopay.charges.some(
+			(c) =>
+				c.uid === uid &&
+				(c.state === 'pending' ||
+					c.state === 'claimed' ||
+					(c.state === 'succeeded' && !c.recordedAt))
+		);
 	const notices: Notices = {
 		lateFees: [],
 		reminders: [],
 		autopay: [],
-		enrolled: enrollments.filter((e) => (shares.get(e.uid) ?? 0) > 0).map((e) => e.uid)
+		enrolled: enrollments
+			.filter((e) => (shares.get(e.uid) ?? 0) > 0 || charging(e.uid))
+			.map((e) => e.uid)
 	};
 	const recent = (day: string | null | undefined) =>
 		Boolean(day) && addDays(day!, NOTICE_RETRY_DAYS) >= today;
@@ -272,13 +285,9 @@ function noticesFor(
 		});
 	}
 	if (autopayDue.size > 0 && enrollments.length > 0) {
-		const split = projectedSplit(
-			Math.max(0, ledger.totalCents - inFlightCents(autopay.charges)),
-			enrollments
-		);
 		for (const [dueDate, what] of autopayDue) {
 			for (const enrollment of enrollments) {
-				const cents = split.get(enrollment.uid) ?? 0;
+				const cents = shares.get(enrollment.uid) ?? 0;
 				if (cents <= 0) continue;
 				const feeCents = autopayFeeCents(enrollment.type, cents);
 				notices.autopay.push({
@@ -328,6 +337,7 @@ export async function runDailyJob(now = new Date(), runBy = 'scheduler'): Promis
 					const autopay = await chargeAutopay(doc.ref, now, token);
 					summary.autopayCharges.push(...autopay.charges);
 					summary.warnings.push(...autopay.warnings);
+					if (autopay.error) summary.errors.push(`lease ${doc.id}: autopay: ${autopay.error}`);
 					if (autopay.charges.length > 0) {
 						// Paid charges may be recorded already; reminders go by what is owed now.
 						const records = await loadLedgerRecords(doc.ref);

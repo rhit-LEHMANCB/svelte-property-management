@@ -20,6 +20,9 @@ export const leaseRefOf = (leaseId: string) => adminDB.collection('leases').doc(
 export const enrollmentRef = (leaseRef: DocumentReference, uid: string) =>
 	leaseRef.collection('autopay').doc(uid);
 export const chargesRef = (leaseRef: DocumentReference) => leaseRef.collection('autopay_charges');
+/** When a tenant last turned autopay off on a lease, so an old setup link cannot turn it back on. */
+export const autopayOffRef = (leaseRef: DocumentReference, uid: string) =>
+	leaseRef.collection('autopay_off').doc(uid);
 
 /** A lease's enrollments, in charge order. */
 export async function loadEnrollments(leaseRef: DocumentReference): Promise<Enrollment[]> {
@@ -43,9 +46,15 @@ export type ChargeStatus = {
 	attempts: number;
 };
 
-export function latestOpenCharge(charges: ChargeRecord[], uid?: string): ChargeStatus | null {
+export function latestOpenCharge(
+	charges: ChargeRecord[],
+	options: { uid?: string; owedCents: number }
+): ChargeStatus | null {
+	const { uid, owedCents } = options;
 	const open = charges
 		.filter((c) => c.state !== 'succeeded' && (uid === undefined || c.uid === uid))
+		// A failure stops mattering once the lease owes nothing (paid by hand since).
+		.filter((c) => owedCents > 0 || c.state === 'pending' || c.state === 'claimed')
 		.sort(
 			(a, b) =>
 				a.lastAttemptDay.localeCompare(b.lastAttemptDay) || a.claimedAt.localeCompare(b.claimedAt)

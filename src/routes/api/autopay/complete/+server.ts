@@ -4,7 +4,7 @@ import type { RequestHandler } from './$types';
 import { getUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
 import { adminDB } from '$lib/server/admin';
 import { publicEnrollment, type Enrollment } from '$lib/server/autopay';
-import { enrollmentRef, tenantLeaseOrError } from '$lib/server/autopayStore';
+import { autopayOffRef, enrollmentRef, tenantLeaseOrError } from '$lib/server/autopayStore';
 import { stripe } from '$lib/server/stripe';
 
 /** The saved method's type and display details, or undefined for a type autopay does not take. */
@@ -61,12 +61,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	const amount = session.metadata?.amountCents;
 	const amountCents = amount && /^\d+$/.test(amount) ? Number(amount) : null;
 	const ref = enrollmentRef(leaseRef, uid);
+	const offRef = autopayOffRef(leaseRef, uid);
+	const startedAt = session.created * 1000;
 	const saved = await adminDB.runTransaction(async (tx) => {
-		const existing = (await tx.get(ref)).data() as Omit<Enrollment, 'uid'> | undefined;
-		// Completing the same session again, or an older one (a bookmarked return link), must not undo
-		// a later enrollment or amount change.
-		const older =
-			existing?.updatedAt !== undefined && session.created * 1000 < Date.parse(existing.updatedAt);
+		const [existingDoc, offDoc] = await Promise.all([tx.get(ref), tx.get(offRef)]);
+		const existing = existingDoc.data() as Omit<Enrollment, 'uid'> | undefined;
+		// A return link used again (a bookmark, the browser history) must not undo what the tenant did
+		// since: completing the same session twice changes nothing, a session started before the
+		// current method was saved does not replace it, and one started before autopay was turned
+		// off does not turn it back on.
+		const offAt = (offDoc.data() as { offAt?: string } | undefined)?.offAt;
+		if (!existing && offAt && startedAt < Date.parse(offAt)) return 'stale';
+		const methodSavedAt = existing?.methodUpdatedAt ?? existing?.enrolledAt;
+		const older = methodSavedAt !== undefined && startedAt < Date.parse(methodSavedAt);
 		if (existing && (existing.setupSessionId === sessionId || older)) return { ...existing, uid };
 		const now = new Date().toISOString();
 		const enrollment: Omit<Enrollment, 'uid'> = {
@@ -76,11 +83,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			// Re-enrolling replaces the method but keeps the tenant's place in the charge order.
 			enrolledAt: existing?.enrolledAt ?? now,
 			setupSessionId: sessionId,
+			methodUpdatedAt: now,
 			updatedAt: now
 		};
 		tx.set(ref, enrollment);
 		return { ...enrollment, uid };
 	});
 
+	if (saved === 'stale') {
+		throw error(409, 'This setup link is from before you turned autopay off. Set it up again.');
+	}
 	return json({ leaseId, enrollment: publicEnrollment(saved) });
 };

@@ -31,7 +31,10 @@ export const load = (async (event) => {
 					owed: ledger.owed,
 					creditCents: ledger.creditCents,
 					// Only the caller's own enrollment and charges, never another tenant's.
-					autopay: { enrollment, charge: latestOpenCharge(charges, uid) }
+					autopay: {
+						enrollment,
+						charge: latestOpenCharge(charges, { uid, owedCents: ledger.totalCents })
+					}
 				};
 			})
 		)

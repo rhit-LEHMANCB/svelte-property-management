@@ -17,7 +17,7 @@ import {
 import { businessToday, leaseStatus, type LeaseDoc } from '$lib/server/leaseDates';
 import { leasesOfTenant } from '$lib/server/leases';
 import { chargeId, type ChargeRecord } from '$lib/server/autopay';
-import { failPendingCharge } from '$lib/server/autopayCharge';
+import { declineReason, failPendingCharge } from '$lib/server/autopayCharge';
 import { chargesRef } from '$lib/server/autopayStore';
 
 /**
@@ -28,6 +28,19 @@ function autopayChargeRef(invoice: Stripe.Invoice, leaseId: string) {
 	const { autopay, cycleKey, uid } = invoice.metadata ?? {};
 	if (autopay !== 'true' || !cycleKey || !uid) return undefined;
 	return chargesRef(adminDB.collection('leases').doc(leaseId)).doc(chargeId(cycleKey, uid));
+}
+
+/**
+ * Why an autopay invoice's payment failed, from its payment intent (the event's invoice carries only
+ * the intent's id). The tenant's failure email quotes it.
+ */
+async function failureReason(invoiceId: string | undefined) {
+	if (!invoiceId) return 'The payment did not go through';
+	try {
+		return declineReason(await stripe.invoices.retrieve(invoiceId, { expand: ['payment_intent'] }));
+	} catch {
+		return 'The payment did not go through';
+	}
 }
 
 const wholeCents = (value: string | undefined) =>
@@ -273,8 +286,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				console.log('Not an autopay invoice; ignoring payment failure');
 				break;
 			}
-			// The same wording for a card and a bank: the event does not say why.
-			const reason = 'The payment did not go through';
+			const reason = await failureReason(invoice.id);
 			const day = businessToday(new Date(event.created * 1000));
 			try {
 				// A pending charge for this invoice, or one the job is still making (the event can beat

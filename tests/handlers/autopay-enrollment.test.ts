@@ -5,6 +5,7 @@ import { POST as complete } from '../../src/routes/api/autopay/complete/+server'
 import { DELETE as turnOff, PATCH as change } from '../../src/routes/api/autopay/+server';
 import { load as paymentLoad } from '../../src/routes/(authenticated)/payment/+page.server';
 import { listPropertyLeases } from '../../src/lib/server/leases';
+import { latestOpenCharge } from '../../src/lib/server/autopayStore';
 import { call } from '../helpers/callHandler';
 import { services } from '../helpers/services';
 import { db, seedLease, seedProperty, seedTenant } from '../helpers/seed';
@@ -440,9 +441,9 @@ describe('autopay: Admin visibility', () => {
 });
 
 describe('autopay: review fixes (enrollment input)', () => {
-	it('an older setup session completed later does not undo a newer enrollment or amount', async () => {
+	it('an older setup session completed later does not undo a newer enrollment', async () => {
 		setupLease();
-		// Session B (new card) was completed, then the amount was changed after both sessions.
+		// Session B (new card) was saved on Mar 2 and the amount changed on Mar 5.
 		db.seed('leases/lease-1/autopay/t1', {
 			paymentMethodId: 'pm_new',
 			type: 'card',
@@ -451,25 +452,62 @@ describe('autopay: review fixes (enrollment input)', () => {
 			amountCents: 20000,
 			enrolledAt: '2026-02-01T00:00:00.000Z',
 			setupSessionId: 'cs_test_b',
+			methodUpdatedAt: '2026-03-02T00:00:00.000Z',
 			updatedAt: '2026-03-05T00:00:00.000Z'
 		});
-		// Session A was created before that.
+		// Session A was started on Mar 1, before B was saved: a replayed link.
 		services.stripe.checkout.sessions.retrieve.mockResolvedValue(
 			session({ id: 'cs_test_a', created: Date.parse('2026-03-01T00:00:00Z') / 1000 })
 		);
-		const result = await finish('t1', 'cs_test_a');
-		expect(result.status).toBe(200);
+		expect((await finish('t1', 'cs_test_a')).status).toBe(200);
 		expect(db.peek('leases/lease-1/autopay/t1')).toMatchObject({
 			paymentMethodId: 'pm_new',
 			amountCents: 20000
 		});
 
-		// A session created after the last change does replace the method.
+		// Session C was started on Mar 3 (after B was saved, before the amount change) and finished
+		// now: a real re-enrollment, so the new card is saved.
 		services.stripe.checkout.sessions.retrieve.mockResolvedValue(
-			session({ id: 'cs_test_c', created: Date.parse('2026-03-06T00:00:00Z') / 1000 })
+			session({ id: 'cs_test_c', created: Date.parse('2026-03-03T00:00:00Z') / 1000 })
 		);
 		await finish('t1', 'cs_test_c');
+		expect(db.peek('leases/lease-1/autopay/t1')).toMatchObject({
+			paymentMethodId: 'pm_card_1',
+			setupSessionId: 'cs_test_c'
+		});
+	});
+
+	it('a setup link from before autopay was turned off does not turn it back on', async () => {
+		setupLease();
+		enroll('t1');
+		services.stripe.checkout.sessions.retrieve.mockResolvedValue(
+			session({ created: Math.floor(Date.now() / 1000) - 60 })
+		);
+		await call(turnOff, { userID: 't1', method: 'DELETE', body: { leaseId: 'lease-1' } });
+		expect(db.peek('leases/lease-1/autopay_off/t1')).toMatchObject({ offAt: expect.any(String) });
+
+		const replay = await finish();
+		expect(replay.status).toBe(409);
+		expect(db.peek('leases/lease-1/autopay/t1')).toBeUndefined();
+
+		// A new setup after turning it off works.
+		services.stripe.checkout.sessions.retrieve.mockResolvedValue(
+			session({ id: 'cs_test_new', created: Math.floor(Date.now() / 1000) + 60 })
+		);
+		expect((await finish('t1', 'cs_test_new')).status).toBe(200);
 		expect(db.peek('leases/lease-1/autopay/t1')).toMatchObject({ paymentMethodId: 'pm_card_1' });
+	});
+
+	it('an amount above $999,999.99 is refused', async () => {
+		setupLease();
+		enroll('t1');
+		expect((await start({ leaseId: 'lease-1', amount: 1e20 })).status).toBe(400);
+		const patch = await call(change, {
+			userID: 't1',
+			method: 'PATCH',
+			body: { leaseId: 'lease-1', amount: 1_000_000 }
+		});
+		expect(patch.status).toBe(400);
 	});
 
 	it('a lease id that is not a single path segment is 403, not a server error', async () => {
@@ -497,5 +535,27 @@ describe('autopay: review fixes (enrollment input)', () => {
 			});
 		expect((await raw(setup)).status).toBe(403);
 		expect((await raw(complete)).status).toBe(400);
+	});
+});
+
+describe('autopay: charge status once nothing is owed', () => {
+	it('a failed charge stops showing once the lease owes nothing; a pending one still shows', () => {
+		const record = (state: 'failed' | 'pending') => ({
+			uid: 't1',
+			cycleKey: '2026-03-01',
+			state,
+			attempts: 1,
+			lastAttemptDay: '2026-03-01',
+			claimedAt: '2026-03-01T11:00:00.000Z',
+			amountCents: 100000,
+			feeCents: 0
+		});
+		expect(latestOpenCharge([record('failed')], { owedCents: 100000 })).toMatchObject({
+			state: 'failed'
+		});
+		expect(latestOpenCharge([record('failed')], { owedCents: 0 })).toBeNull();
+		expect(latestOpenCharge([record('pending')], { owedCents: 0 })).toMatchObject({
+			state: 'pending'
+		});
 	});
 });

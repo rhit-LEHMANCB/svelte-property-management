@@ -3,13 +3,13 @@ import type { RequestHandler } from './$types';
 import { getUserIdOrError } from '$lib/server/authHelpers';
 import { adminDB } from '$lib/server/admin';
 import { parseAmountCents, publicEnrollment, type Enrollment } from '$lib/server/autopay';
-import { enrollmentRef, tenantLeaseOrError } from '$lib/server/autopayStore';
+import { autopayOffRef, enrollmentRef, tenantLeaseOrError } from '$lib/server/autopayStore';
 
 /** The caller's own enrollment on a lease; another tenant's is never reachable from here. */
 async function ownEnrollmentRef(request: Request, uid: string) {
 	const body = await request.json().catch(() => ({}));
 	const { leaseRef } = await tenantLeaseOrError(body?.leaseId, uid);
-	return { body, ref: enrollmentRef(leaseRef, uid) };
+	return { body, ref: enrollmentRef(leaseRef, uid), offRef: autopayOffRef(leaseRef, uid) };
 }
 
 /** Changes the amount of the caller's enrollment: a dollar amount, or null for the full balance. */
@@ -36,8 +36,11 @@ export const PATCH: RequestHandler = async ({ request, locals }) => {
 /** Turns autopay off for the caller on a lease. Charges already pending stay recorded. */
 export const DELETE: RequestHandler = async ({ request, locals }) => {
 	const uid = getUserIdOrError(locals.userID);
-	const { ref } = await ownEnrollmentRef(request, uid);
+	const { ref, offRef } = await ownEnrollmentRef(request, uid);
 	if (!(await ref.get()).exists) throw error(404, 'You do not have autopay on for this lease.');
-	await ref.delete();
+	const batch = adminDB.batch();
+	batch.delete(ref);
+	batch.set(offRef, { offAt: new Date().toISOString() });
+	await batch.commit();
 	return new Response(null, { status: 204 });
 };

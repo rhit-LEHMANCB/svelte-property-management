@@ -22,6 +22,8 @@ export type Enrollment = {
 	enrolledAt: string;
 	/** The Checkout session that saved the current method, so completing it twice changes nothing. */
 	setupSessionId?: string;
+	/** When the current payment method was saved (a setup session started earlier cannot replace it). */
+	methodUpdatedAt?: string;
 	updatedAt?: string;
 };
 
@@ -226,10 +228,15 @@ export function projectedSplit(totalCents: number, enrollments: Enrollment[]) {
 	return split;
 }
 
+/** The largest autopay amount a tenant can set: $999,999.99. */
+export const MAX_AMOUNT_CENTS = 99_999_999;
+
 /** Whole cents from a dollar amount with at most two decimals, or undefined when it is not one. */
 export function parseAmountCents(amount: unknown): number | undefined {
 	if (typeof amount !== 'number' || !Number.isFinite(amount)) return undefined;
 	const cents = Math.round(amount * 100);
-	if (cents <= 0 || Math.abs(amount * 100 - cents) > 1e-6) return undefined;
+	if (cents <= 0 || cents > MAX_AMOUNT_CENTS || Math.abs(amount * 100 - cents) > 1e-6) {
+		return undefined;
+	}
 	return cents;
 }
