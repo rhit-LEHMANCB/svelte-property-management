@@ -632,12 +632,13 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 });
 
 describe('rent-payments: balance and due date (/payment load)', () => {
-	it('Scenario: a tenant with no lease is sent to the dashboard', async () => {
+	// #165: the page used to bounce to the dashboard without saying why.
+	it('Scenario: a tenant with no lease stays on the page with nothing listed', async () => {
 		setupTenant();
 
 		const result = await call(paymentLoad, { userID: 't1', parent: {} });
 
-		expect(result).toMatchObject({ status: 303, redirect: '/' });
+		expect(result).toMatchObject({ status: 200, data: { leases: [] } });
 	});
 
 	it('Scenario: No payments yet shows the rent due on the 1st of this month', async () => {
@@ -734,14 +735,17 @@ describe('rent-payments: balance and due date (/payment load)', () => {
 		expect(result.data.leases.map((l: { id: string }) => l.id)).toEqual(['lease-1']);
 	});
 
-	it('Scenario: Upcoming lease only: nothing to pay, so the tenant is sent to the dashboard', async () => {
+	// #165: an upcoming lease is listed even with nothing owed, so autopay can be set up before
+	// move-in.
+	it('Scenario: Upcoming lease only: listed with nothing to pay', async () => {
 		setupTenant();
 		const result = await call(paymentLoad, {
 			userID: 't1',
 			parent: parentFor({ id: 'soon', startDate: '2099-01-01', status: 'upcoming' })
 		});
 
-		expect(result).toMatchObject({ status: 303, redirect: '/' });
+		expect(result.status).toBe(200);
+		expect(result.data.leases).toMatchObject([{ id: 'soon', status: 'upcoming', balanceCents: 0 }]);
 	});
 
 	it('Scenario: Paid in full shows nothing to pay', async () => {

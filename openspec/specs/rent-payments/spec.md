@@ -122,7 +122,7 @@ The system SHALL show the tenant, for each of their leases with money owed, the 
 
 #### Scenario: Upcoming lease
 - **WHEN** the tenant's only lease starts next month
-- **THEN** nothing is owed yet
+- **THEN** nothing is owed yet, and `/payment` still lists the lease (so autopay can be set up before it starts)
 
 #### Scenario: Shared lease
 - **WHEN** two tenants are on the same lease and one pays $500

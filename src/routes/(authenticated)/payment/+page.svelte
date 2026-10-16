@@ -213,6 +213,11 @@
 	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
 		<section class="card bg-surface-100-900 flex flex-col gap-4 p-4 sm:p-6">
 			<h2 class="h4">Your current balance</h2>
+			{#if data.leases.length === 0}
+				<p role="status">
+					You have no lease to pay for. If you expect one, please contact your property manager.
+				</p>
+			{/if}
 			{#each data.leases as lease (lease.id)}
 				{@const dueDate = dueDateOf(lease)}
 				{@const autopay = lease.autopay}
