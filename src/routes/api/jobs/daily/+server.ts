@@ -36,6 +36,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			date: summary.date,
 			leases: summary.leases,
 			feesCharged: summary.feesCharged.length,
+			autopayCharges: summary.autopayCharges.length,
 			emailsSent: summary.emailsSent.length,
 			errors: summary.errors.length
 		},

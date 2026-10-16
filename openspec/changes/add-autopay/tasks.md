@@ -19,11 +19,11 @@
 
 ## 4. Daily job and webhook
 
-- [ ] 4.1 Charge executor: claim record, invoice items for the allocation parts and card fee, invoice create, finalize, pay off session with the idempotency keys, outcome mapping (paid, processing, declined with void). Verify: handler tests against a mocked Stripe for paid, processing, declined, crash-after-claim reuse.
-- [ ] 4.2 Add the autopay step to `runDailyJob` after late fees and before notices, record `autopayCharges` in the run summary, isolate per-lease errors. Verify: job tests for the "Charge on the due date", re-run, overlapping-run (claim exists) and "One lease fails" scenarios.
-- [ ] 4.3 `chargeLateFees` skips fees while a charge on the lease is `pending`. Verify: job tests for "Pending ACH", "Pending charge fails", "Charge settles".
-- [ ] 4.4 Webhook: mark the charge record `succeeded` inside the payment transaction; handle `invoice.payment_failed` (mark `failed`, void, flag the failure email). Verify: webhook tests including redelivery of both events and an invoice without autopay metadata.
-- [ ] 4.5 Failure, give-up and 7-day autopay emails in `email-templates.ts` (escaped, "Lehman Family LLC"), sent with the notice claim pattern; replace the enrolled tenant's `rent-*` and `deposit-*` reminders. Verify: template unit tests and job tests for "Notice", "Others unaffected", "Sent once", "Email problems".
+- [x] 4.1 Charge executor: claim record, invoice items for the allocation parts and card fee, invoice create, finalize, pay off session with the idempotency keys, outcome mapping (paid, processing, declined with void). Verify: handler tests against a mocked Stripe for paid, processing, declined, crash-after-claim reuse.
+- [x] 4.2 Add the autopay step to `runDailyJob` after late fees and before notices, record `autopayCharges` in the run summary, isolate per-lease errors. Verify: job tests for the "Charge on the due date", re-run, overlapping-run (claim exists) and "One lease fails" scenarios.
+- [x] 4.3 `chargeLateFees` skips fees while a charge on the lease is `pending`. Verify: job tests for "Pending ACH", "Pending charge fails", "Charge settles".
+- [x] 4.4 Webhook: mark the charge record `succeeded` inside the payment transaction; handle `invoice.payment_failed` (mark `failed`, void, flag the failure email). Verify: webhook tests including redelivery of both events and an invoice without autopay metadata.
+- [x] 4.5 Failure, give-up and 7-day autopay emails in `email-templates.ts` (escaped, "Lehman Family LLC"), sent with the notice claim pattern; replace the enrolled tenant's `rent-*` and `deposit-*` reminders. Verify: template unit tests and job tests for "Notice", "Others unaffected", "Sent once", "Email problems".
 
 ## 5. Admin view
 

@@ -16,6 +16,18 @@ import {
 } from '$lib/server/billing';
 import { businessToday, leaseStatus, type LeaseDoc } from '$lib/server/leaseDates';
 import { leasesOfTenant } from '$lib/server/leases';
+import { chargeId, MAX_ATTEMPTS, type ChargeRecord } from '$lib/server/autopay';
+import { chargesRef } from '$lib/server/autopayStore';
+
+/**
+ * The autopay charge record an invoice was made for, or undefined for any other invoice (Checkout,
+ * or created before autopay existed).
+ */
+function autopayChargeRef(invoice: Stripe.Invoice, leaseId: string) {
+	const { autopay, cycleKey, uid } = invoice.metadata ?? {};
+	if (autopay !== 'true' || !cycleKey || !uid) return undefined;
+	return chargesRef(adminDB.collection('leases').doc(leaseId)).doc(chargeId(cycleKey, uid));
+}
 
 const wholeCents = (value: string | undefined) =>
 	value !== undefined && /^\d+$/.test(value) ? Number(value) : undefined;
@@ -139,6 +151,11 @@ export const POST: RequestHandler = async ({ request }) => {
 					if (!lease) {
 						return 'unknown-lease';
 					}
+					// An autopay charge is marked succeeded in the same commit that records its payment.
+					const chargeRef = autopayChargeRef(invoice, leaseId);
+					const charge = chargeRef
+						? ((await tx.get(chargeRef)).data() as ChargeRecord | undefined)
+						: undefined;
 
 					// The payment goes to late fees, then the deposit, then the oldest unpaid rent, against
 					// what the lease owed when the invoice was created.
@@ -222,6 +239,13 @@ export const POST: RequestHandler = async ({ request }) => {
 					if (recordedRef) {
 						tx.set(recordedRef, { recordedAt: eventDate });
 					}
+					if (chargeRef && charge && (!charge.invoiceId || charge.invoiceId === invoice.id)) {
+						tx.set(
+							chargeRef,
+							{ state: 'succeeded', recordedAt: new Date().toISOString(), error: null },
+							{ merge: true }
+						);
+					}
 					return 'recorded';
 				});
 
@@ -238,7 +262,56 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 			break;
 		}
-		// ... handle other event types
+		case 'invoice.payment_failed': {
+			// A pending autopay charge (ACH) that failed to settle. Charges that fail at once are handled
+			// by the daily job, which voids them itself; Checkout invoices never get here unpaid.
+			const invoice = event.data.object;
+			const leaseId = invoice.metadata?.leaseID;
+			const chargeRef = leaseId ? autopayChargeRef(invoice, leaseId) : undefined;
+			if (!chargeRef) {
+				console.log('Not an autopay invoice; ignoring payment failure');
+				break;
+			}
+			const reason = 'Your bank did not complete the payment';
+			const day = businessToday(new Date(event.created * 1000));
+			try {
+				const failed = await adminDB.runTransaction(async (tx) => {
+					const charge = (await tx.get(chargeRef)).data() as ChargeRecord | undefined;
+					// Only a pending charge for this invoice: a redelivery, or a charge the job already
+					// settled, changes nothing.
+					if (charge?.state !== 'pending' || charge.invoiceId !== invoice.id) return false;
+					const failure = {
+						attempt: charge.attempts,
+						day,
+						error: reason,
+						amountCents: charge.amountCents
+					};
+					tx.set(
+						chargeRef,
+						charge.attempts >= MAX_ATTEMPTS
+							? {
+									state: 'gave-up',
+									gaveUpDay: day,
+									error: reason,
+									failures: FieldValue.arrayUnion(failure)
+								}
+							: { state: 'failed', error: reason, failures: FieldValue.arrayUnion(failure) },
+						{ merge: true }
+					);
+					return true;
+				});
+				// The tenant is emailed by the next daily run, which also retries the charge.
+				if (failed && invoice.id && invoice.status === 'open') {
+					await stripe.invoices.voidInvoice(invoice.id).catch((err) => {
+						console.error(`Could not void failed autopay invoice ${invoice.id}: ${err?.message}`);
+					});
+				}
+			} catch (err) {
+				console.log(err instanceof Error ? err.message : err);
+				throw error(500, 'Failed to record the payment failure');
+			}
+			break;
+		}
 		default: {
 			console.log(`Unhandled event type ${event.type}`);
 		}
