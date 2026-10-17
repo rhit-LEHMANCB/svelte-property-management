@@ -30,7 +30,7 @@ Autopay (`add-autopay`) already models ACH settlement for its own charges: `leas
   createdAt, startedAt: ISO | null, startedDay: 'YYYY-MM-DD' | null, invoiceId?, paymentIntentId?,
   error?, failedDay?, tenantEmailedAt?, adminsEmailedAt?, tenantEmailClaim?, adminsEmailClaim?, updatedAt }
 ```
-- Written as `started` when the bank session is created; it holds nothing off yet. Expired, never-completed sessions stay `started` and are ignored everywhere.
+- Written as `started` when the bank session is created (and deleted again if Stripe refuses the session); it holds nothing off yet. A `started` record more than 2 days old is an abandoned Checkout (sessions expire after 24 hours), and the daily job deletes it.
 - State only moves forward: `started → pending → succeeded|failed` or `started → succeeded|failed`. Every transition is a transaction that reads the current state, so out-of-order events (Stripe does not guarantee order) never move a record backward, and repeats change nothing.
 - `startedAt` is the moment of the session's completion and `startedDay` its business day (`businessToday`). Both are set by whichever of the completion event or the success page gets there first.
 - `pending` and `failed` are the states the UI and jobs read. Firestore rules already deny all client access (`match /{document=**} { allow read, write: if false; }`).

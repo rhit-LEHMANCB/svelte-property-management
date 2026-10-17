@@ -67,6 +67,13 @@ export const bankPaymentsRef = (leaseRef: DocumentReference) =>
 export const leaseRefOfBankPayment = (ref: DocumentReference) =>
 	adminDB.collection('leases').doc(ref.path.split('/')[1]);
 
+/** The business day a payment was started, or (never completed) the day its session was created. */
+export const startDayOf = (payment: Pick<BankPayment, 'startedDay' | 'createdAt'>) =>
+	payment.startedDay ?? businessToday(new Date(payment.createdAt));
+
+/** A `started` record older than this is an abandoned Checkout (sessions expire after 24 hours). */
+const ABANDONED_DAYS = 2;
+
 /** A bank payment id is one path segment of our own making. */
 export const isBankPaymentId = (value: unknown): value is string =>
 	typeof value === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(value);
@@ -243,7 +250,7 @@ export async function sendBankFailureEmails(
 	const details = {
 		address: propertyAddress(property),
 		amountCents: payment.amountCents,
-		startedDay: payment.startedDay ?? payment.createdAt.slice(0, 10),
+		startedDay: startDayOf(payment),
 		reason: payment.error || DEFAULT_FAILURE_REASON
 	};
 
@@ -266,7 +273,8 @@ export async function sendBankFailureEmails(
 
 	await deliver('tenant', async () => {
 		const to = tenant?.email as string | undefined;
-		if (!to) return [];
+		// Left unsent (and retried) rather than marked sent with nobody told.
+		if (!to) throw new Error(`tenant ${payment.uid} has no email address`);
 		await sendEmail({
 			to,
 			...renderBankPaymentFailedEmail({ ...details, link: `${PUBLIC_FRONTEND_URL}/payment` })
@@ -280,6 +288,7 @@ export async function sendBankFailureEmails(
 		const emails = admins.docs
 			.map((doc) => doc.data().email as string | undefined)
 			.filter((email): email is string => Boolean(email));
+		if (emails.length === 0) throw new Error('no admin user has an email address');
 		const content = renderBankPaymentFailedAdminEmail({
 			...details,
 			tenant: userName(tenant),
@@ -289,7 +298,7 @@ export async function sendBankFailureEmails(
 		});
 		// All or nothing: a failed send leaves the group unsent, and a retry emails every admin again.
 		await Promise.all(emails.map((to) => sendEmail({ to, ...content })));
-		return emails.length > 0 ? ['admins'] : [];
+		return ['admins'];
 	}).catch((err) =>
 		errors.push(`admin email: ${err instanceof Error ? err.message : String(err)}`)
 	);
@@ -317,9 +326,14 @@ export async function checkBankPayments(
 		try {
 			if (
 				payment.state === 'pending' &&
-				addDays(payment.startedDay ?? payment.createdAt.slice(0, 10), PENDING_CHECK_DAYS) <= today
+				addDays(startDayOf(payment), PENDING_CHECK_DAYS) <= today
 			) {
-				if (!payment.paymentIntentId) continue;
+				if (!payment.paymentIntentId) {
+					warnings.push(
+						`lease ${leaseRef.id}: bank payment ${payment.id} has been pending for ${PENDING_CHECK_DAYS}+ days with no payment intent to check`
+					);
+					continue;
+				}
 				const intent = await stripe.paymentIntents.retrieve(payment.paymentIntentId);
 				if (intent.status === 'requires_payment_method' || intent.status === 'canceled') {
 					const reason = intent.last_payment_error?.message || DEFAULT_FAILURE_REASON;
@@ -334,6 +348,14 @@ export async function checkBankPayments(
 					);
 				}
 				// Processing (or waiting on microdeposits) stays pending.
+				continue;
+			}
+			if (payment.state === 'started' && addDays(startDayOf(payment), ABANDONED_DAYS) < today) {
+				// Abandoned Checkout: nothing was paid, and the record would only grow the collection.
+				await adminDB.runTransaction(async (tx) => {
+					const current = (await tx.get(ref)).data() as Omit<BankPayment, 'id'> | undefined;
+					if (current?.state === 'started') tx.delete(ref);
+				});
 				continue;
 			}
 			if (

@@ -51,6 +51,18 @@ for (const [caller, headers] of [
 			expect(write.status).toBe(403);
 		});
 
+		test('Scenario: Server only: bank payment records are denied to clients', async () => {
+			const auth = await headers();
+			const path = `${firestore}/leases/e2e-lease/bank_payments`;
+			expect((await fetch(`${path}/probe`, { headers: auth })).status).toBe(403);
+			const write = await fetch(`${path}?documentId=probe`, {
+				method: 'POST',
+				headers: { ...auth, 'Content-Type': 'application/json' },
+				body: JSON.stringify({ fields: { state: { stringValue: 'pending' } } })
+			});
+			expect(write.status).toBe(403);
+		});
+
 		test('Scenario: Storage allows public read only', async () => {
 			const auth = await headers();
 			// Allowed by the rules, so the missing object is a 404 and not a 403.

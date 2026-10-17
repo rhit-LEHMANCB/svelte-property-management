@@ -596,6 +596,55 @@ describe('pending-bank-payments: failures', () => {
 		expect(result.status).toBe(200);
 	});
 
+	it('a tenant with no email address is not marked as emailed; the job warns and retries', async () => {
+		setup();
+		const { id } = await startBank(500);
+		await send(sessionEvent('checkout.session.completed', id, '2026-11-03'));
+		await db.doc('users/t1').set({ email: null }, { merge: true });
+
+		await send(sessionEvent('checkout.session.async_payment_failed', id, '2026-11-04'));
+
+		const record = db.peek(`leases/lease-1/bank_payments/${id}`) as Record_;
+		expect(record.adminsEmailedAt).toEqual(expect.any(String));
+		expect(record.tenantEmailedAt).toBeFalsy();
+		setNow('2026-11-05');
+		await runDaily();
+		const runs = db.peek('_jobs/daily/runs/2026-11-05') as { runs: { warnings: string[] }[] };
+		expect(runs.runs.at(-1)!.warnings).toContain(
+			`lease lease-1: bank payment ${id}: tenant email: tenant t1 has no email address`
+		);
+	});
+
+	it('a pending payment with no payment intent to check is reported after 7 days', async () => {
+		setup();
+		const { id } = await startBank(500);
+		await send(
+			sessionEvent('checkout.session.completed', id, '2026-11-03', { payment_intent: null })
+		);
+
+		setNow('2026-11-10');
+		await runDaily();
+
+		const runs = db.peek('_jobs/daily/runs/2026-11-10') as { runs: { warnings: string[] }[] };
+		expect(runs.runs.at(-1)!.warnings).toContain(
+			`lease lease-1: bank payment ${id} has been pending for 7+ days with no payment intent to check`
+		);
+	});
+
+	it('an abandoned Checkout (started, never completed) is cleaned up after 2 days', async () => {
+		setup();
+		const abandoned = await startBank(500);
+		setNow('2026-11-05');
+		const recent = await startBank(200);
+
+		await runDaily();
+		expect(db.peek(`leases/lease-1/bank_payments/${abandoned.id}`)).toBeDefined();
+		setNow('2026-11-06');
+		await runDaily();
+		expect(db.peek(`leases/lease-1/bank_payments/${abandoned.id}`)).toBeUndefined();
+		expect(db.peek(`leases/lease-1/bank_payments/${recent.id}`)).toBeDefined();
+	});
+
 	it('Scenario: Lost event: a payment pending more than 7 days is checked with Stripe', async () => {
 		setup();
 		const { id } = await startBank(500);

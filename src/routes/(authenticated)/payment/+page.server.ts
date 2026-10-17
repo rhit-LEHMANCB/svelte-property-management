@@ -3,7 +3,12 @@ import { getUserIdOrError } from '$lib/server/authHelpers';
 import { loadLeaseLedger } from '$lib/server/balance';
 import { latestOpenCharge, leaseRefOf, loadCharges, ownEnrollment } from '$lib/server/autopayStore';
 import { inFlightCents } from '$lib/server/autopay';
-import { bankInFlightCents, FAILURE_NOTICE_DAYS, loadBankPayments } from '$lib/server/bankPayments';
+import {
+	bankInFlightCents,
+	FAILURE_NOTICE_DAYS,
+	loadBankPayments,
+	startDayOf
+} from '$lib/server/bankPayments';
 import { addDays } from '$lib/server/billing';
 import { businessToday } from '$lib/server/leaseDates';
 
@@ -57,13 +62,13 @@ export const load = (async (event) => {
 							.filter((p) => p.state === 'pending')
 							.map((p) => ({
 								amountCents: p.amountCents,
-								day: p.startedDay ?? p.createdAt.slice(0, 10)
+								day: startDayOf(p)
 							}))
 							.sort((a, b) => a.day.localeCompare(b.day)),
 						failed: failed
 							? {
 									amountCents: failed.amountCents,
-									day: failed.startedDay ?? failed.createdAt.slice(0, 10)
+									day: startDayOf(failed)
 								}
 							: null
 					},
