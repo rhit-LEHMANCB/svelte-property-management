@@ -16,7 +16,7 @@ Autopay (`add-autopay`) already models ACH settlement for its own charges: `leas
 
 ### 1. Method and fee
 - The request body gains `method: 'card' | 'bank'`; anything else is 400.
-- `src/lib/server/autopay.ts` gains `BANK_FEE_CENTS = 500` and `oneTimeFeeCents(method, amountCents)` (card → `cardFeeCents`, bank → 500). The client copy uses the same numbers through a small shared module in `src/lib/` (no server import), so the dialog's fees match the server's.
+- `src/lib/fees.ts` (client-safe, no server imports) holds `cardFeeCents`, `BANK_FEE_CENTS = 500` and `oneTimeFeeCents(method, amountCents)`. The server and the dialog both use it, so the fees always match; `src/lib/server/autopay.ts` re-exports `cardFeeCents`.
 - Card: `payment_method_types: ['card']`. Stripe shows Apple Pay and Google Pay under the card type; Cash App Pay and bank are excluded.
 - Bank: `payment_method_types: ['us_bank_account']`, with no `verification_method` set (Stripe's default allows instant or microdeposits).
 - Both keep `setup_future_usage: 'on_session'`. The fee line is named "Transaction Fee" with the description "Transaction fee for one-time card payment." or "Transaction fee for one-time bank payment.".
@@ -27,12 +27,12 @@ Autopay (`add-autopay`) already models ACH settlement for its own charges: `leas
 ### 2. Record: `leases/{leaseId}/bank_payments/{bankPaymentId}`
 ```
 { uid, sessionId, amountCents, feeCents, state: 'started'|'pending'|'succeeded'|'failed',
-  createdAt, startedDay: 'YYYY-MM-DD' | null, invoiceId?, paymentIntentId?, error?, failedDay?,
-  tenantEmailedAt?, adminsEmailedAt?, updatedAt }
+  createdAt, startedAt: ISO | null, startedDay: 'YYYY-MM-DD' | null, invoiceId?, paymentIntentId?,
+  error?, failedDay?, tenantEmailedAt?, adminsEmailedAt?, tenantEmailClaim?, adminsEmailClaim?, updatedAt }
 ```
 - Written as `started` when the bank session is created; it holds nothing off yet. Expired, never-completed sessions stay `started` and are ignored everywhere.
 - State only moves forward: `started → pending → succeeded|failed` or `started → succeeded|failed`. Every transition is a transaction that reads the current state, so out-of-order events (Stripe does not guarantee order) never move a record backward, and repeats change nothing.
-- `startedDay` is the business day (`businessToday`) of the session's completion. It is set by whichever of the completion event or the success page gets there first.
+- `startedAt` is the moment of the session's completion and `startedDay` its business day (`businessToday`). Both are set by whichever of the completion event or the success page gets there first.
 - `pending` and `failed` are the states the UI and jobs read. Firestore rules already deny all client access (`match /{document=**} { allow read, write: if false; }`).
 
 A one-time card payment gets no record: it settles at once, as today.
@@ -44,16 +44,16 @@ A one-time card payment gets no record: it settles at once, as today.
 
 ### 4. Settling
 - `invoice.payment_succeeded` is unchanged, except:
-  - When the invoice metadata has `bankPaymentId` and the record has a `startedDay`, the payment's transaction date is the start of that day in the business time zone instead of `invoice.created`. The ledger used for the split is computed at that time too.
+  - When the invoice metadata has `bankPaymentId` and the record has a `startedAt`, the payment's transaction date is that moment instead of `invoice.created`. The ledger used for the split is computed at that time too.
   - In the same transaction it marks the record `succeeded` (unless it is already `failed`, which is logged as an error and still recorded, because the money did arrive).
   - The existing `recorded_invoices` guard keeps it idempotent.
-- `checkout.session.async_payment_succeeded`: sets `succeeded` only if the record is still `started`/`pending` **and** the invoice is recorded. Otherwise it changes nothing and leaves it to `invoice.payment_succeeded`. The payable cap and late-fee hold must not drop before the payment is in the ledger, so a record leaves `pending` only through the invoice webhook, or through failure.
+- `checkout.session.async_payment_succeeded`: only fills `startedAt`/`startedDay` if they are missing. The state is left to `invoice.payment_succeeded`. The payable cap and late-fee hold must not drop before the payment is in the ledger, so a record leaves `pending` only through the invoice webhook, or through failure.
 - **Open question resolved by design, not by docs:** the Stripe docs do not say whether Checkout creates the post-payment invoice at session completion or only after an async payment succeeds. Either way works here. Recording still keys off `invoice.payment_succeeded`, and dating comes from the record, not the invoice. During QA on dev the order of events is observed and noted.
 
 ### 5. Failing
 - `checkout.session.async_payment_failed` → `failBankPayment(record, reason)`: from `started`/`pending` to `failed` with `failedDay` and `error`. The reason comes from the payment intent's `last_payment_error.message` when it can be retrieved, otherwise "The bank payment did not go through". It then tries to send the emails (6).
 - `invoice.payment_failed` with `bankPaymentId` in metadata is handled the same way, in case Checkout's invoice ever reaches it. Non-autopay, non-bank invoices are still ignored.
-- The daily job checks records `pending` for more than 7 days (`startedDay + 7 <= today`). It retrieves the payment intent: `succeeded` is left to the webhook, `processing`/`requires_action` stays pending, and `requires_payment_method`/`canceled` is failed. Errors become run warnings.
+- The daily job checks records `pending` for 7 days or more (`startedDay + 7 <= today`). It retrieves the payment intent: `succeeded` is left to the webhook, `processing`/`requires_action` stays pending, and `requires_payment_method`/`canceled` is failed. Errors become run warnings.
 
 ### 6. Emails
 - New templates in `email-templates.ts`: `renderBankPaymentFailedEmail` (tenant) and `renderBankPaymentFailedAdminEmail` (admin). Both are signed "Lehman Family LLC" and sent from `EMAIL_FROM`.
@@ -69,7 +69,7 @@ A one-time card payment gets no record: it settles at once, as today.
 - **Autopay**: `planAutopay` gains an `otherInFlightCents` input (the bank in-flight sum), subtracted from `remaining`. `noticesFor` subtracts it in its `projectedSplit` too.
 
 ### 8. UI
-- The "Make a Payment" prompt modal is replaced by a component modal: an amount input plus a two-option radio group, "Card: fee 2.9% + $0.30 ($X.XX)" and "Bank account: fee $5.00". The fees update as the amount changes, and the total for the chosen method is shown. Validation is the existing zod schema with the cap `payableCents`. It uses the existing modal store's `component` support, or a small local dialog if the store has none (checked during implementation).
+- The "Make a Payment" prompt modal is replaced by a component modal (`src/lib/Components/Payments/PaymentDialog.svelte`, through the modal store's `component` type): an amount input plus a two-option radio group, "Card: Fee 2.9% + $0.30 ($X.XX)" and "Bank account: Fee $5.00". The fees update as the amount changes, and the total for the chosen method is shown. The dialog validates against `payableCents` and shows problems inline; the page checks again with the zod schema before calling the server.
 - Lease card: for each `pending` record, "A bank payment of $X started on <date> is processing." (`role="status"`). For the caller's own `failed` record with `failedDay` within 7 days: "Your bank payment of $X started on <date> did not go through. The amount is still owed." When `payableCents` is 0 while the balance is above 0: "Your balance is being paid." and the button is disabled.
 - The page load returns only what each tenant may see: amounts, days and states. It never returns another tenant's uid, error text or emails.
 

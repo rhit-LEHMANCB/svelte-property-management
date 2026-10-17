@@ -89,7 +89,7 @@ The system SHALL mark a pending one-time bank payment failed when Stripe reports
 - **THEN** they see that their bank payment of $X started on <date> did not go through and the amount is still owed
 
 #### Scenario: Lost event
-- **WHEN** a payment has been pending for more than 7 days without any event
+- **WHEN** a payment has been pending for 7 days or more without any event
 - **THEN** the daily job checks it with Stripe, marks it failed if Stripe says it failed or was canceled, and otherwise leaves it pending
 
 #### Scenario: Late events

@@ -1,7 +1,7 @@
 # Lifecycle: add-one-time-bank-payments
 
 - Branch: `claude/add-one-time-bank-payments`
-- Stage: 2 Propose + preflight
+- Stage: 3 Implement
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 0 of 5
 - QA cycle: 0 of 3
@@ -45,8 +45,8 @@
 - Release PR #157 still carries the interim behavior (bank offered at card fee) if it merges before this change.
 
 ## Gate A
-Approved: no
-Accepted preflight gaps: none
+Approved: yes, by the user on 2026-10-17 ("approve"), as proposed, including decision 1 (autopay charges in flight also lower the payable amount).
+Accepted preflight gaps: none (local `npm run check` needs a placeholder `JOBS_SECRET`; CI provides the real one)
 
 ## Preflight
 Run 2026-10-16.
@@ -65,6 +65,12 @@ Run 2026-10-16.
 | Java + Firebase CLI for emulator e2e | OK: Java present, firebase 15.32.1 |
 | Secrets/variables for this change | None needed |
 | Stripe webhook events (rollout, not a run blocker) | Needed: add `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` to the dev endpoint before QA (the success page covers pending without them) and to the live endpoint before production |
+
+## Rollout notes
+- Stripe dev and live webhook endpoints: add `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `checkout.session.async_payment_failed` (keep `invoice.payment_succeeded` and `invoice.payment_failed`). Dev before QA; live before the production merge.
+- Live Stripe: ACH Direct Debit enabled (the user is doing this). Link stays off.
+- No new environment variables or secrets. No data migration (`leases/{id}/bank_payments` starts empty; Firestore rules already deny clients).
+- Local runs: Playwright 1.5x here expects Chromium build 1243 while the container has 1194; the run used an uncommitted wrapper config pointing `launchOptions.executablePath` at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
 
 ## Review rounds
 (none yet; one line per round: blockers, majors, minors, nits, fixed, rejected with reason)
