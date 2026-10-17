@@ -16,6 +16,7 @@ import {
 	type Enrollment
 } from './autopay';
 import { chargesRef, loadCharges, loadEnrollments } from './autopayStore';
+import { bankInFlightCents, loadBankPayments } from './bankPayments';
 import { loadLedgerRecords } from './balance';
 import { addDays, allocate, allocationParts, computeLedger, type Ledger } from './billing';
 import { businessToday, type LeaseDoc } from './leaseDates';
@@ -361,10 +362,11 @@ async function chargeLease(
 		// amount while the run is under way, and the previous charge changed what is owed.
 		const lease = (await leaseRef.get()).data() as LeaseDoc | undefined;
 		if (!lease) break;
-		const [records, existing, enrollments] = await Promise.all([
+		const [records, existing, enrollments, bankPayments] = await Promise.all([
 			loadLedgerRecords(leaseRef),
 			loadCharges(leaseRef),
-			loadEnrollments(leaseRef)
+			loadEnrollments(leaseRef),
+			loadBankPayments(leaseRef)
 		]);
 		const ledger = computeLedger({ lease, ...records, now });
 		const plan = planAutopay({
@@ -373,7 +375,8 @@ async function chargeLease(
 			charges: existing,
 			today,
 			tenantIds: lease.tenantIds,
-			isStaleClaim: (c) => isStaleCharge(c, now)
+			isStaleClaim: (c) => isStaleCharge(c, now),
+			otherInFlightCents: bankInFlightCents(bankPayments)
 		});
 		const next = plan.charges[0];
 		if (!next || !plan.cycleKey) break;

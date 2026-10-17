@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { FieldValue, type DocumentReference } from 'firebase-admin/firestore';
+import { FieldValue, type DocumentReference, type Query } from 'firebase-admin/firestore';
 import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 import { adminDB } from './admin';
 import { loadLedgerRecords } from './balance';
@@ -21,6 +21,12 @@ import {
 } from './autopay';
 import { chargeAutopay, hasPendingCharge, type AutopayCharge } from './autopayCharge';
 import { loadCharges, loadEnrollments } from './autopayStore';
+import {
+	bankInFlightCents,
+	checkBankPayments,
+	hasPendingBankPayment,
+	loadBankPayments
+} from './bankPayments';
 import { sendEmail } from './email';
 import {
 	renderAutopayFailedEmail,
@@ -119,10 +125,13 @@ async function chargeLateFees(
 		const before = computeLedger({ lease, ...records, now });
 		const charged: ChargedFee[] = [];
 		const lateFees = { ...records.lateFees };
-		// While an autopay charge is settling (ACH takes days), the lease is not charged late fees. Once
-		// it settles, the payment is dated when the charge started; if it fails, fees resume next run.
-		const autopayPending = await hasPendingCharge(leaseRef, (query) => tx.get(query));
-		for (const fee of autopayPending ? [] : before.unchargedLateFees) {
+		// While an autopay charge or a one-time bank payment is settling (ACH takes days), the lease is
+		// not charged late fees. Once it settles, the payment is dated when it started; if it fails,
+		// fees resume next run.
+		const read = (query: Query) => tx.get(query);
+		const settling =
+			(await hasPendingCharge(leaseRef, read)) || (await hasPendingBankPayment(leaseRef, read));
+		for (const fee of settling ? [] : before.unchargedLateFees) {
 			const record: LateFeeRecord = {
 				amount: fee.amountCents / 100,
 				paid: 0,
@@ -155,7 +164,12 @@ type Notices = {
 };
 
 /** A lease's autopay state, for the notices. */
-type AutopayContext = { enrollments: Enrollment[]; charges: ChargeRecord[] };
+type AutopayContext = {
+	enrollments: Enrollment[];
+	charges: ChargeRecord[];
+	/** One-time bank payments on their way to the lease. */
+	bankInFlightCents: number;
+};
 
 /** The emails a lease is due today, before removing those already sent. */
 function noticesFor(
@@ -171,7 +185,7 @@ function noticesFor(
 	// Each enrolled tenant's share of what is owed, after charges already on their way. A tenant
 	// with a share, or whose own charge is on its way, gets autopay notices instead of reminders.
 	const shares = projectedSplit(
-		Math.max(0, ledger.totalCents - inFlightCents(autopay.charges)),
+		Math.max(0, ledger.totalCents - inFlightCents(autopay.charges) - autopay.bankInFlightCents),
 		enrollments
 	);
 	const charging = (uid: string) =>
@@ -350,11 +364,29 @@ export async function runDailyJob(now = new Date(), runBy = 'scheduler'): Promis
 						`lease ${doc.id}: autopay: ${err instanceof Error ? err.message : String(err)}`
 					);
 				}
-				const [enrollments, charges] = await Promise.all([
+				try {
+					const bank = await checkBankPayments(doc.ref, now);
+					summary.emailsSent.push(
+						...bank.emailed.map((to) => ({ leaseId: doc.id, notice: 'bank-payment-failed', to }))
+					);
+					summary.warnings.push(...bank.warnings);
+				} catch (err) {
+					summary.warnings.push(
+						`lease ${doc.id}: bank payments: ${err instanceof Error ? err.message : String(err)}`
+					);
+				}
+				const [enrollments, charges, bankPayments] = await Promise.all([
 					loadEnrollments(doc.ref),
-					loadCharges(doc.ref)
+					loadCharges(doc.ref),
+					loadBankPayments(doc.ref)
 				]);
-				await sendNotices(doc.ref, { ...result, ledger }, { enrollments, charges }, summary, now);
+				await sendNotices(
+					doc.ref,
+					{ ...result, ledger },
+					{ enrollments, charges, bankInFlightCents: bankInFlightCents(bankPayments) },
+					summary,
+					now
+				);
 			} catch (err) {
 				summary.errors.push(`lease ${doc.id}: ${err instanceof Error ? err.message : String(err)}`);
 			}
