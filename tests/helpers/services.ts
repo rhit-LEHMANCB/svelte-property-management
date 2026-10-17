@@ -48,6 +48,7 @@ const stripe = {
 		del: vi.fn()
 	},
 	invoiceItems: { create: vi.fn() },
+	paymentIntents: { retrieve: vi.fn() },
 	billingPortal: { sessions: { create: vi.fn() } },
 	webhooks: { constructEvent: vi.fn() }
 };
@@ -148,6 +149,7 @@ function reset() {
 		.mockImplementation(async (id: string) => ({ id, status: 'void' }));
 	stripe.invoices.retrieve.mockReset().mockRejectedValue(new Error('No such invoice'));
 	stripe.invoices.del.mockReset().mockResolvedValue({ deleted: true });
+	stripe.paymentIntents.retrieve.mockReset().mockRejectedValue(new Error('No such payment intent'));
 	stripe.billingPortal.sessions.create
 		.mockReset()
 		.mockResolvedValue({ url: 'https://portal.test/session' });

@@ -19,6 +19,13 @@ import { leasesOfTenant } from '$lib/server/leases';
 import { chargeId, type ChargeRecord } from '$lib/server/autopay';
 import { declineReason, failPendingCharge } from '$lib/server/autopayCharge';
 import { chargesRef } from '$lib/server/autopayStore';
+import {
+	bankPaymentRefOf,
+	completeBankSession,
+	failBankSession,
+	paymentIntentIdOf,
+	type BankPayment
+} from '$lib/server/bankPayments';
 
 /**
  * The autopay charge record an invoice was made for, or undefined for any other invoice (Checkout,
@@ -170,10 +177,18 @@ export const POST: RequestHandler = async ({ request }) => {
 					const charge = chargeRef
 						? ((await tx.get(chargeRef)).data() as ChargeRecord | undefined)
 						: undefined;
+					// A one-time bank payment is marked succeeded in the same commit, and dated when the
+					// tenant completed Checkout rather than when it settled days later.
+					const bankRef =
+						invoice.metadata?.leaseID === leaseId ? bankPaymentRefOf(invoice.metadata) : undefined;
+					const bank = bankRef
+						? ((await tx.get(bankRef)).data() as Omit<BankPayment, 'id'> | undefined)
+						: undefined;
+					const paidAt = bank?.startedAt ? Timestamp.fromDate(new Date(bank.startedAt)) : eventDate;
 
 					// The payment goes to late fees, then the deposit, then the oldest unpaid rent, against
 					// what the lease owed when the invoice was created.
-					const now = eventDate.toDate();
+					const now = paidAt.toDate();
 					const records = await loadLedgerRecords(leaseRef, {
 						doc: (ref) => tx.get(ref),
 						collection: (ref) => tx.get(ref)
@@ -185,7 +200,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					let feePending = feeCents !== undefined;
 					const transaction = (cents: number, extra: Record<string, unknown> = {}) => {
 						const entry = {
-							date: eventDate,
+							date: paidAt,
 							amount: cents / 100,
 							...extra,
 							...(feePending && { fee: feeCents! / 100 })
@@ -253,6 +268,23 @@ export const POST: RequestHandler = async ({ request }) => {
 					if (recordedRef) {
 						tx.set(recordedRef, { recordedAt: eventDate });
 					}
+					if (bankRef && bank && bank.state !== 'succeeded') {
+						if (bank.state === 'failed') {
+							// The money arrived after all; it is recorded, and the failure no longer applies.
+							console.error(
+								`Bank payment ${bankRef.path} was marked failed but its invoice ${invoice.id} was paid`
+							);
+						}
+						tx.set(
+							bankRef,
+							{
+								state: 'succeeded',
+								invoiceId: invoice.id ?? null,
+								updatedAt: new Date().toISOString()
+							},
+							{ merge: true }
+						);
+					}
 					if (chargeRef && charge && (!charge.invoiceId || charge.invoiceId === invoice.id)) {
 						tx.set(
 							chargeRef,
@@ -276,11 +308,62 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 			break;
 		}
+		case 'checkout.session.completed':
+		case 'checkout.session.async_payment_succeeded': {
+			// A one-time bank payment: completed but unpaid means pending until it settles. Settling is
+			// recorded by `invoice.payment_succeeded`; here only the start day is kept if it is missing.
+			const session = event.data.object;
+			if (!bankPaymentRefOf(session.metadata)) {
+				console.log(`Not a bank payment session; ignoring ${event.type}`);
+				break;
+			}
+			try {
+				await completeBankSession(session, new Date(event.created * 1000));
+			} catch (err) {
+				console.log(err instanceof Error ? err.message : err);
+				throw error(500, 'Failed to record the bank payment');
+			}
+			break;
+		}
+		case 'checkout.session.async_payment_failed': {
+			const session = event.data.object;
+			if (!bankPaymentRefOf(session.metadata)) {
+				console.log('Not a bank payment session; ignoring payment failure');
+				break;
+			}
+			try {
+				await failBankSession(
+					session.metadata,
+					paymentIntentIdOf(session),
+					new Date(event.created * 1000)
+				);
+			} catch (err) {
+				console.log(err instanceof Error ? err.message : err);
+				throw error(500, 'Failed to record the bank payment failure');
+			}
+			break;
+		}
 		case 'invoice.payment_failed': {
-			// An autopay charge that failed: usually ACH that did not settle. Checkout invoices never get
-			// here unpaid.
+			// An autopay charge that failed: usually ACH that did not settle. A one-time bank payment's
+			// invoice is handled the same way as its Checkout session, in case it gets here.
 			const invoice = event.data.object;
 			const leaseId = invoice.metadata?.leaseID;
+			if (bankPaymentRefOf(invoice.metadata)) {
+				// Not in the current SDK's types, but present in the pinned API version.
+				const intent = (invoice as unknown as { payment_intent?: string | { id: string } | null })
+					.payment_intent;
+				try {
+					await failBankSession(
+						invoice.metadata,
+						typeof intent === 'string' ? intent : (intent?.id ?? null),
+						new Date(event.created * 1000)
+					);
+				} catch (err) {
+					console.log(err instanceof Error ? err.message : err);
+					throw error(500, 'Failed to record the bank payment failure');
+				}
+				break;
+			}
 			const chargeRef = leaseId ? autopayChargeRef(invoice, leaseId) : undefined;
 			if (!chargeRef) {
 				console.log('Not an autopay invoice; ignoring payment failure');
