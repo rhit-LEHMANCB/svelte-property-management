@@ -30,8 +30,15 @@ export async function openPayment(page: Page) {
 export const leaseCard = (page: Page, id: string) => page.locator(`[data-lease="${id}"]`);
 
 /** Open the dialog on a lease, type an amount and choose a method (does not submit). */
-export async function fillDialog(page: Page, leaseId: string, amount: string, method?: 'card' | 'bank') {
-	await leaseCard(page, leaseId).getByRole('button', { name: /Make a Payment/ }).click();
+export async function fillDialog(
+	page: Page,
+	leaseId: string,
+	amount: string,
+	method?: 'card' | 'bank'
+) {
+	await leaseCard(page, leaseId)
+		.getByRole('button', { name: /Make a Payment/ })
+		.click();
 	const dlg = page.locator('[data-payment-dialog]');
 	await expect(dlg).toBeVisible();
 	await dlg.getByLabel('Amount').fill(amount);
@@ -40,7 +47,11 @@ export async function fillDialog(page: Page, leaseId: string, amount: string, me
 	return dlg;
 }
 
-async function clickInFrames(page: Page, name: string | RegExp, role: 'button' | 'text' = 'button') {
+async function clickInFrames(
+	page: Page,
+	name: string | RegExp,
+	role: 'button' | 'text' = 'button'
+) {
 	for (const f of page.frames()) {
 		const el = role === 'button' ? f.getByRole('button', { name }) : f.getByText(name);
 		if (await el.count().catch(() => 0)) {
@@ -56,7 +67,9 @@ export async function payWithTestBank(page: Page, account: RegExp = /Success\s*â
 	await page.waitForURL(/checkout\.stripe\.com/, { timeout: 60_000 });
 	await page.getByLabel('Full name').fill('QA Tenant');
 	await page.getByText('Test (Non-OAuth)').first().click();
-	await expect.poll(() => clickInFrames(page, 'Agree and continue'), { timeout: 40_000 }).toBe(true);
+	await expect
+		.poll(() => clickInFrames(page, 'Agree and continue'), { timeout: 40_000 })
+		.toBe(true);
 	// Choose the account, then connect it.
 	await expect
 		.poll(
@@ -75,7 +88,9 @@ export async function payWithTestBank(page: Page, account: RegExp = /Success\s*â
 		.toBe(true);
 	await expect.poll(() => clickInFrames(page, /Connect account/i), { timeout: 30_000 }).toBe(true);
 	// Link may offer to save the account; decline if asked, then wait for the Pay button.
-	await expect.poll(() => clickInFrames(page, /Finish without saving/i), { timeout: 40_000 }).toBe(true);
+	await expect
+		.poll(() => clickInFrames(page, /Finish without saving/i), { timeout: 40_000 })
+		.toBe(true);
 	await expect.poll(() => clickInFrames(page, /Continue to/i), { timeout: 40_000 }).toBe(true);
 	await page.waitForTimeout(3000);
 }

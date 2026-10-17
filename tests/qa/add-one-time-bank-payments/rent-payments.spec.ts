@@ -46,7 +46,9 @@ test('Card: $964.52 fee is $28.27 and only cards are offered', async ({ page }) 
 	await shot(page, 'rent-payments-card');
 });
 
-test('Bank account: $964.52 fee is $5.00 and only a US bank account is offered', async ({ page }) => {
+test('Bank account: $964.52 fee is $5.00 and only a US bank account is offered', async ({
+	page
+}) => {
 	const { status, url } = await createSession(page, DEPOSIT_LEASE, 964.52, 'bank');
 	expect(status).toBe(200);
 	const text = await openCheckout(page, url!);
@@ -137,9 +139,13 @@ test('Return pages: cancel goes to /payment', async ({ page }) => {
 	await openCheckout(page, url!);
 	// The success URL cannot be read without completing; the bank success URL is proven in
 	// pending-bank-payments. Here: the Checkout back link returns to /payment.
-	await page.getByRole('link', { name: /Back|Lehman|Sandbox/i }).first().click().catch(async () => {
-		await page.locator('a[data-testid="business-link"], a:has(svg)').first().click();
-	});
+	await page
+		.getByRole('link', { name: /Back|Lehman|Sandbox/i })
+		.first()
+		.click()
+		.catch(async () => {
+			await page.locator('a[data-testid="business-link"], a:has(svg)').first().click();
+		});
 	await page.waitForURL(/lehman-realty-dev\.web\.app\/payment/, { timeout: 30_000 });
 	expect(new URL(page.url()).pathname).toBe('/payment');
 	await shot(page, 'rent-payments-return-pages-cancel');

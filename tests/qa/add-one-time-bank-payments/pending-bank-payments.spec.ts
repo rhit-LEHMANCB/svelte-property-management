@@ -16,7 +16,8 @@ test.describe.configure({ mode: 'serial' });
 test.setTimeout(400_000);
 
 let sessionId = '';
-const pendingNotes = (page: Page, lease: string) => leaseCard(page, lease).locator('[data-bank-pending]');
+const pendingNotes = (page: Page, lease: string) =>
+	leaseCard(page, lease).locator('[data-bank-pending]');
 
 /** Start a bank Checkout from the dialog, pay with a test account, and land on /payment/success. */
 async function bankPayment(page: Page, lease: string, amount: string, account?: RegExp) {
@@ -29,9 +30,16 @@ async function bankPayment(page: Page, lease: string, amount: string, account?: 
 	sessionId = new URL(page.url()).searchParams.get('bank') ?? sessionId;
 	expect(new URL(page.url()).pathname).toBe('/payment/success');
 	expect(sessionId).toMatch(/^cs_test_/);
-	await expect(page.locator('p').first()).toContainText('Bank payments take a few business days to complete');
-	await expect(page.locator('p').first()).toContainText('it shows as processing on your payment page');
-	await expect(page.getByRole('link', { name: 'Back to payments' })).toHaveAttribute('href', '/payment');
+	await expect(page.locator('p').first()).toContainText(
+		'Bank payments take a few business days to complete'
+	);
+	await expect(page.locator('p').first()).toContainText(
+		'it shows as processing on your payment page'
+	);
+	await expect(page.getByRole('link', { name: 'Back to payments' })).toHaveAttribute(
+		'href',
+		'/payment'
+	);
 	await shot(page, 'pending-bank-payments-return-from-bank-checkout');
 	return sessionId;
 }
@@ -50,13 +58,21 @@ test('Checkout completed, not settled: pending record, success page and processi
 	await openPayment(page);
 	const note = pendingNotes(page, CARD_LEASE);
 	await expect(note).toHaveCount(1);
-	await expect(note.first()).toContainText(/A bank payment of \$1,499\.00 started on\s+\d+\/\d+\/\d+ is processing\./);
+	await expect(note.first()).toContainText(
+		/A bank payment of \$1,499\.00 started on\s+\d+\/\d+\/\d+ is processing\./
+	);
 	await expect(leaseCard(page, CARD_LEASE)).toContainText('You have a balance of $1,499.00');
-	await shot(page, 'pending-bank-payments-checkout-completed-not-settled', leaseCard(page, CARD_LEASE));
+	await shot(
+		page,
+		'pending-bank-payments-checkout-completed-not-settled',
+		leaseCard(page, CARD_LEASE)
+	);
 	await shot(page, 'pending-bank-payments-processing-note', leaseCard(page, CARD_LEASE));
 });
 
-test('Everything on its way: balance is being paid and Make a Payment is disabled', async ({ page }) => {
+test('Everything on its way: balance is being paid and Make a Payment is disabled', async ({
+	page
+}) => {
 	await signInAs(page, 'tenant');
 	await openPayment(page);
 	const card = leaseCard(page, CARD_LEASE);
@@ -68,7 +84,9 @@ test('Everything on its way: balance is being paid and Make a Payment is disable
 	await shot(page, 'pending-bank-payments-everything-on-its-way', card);
 });
 
-test('Payable amount reduced: $1,200.00 of $1,500.00 can be paid, dialog and server', async ({ page }) => {
+test('Payable amount reduced: $1,200.00 of $1,500.00 can be paid, dialog and server', async ({
+	page
+}) => {
 	await signInAs(page, 'tenant');
 	await bankPayment(page, DEPOSIT_LEASE, '300');
 	await openPayment(page);
@@ -88,7 +106,9 @@ test('Payable amount reduced: $1,200.00 of $1,500.00 can be paid, dialog and ser
 	await expect(leaseCard(page, DEPOSIT_LEASE)).toContainText('You have a balance of $1,500.00');
 });
 
-test('Returned before the event: revisiting the success URL leaves one record', async ({ page }) => {
+test('Returned before the event: revisiting the success URL leaves one record', async ({
+	page
+}) => {
 	expect(sessionId).toMatch(/^cs_test_/);
 	await signInAs(page, 'tenant');
 	for (let i = 0; i < 2; i++) {
@@ -97,7 +117,11 @@ test('Returned before the event: revisiting the success URL leaves one record', 
 	}
 	await openPayment(page);
 	await expect(pendingNotes(page, DEPOSIT_LEASE)).toHaveCount(1);
-	await shot(page, 'pending-bank-payments-returned-before-the-event', leaseCard(page, DEPOSIT_LEASE));
+	await shot(
+		page,
+		'pending-bank-payments-returned-before-the-event',
+		leaseCard(page, DEPOSIT_LEASE)
+	);
 });
 
 test('Not the tenant session: another user, a card session and a made-up id create nothing', async ({
@@ -117,7 +141,11 @@ test('Not the tenant session: another user, a card session and a made-up id crea
 	}
 	await openPayment(page);
 	await expect(pendingNotes(page, DEPOSIT_LEASE)).toHaveCount(1); // only the $20.00 payment
-	await shot(page, 'pending-bank-payments-not-the-tenant-session-tenant', leaseCard(page, DEPOSIT_LEASE));
+	await shot(
+		page,
+		'pending-bank-payments-not-the-tenant-session-tenant',
+		leaseCard(page, DEPOSIT_LEASE)
+	);
 
 	// The admin opens the tenant's real session: nothing is created or changed.
 	const ctx = await browser.newContext();
@@ -143,7 +171,13 @@ test('Server only: a tenant cannot read or write bank_payments in Firestore', as
 	expect(key, 'public web API key seen in sign-in traffic').not.toBe('');
 	const auth = await page.request.post(
 		`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${key}`,
-		{ data: { email: process.env.QA_TENANT_EMAIL, password: process.env.QA_TENANT_PASSWORD, returnSecureToken: true } }
+		{
+			data: {
+				email: process.env.QA_TENANT_EMAIL,
+				password: process.env.QA_TENANT_PASSWORD,
+				returnSecureToken: true
+			}
+		}
 	);
 	expect(auth.status()).toBe(200);
 	const { idToken } = await auth.json();
@@ -175,7 +209,9 @@ test('Settles: the processing note goes away and the balance drops', async ({ pa
 	await expect(leaseCard(page, DEPOSIT_LEASE)).toContainText('You have a balance of $1,180.00');
 });
 
-test('Failed bank payment: failure note, amount payable again (needs the failure event)', async ({ page }) => {
+test('Failed bank payment: failure note, amount payable again (needs the failure event)', async ({
+	page
+}) => {
 	await signInAs(page, 'tenant');
 	await openPayment(page);
 	await bankPayment(page, DEPOSIT_LEASE, '50', /Insufficient Funds/);
@@ -188,7 +224,11 @@ test('Failed bank payment: failure note, amount payable again (needs the failure
 	}
 	await shot(page, 'pending-bank-payments-failed-bank-payment', leaseCard(page, DEPOSIT_LEASE));
 	expect(failed, 'failure note shown within 4 minutes').toBe(true);
-	await expect(leaseCard(page, DEPOSIT_LEASE).locator('[data-bank-failed]')).toContainText('did not go through. The amount is still owed.');
-	await expect(leaseCard(page, DEPOSIT_LEASE).getByRole('button', { name: /Make a Payment/ })).toBeEnabled();
+	await expect(leaseCard(page, DEPOSIT_LEASE).locator('[data-bank-failed]')).toContainText(
+		'did not go through. The amount is still owed.'
+	);
+	await expect(
+		leaseCard(page, DEPOSIT_LEASE).getByRole('button', { name: /Make a Payment/ })
+	).toBeEnabled();
 	await shot(page, 'pending-bank-payments-failure-note', leaseCard(page, DEPOSIT_LEASE));
 });
