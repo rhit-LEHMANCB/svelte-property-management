@@ -2,11 +2,16 @@ import type { PageServerLoad } from './$types';
 import { getUserIdOrError } from '$lib/server/authHelpers';
 import { loadLeaseLedger } from '$lib/server/balance';
 import { latestOpenCharge, leaseRefOf, loadCharges, ownEnrollment } from '$lib/server/autopayStore';
+import { inFlightCents } from '$lib/server/autopay';
+import { bankInFlightCents, FAILURE_NOTICE_DAYS, loadBankPayments } from '$lib/server/bankPayments';
+import { addDays } from '$lib/server/billing';
+import { businessToday } from '$lib/server/leaseDates';
 
 export const load = (async (event) => {
 	const uid = getUserIdOrError(event.locals.userID);
 
 	const { userLeases = [] } = await event.parent();
+	const today = businessToday();
 
 	// Each lease has its own balance. An ended lease keeps its unpaid rent payable; an upcoming one
 	// can owe its deposit, or rent payable 7 days early.
@@ -14,11 +19,22 @@ export const load = (async (event) => {
 		await Promise.all(
 			userLeases.map(async (lease) => {
 				const leaseRef = leaseRefOf(lease.id);
-				const [ledger, enrollment, charges] = await Promise.all([
+				const [ledger, enrollment, charges, bankPayments] = await Promise.all([
 					loadLeaseLedger(lease.id, lease),
 					ownEnrollment(leaseRef, uid),
-					loadCharges(leaseRef)
+					loadCharges(leaseRef),
+					loadBankPayments(leaseRef)
 				]);
+				// The caller's own failed bank payment from the last few days, newest first.
+				const failed = bankPayments
+					.filter(
+						(p) =>
+							p.uid === uid &&
+							p.state === 'failed' &&
+							p.failedDay &&
+							addDays(p.failedDay, FAILURE_NOTICE_DAYS) >= today
+					)
+					.sort((a, b) => (b.failedDay ?? '').localeCompare(a.failedDay ?? ''))[0];
 				return {
 					id: lease.id,
 					address: lease.address,
@@ -29,6 +45,28 @@ export const load = (async (event) => {
 					dueDate: ledger.dueDate,
 					owed: ledger.owed,
 					creditCents: ledger.creditCents,
+					// What can be paid now: money already on its way is not paid twice.
+					payableCents: Math.max(
+						0,
+						ledger.totalCents - inFlightCents(charges) - bankInFlightCents(bankPayments)
+					),
+					// Every tenant on the lease sees bank payments that are processing, but only amounts and
+					// days: never who made them or why one failed.
+					bankPayments: {
+						pending: bankPayments
+							.filter((p) => p.state === 'pending')
+							.map((p) => ({
+								amountCents: p.amountCents,
+								day: p.startedDay ?? p.createdAt.slice(0, 10)
+							}))
+							.sort((a, b) => a.day.localeCompare(b.day)),
+						failed: failed
+							? {
+									amountCents: failed.amountCents,
+									day: failed.startedDay ?? failed.createdAt.slice(0, 10)
+								}
+							: null
+					},
 					// Only the caller's own enrollment and charges, never another tenant's.
 					autopay: {
 						enrollment,
