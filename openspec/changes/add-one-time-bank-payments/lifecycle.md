@@ -3,7 +3,7 @@
 - Branch: `claude/add-one-time-bank-payments`
 - Stage: 4 Review loop
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
-- Review round: 0 of 5
+- Review round: 1 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-16
 
@@ -76,7 +76,7 @@ All 22 tasks done. Local checks: `npm run lint` OK; `npm run check` OK (placehol
 - Local runs: Playwright 1.5x here expects Chromium build 1243 while the container has 1194; the run used an uncommitted wrapper config pointing `launchOptions.executablePath` at `/opt/pw-browsers/chromium-1194/chrome-linux/chrome`.
 
 ## Review rounds
-(none yet; one line per round: blockers, majors, minors, nits, fixed, rejected with reason)
+- Round 1 (2026-10-17): 0 blockers, 1 major, 5 minors, 1 nit; all 7 fixed, none rejected. Major: no test for autopay notices subtracting pending bank payments (added daily-job test). Minors: warn when a pending payment succeeded at Stripe but was never recorded; date by the record's creation when no start time was captured; dialog error replaces the unreachable page toast (spec scenario updated); delete the record when Stripe refuses the session and drop the unused `sessionId`; failure-email errors are returned, unclaim failures no longer mask them. Nit: e2e test for the bank confirmation page (fake Stripe now returns payment sessions). Checks after fixes: lint, check, 730 unit/handler tests, payment/app-platform/autopay/leases e2e, build all OK.
 
 ## Out-of-scope observations
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)

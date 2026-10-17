@@ -20,7 +20,8 @@
 //
 //   POST   /v1/checkout/sessions (mode=setup)  answers with a local setup page URL
 //   GET    /setup/<id>            the setup page; its "Save" link returns to the success URL
-//   GET    /v1/checkout/sessions/<id>  the completed session with a saved method
+//   GET    /v1/checkout/sessions/<id>  the completed session: a saved method for a setup session,
+//                                       or an unpaid (processing) bank payment for a payment session
 //   POST   /__setup/method        {type: 'card' | 'us_bank_account'}: what the next setups save
 //   POST   /v1/invoices, /v1/invoiceitems, /v1/invoices/<id>/finalize|pay|void, GET/DELETE /v1/invoices/<id>
 //   POST   /__pay/mode            {mode: 'succeed' | 'processing' | 'decline'}: how invoices pay
@@ -114,6 +115,20 @@ const server = http.createServer(async (req, res) => {
 			return send(res, 404, {
 				error: { type: 'invalid_request_error', message: 'No such session' }
 			});
+		if (session.body.mode === 'payment') {
+			// A completed payment session; a bank payment is still processing.
+			return send(res, 200, {
+				id,
+				object: 'checkout.session',
+				mode: 'payment',
+				status: 'complete',
+				payment_status: 'unpaid',
+				payment_intent: `pi_${id}`,
+				created: session.created,
+				customer: session.body.customer,
+				metadata: session.body.metadata ?? {}
+			});
+		}
 		return send(res, 200, {
 			id,
 			object: 'checkout.session',
@@ -204,6 +219,7 @@ const server = http.createServer(async (req, res) => {
 	}
 	if (req.method === 'POST' && pathname === '/v1/checkout/sessions') {
 		requests.push({ path: pathname, body: Object.fromEntries(new URLSearchParams(raw)) });
+		sessions.set('cs_fake_1', { body: parseForm(raw), created: Math.floor(Date.now() / 1000) });
 		return send(res, 200, {
 			id: 'cs_fake_1',
 			object: 'checkout.session',

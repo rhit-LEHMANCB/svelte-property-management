@@ -30,7 +30,6 @@ export type BankPaymentState = 'started' | 'pending' | 'succeeded' | 'failed';
 export type BankPayment = {
 	id: string;
 	uid: string;
-	sessionId: string | null;
 	amountCents: number;
 	feeCents: number;
 	state: BankPaymentState;
@@ -185,9 +184,12 @@ export async function failBankSession(
 	const failed = await failBankPayment(ref, businessToday(at), reason);
 	if (failed) {
 		// The daily job retries whatever cannot be sent now.
-		await sendBankFailureEmails(ref, at).catch((err) =>
-			console.error(`Could not send bank payment failure emails for ${ref.path}: ${err}`)
-		);
+		const { errors } = await sendBankFailureEmails(ref, at).catch((err) => ({
+			errors: [String(err)]
+		}));
+		for (const problem of errors) {
+			console.error(`Bank payment failure emails for ${ref.path}: ${problem}`);
+		}
 	}
 	return failed;
 }
@@ -218,14 +220,19 @@ const userName = (data: DocumentData | undefined) =>
 
 /**
  * Emails the paying tenant and every admin user that a bank payment failed, each group once.
- * Returns who was emailed: the tenant's uid and/or `admins` (never email addresses). A group that cannot be sent is unclaimed for a later retry.
+ * Returns who was emailed (the tenant's uid and/or `admins`, never email addresses) and what went
+ * wrong. A group that cannot be sent is unclaimed for a later retry.
  */
-export async function sendBankFailureEmails(ref: DocumentReference, now = new Date()) {
+export async function sendBankFailureEmails(
+	ref: DocumentReference,
+	now = new Date()
+): Promise<{ sent: string[]; errors: string[] }> {
 	const sent: string[] = [];
+	const errors: string[] = [];
 	const snapshot = await ref.get();
 	const payment = snapshot.data() as Omit<BankPayment, 'id'> | undefined;
-	if (!payment || payment.state !== 'failed') return sent;
-	if (payment.tenantEmailedAt && payment.adminsEmailedAt) return sent;
+	if (!payment || payment.state !== 'failed') return { sent, errors };
+	if (payment.tenantEmailedAt && payment.adminsEmailedAt) return { sent, errors };
 
 	const leaseRef = leaseRefOfBankPayment(ref);
 	const lease = (await leaseRef.get()).data();
@@ -249,12 +256,14 @@ export async function sendBankFailureEmails(ref: DocumentReference, now = new Da
 				{ merge: true }
 			);
 		} catch (err) {
-			await ref.set({ [`${group}EmailClaim`]: FieldValue.delete() }, { merge: true });
-			throw err;
+			errors.push(`${group} email: ${err instanceof Error ? err.message : String(err)}`);
+			// Unclaimed so the next run retries; if even that fails, the claim goes stale in minutes.
+			await ref
+				.set({ [`${group}EmailClaim`]: FieldValue.delete() }, { merge: true })
+				.catch((unclaim) => errors.push(`${group} email claim: ${String(unclaim)}`));
 		}
 	};
 
-	const errors: unknown[] = [];
 	await deliver('tenant', async () => {
 		const to = tenant?.email as string | undefined;
 		if (!to) return [];
@@ -263,7 +272,9 @@ export async function sendBankFailureEmails(ref: DocumentReference, now = new Da
 			...renderBankPaymentFailedEmail({ ...details, link: `${PUBLIC_FRONTEND_URL}/payment` })
 		});
 		return [payment.uid];
-	}).catch((err) => errors.push(err));
+	}).catch((err) =>
+		errors.push(`tenant email: ${err instanceof Error ? err.message : String(err)}`)
+	);
 	await deliver('admins', async () => {
 		const admins = await adminDB.collection('users').where('permissions', '==', 'admin').get();
 		const emails = admins.docs
@@ -279,9 +290,10 @@ export async function sendBankFailureEmails(ref: DocumentReference, now = new Da
 		// All or nothing: a failed send leaves the group unsent, and a retry emails every admin again.
 		await Promise.all(emails.map((to) => sendEmail({ to, ...content })));
 		return emails.length > 0 ? ['admins'] : [];
-	}).catch((err) => errors.push(err));
-	if (errors.length > 0) throw errors[0];
-	return sent;
+	}).catch((err) =>
+		errors.push(`admin email: ${err instanceof Error ? err.message : String(err)}`)
+	);
+	return { sent, errors };
 }
 
 /**
@@ -295,6 +307,10 @@ export async function checkBankPayments(
 	const today = businessToday(now);
 	const emailed: string[] = [];
 	const warnings: string[] = [];
+	const report = (id: string, result: { sent: string[]; errors: string[] }) => {
+		emailed.push(...result.sent);
+		warnings.push(...result.errors.map((e) => `lease ${leaseRef.id}: bank payment ${id}: ${e}`));
+	};
 	const payments = await loadBankPayments(leaseRef);
 	for (const payment of payments) {
 		const ref = bankPaymentsRef(leaseRef).doc(payment.id);
@@ -308,10 +324,16 @@ export async function checkBankPayments(
 				if (intent.status === 'requires_payment_method' || intent.status === 'canceled') {
 					const reason = intent.last_payment_error?.message || DEFAULT_FAILURE_REASON;
 					if (await failBankPayment(ref, today, reason)) {
-						emailed.push(...(await sendBankFailureEmails(ref, now)));
+						report(payment.id, await sendBankFailureEmails(ref, now));
 					}
 				}
-				// Succeeded is left to the webhook, which records it; processing stays pending.
+				if (intent.status === 'succeeded') {
+					// The webhook records it (Stripe redelivers for days); if it never does, someone must look.
+					warnings.push(
+						`lease ${leaseRef.id}: bank payment ${payment.id} succeeded at Stripe but is not recorded yet`
+					);
+				}
+				// Processing (or waiting on microdeposits) stays pending.
 				continue;
 			}
 			if (
@@ -320,7 +342,7 @@ export async function checkBankPayments(
 				payment.failedDay &&
 				addDays(payment.failedDay, FAILURE_NOTICE_DAYS) >= today
 			) {
-				emailed.push(...(await sendBankFailureEmails(ref, now)));
+				report(payment.id, await sendBankFailureEmails(ref, now));
 			}
 		} catch (err) {
 			warnings.push(

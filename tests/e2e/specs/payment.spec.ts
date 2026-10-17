@@ -77,13 +77,43 @@ test.describe('rent-payments', () => {
 		expect(body['success_url']).toMatch(/\/payment\/success\?bank=\{CHECKOUT_SESSION_ID\}$/);
 	});
 
+	test('Scenario: Return from a bank payment: the confirmation says it takes a few business days and it shows as processing', async ({
+		page
+	}) => {
+		await signIn(page, TENANT);
+		await page.goto('/payment');
+		await page.waitForLoadState('networkidle');
+		await page.getByRole('button', { name: 'Make a Payment' }).click();
+		const dialog = page.getByRole('dialog');
+		await dialog.getByRole('spinbutton').fill('250');
+		await dialog.getByRole('radio', { name: /Bank account/ }).check();
+		await dialog.getByRole('button', { name: 'Continue to payment' }).click();
+		await expect(page.locator('#fake-checkout')).toBeVisible();
+		const [request] = await recorded();
+		const id = request.body['metadata[bankPaymentId]'];
+
+		try {
+			// Stripe sends the tenant back with the session id.
+			await page.goto('/payment/success?bank=cs_fake_1');
+			await expect(
+				page.getByText('Bank payments take a few business days to complete.')
+			).toBeVisible();
+
+			await page.getByRole('link', { name: 'Back to payments' }).click();
+			await expect(
+				page.getByText(/A bank payment of \$250\.00 started on\s+\S+ is processing\./)
+			).toBeVisible();
+		} finally {
+			await adminDb().doc(`leases/${LEASE_ID}/bank_payments/${id}`).delete();
+		}
+	});
+
 	test('Scenario: Pending: a processing bank payment is shown and lowers what can be paid', async ({
 		page
 	}) => {
 		const ref = adminDb().doc(`leases/${LEASE_ID}/bank_payments/e2ependingbank1`);
 		await ref.set({
 			uid: TENANT.uid,
-			sessionId: 'cs_fake_pending',
 			amountCents: 40000,
 			feeCents: 500,
 			state: 'pending',

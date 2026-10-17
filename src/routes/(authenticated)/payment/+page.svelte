@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { errorToast } from '$lib/Hooks/toasts';
 	import { getModalStore, getToastStore, type ModalSettings } from '$lib/ui';
-	import { type ZodError, z } from 'zod';
+	import { z } from 'zod';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -160,21 +160,7 @@
 	});
 
 	async function startCheckout(lease: LeaseBalance, amount: number, method: OneTimeMethod) {
-		if (lease.payableCents <= 0) {
-			return;
-		}
-		const payable = lease.payableCents / 100;
-		try {
-			const balanceSchema = z
-				.number()
-				.gt(0, 'Number must be greater than 0')
-				.lte(payable, `Number must be less than or equal to ${currency.format(payable)}`)
-				.multipleOf(0.01, 'Number must be a multiple of 0.01');
-			balanceSchema.parse(amount);
-		} catch (error) {
-			errorToast((error as ZodError).issues[0].message, toastStore);
-			return;
-		}
+		// The dialog has checked the amount against what can be paid now; the server checks again.
 		const fetchResponse = await fetch(`/api/stripe/create-checkout-session/payment`, {
 			method: 'POST',
 			headers: {

@@ -103,7 +103,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	if (bankPaymentId) {
 		await bankPaymentsRef(leaseRef).doc(bankPaymentId).set({
 			uid: userId,
-			sessionId: null,
 			amountCents,
 			feeCents,
 			state: 'started',
@@ -151,13 +150,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			: `${PUBLIC_FRONTEND_URL}/payment/success`,
 		cancel_url: `${PUBLIC_FRONTEND_URL}/payment`
 	};
-	const session = await stripe.checkout.sessions.create(params);
-
-	if (bankPaymentId) {
-		await bankPaymentsRef(leaseRef)
-			.doc(bankPaymentId)
-			.set({ sessionId: session.id }, { merge: true });
-	}
+	const session = await stripe.checkout.sessions.create(params).catch(async (err) => {
+		// No session, so no payment: the record would only be clutter.
+		if (bankPaymentId) {
+			await bankPaymentsRef(leaseRef)
+				.doc(bankPaymentId)
+				.delete()
+				.catch(() => undefined);
+		}
+		throw err;
+	});
 
 	if (session.url) {
 		return json({ url: session.url });

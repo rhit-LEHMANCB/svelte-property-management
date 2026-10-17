@@ -26,7 +26,7 @@ Autopay (`add-autopay`) already models ACH settlement for its own charges: `leas
 
 ### 2. Record: `leases/{leaseId}/bank_payments/{bankPaymentId}`
 ```
-{ uid, sessionId, amountCents, feeCents, state: 'started'|'pending'|'succeeded'|'failed',
+{ uid, amountCents, feeCents, state: 'started'|'pending'|'succeeded'|'failed',
   createdAt, startedAt: ISO | null, startedDay: 'YYYY-MM-DD' | null, invoiceId?, paymentIntentId?,
   error?, failedDay?, tenantEmailedAt?, adminsEmailedAt?, tenantEmailClaim?, adminsEmailClaim?, updatedAt }
 ```

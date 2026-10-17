@@ -130,7 +130,6 @@ describe('pending-bank-payments: starting a bank payment', () => {
 		);
 		expect(db.peek(`leases/lease-1/bank_payments/${id}`)).toMatchObject({
 			uid: 't1',
-			sessionId: 'cs_test_1',
 			amountCents: 96452,
 			feeCents: 500,
 			state: 'started',
@@ -147,6 +146,14 @@ describe('pending-bank-payments: starting a bank payment', () => {
 		expect(params.payment_method_types).toEqual(['card']);
 		expect(params.line_items.at(-1).price_data.unit_amount).toBe(2827);
 		expect(params.metadata.bankPaymentId).toBeUndefined();
+		expect(await bankPayments()).toHaveLength(0);
+	});
+
+	it('a session Stripe refuses to create leaves no record behind', async () => {
+		setup();
+		services.stripe.checkout.sessions.create.mockRejectedValue(new Error('Stripe is down'));
+
+		await expect(pay(500, 'bank')).rejects.toThrow('Stripe is down');
 		expect(await bankPayments()).toHaveLength(0);
 	});
 
@@ -347,6 +354,24 @@ describe('pending-bank-payments: settling, late fees and autopay', () => {
 		expect(db.peek('leases/lease-1/late_fees/2026-11')).toBeUndefined();
 	});
 
+	it('without a start time (no completion event, no success page) the payment is dated when Checkout began', async () => {
+		setup();
+		setNow('2026-11-04');
+		const { params, id } = await startBank(1500);
+
+		setNow('2026-11-09');
+		await send(invoicePaid(id, params, '2026-11-09'));
+
+		const november = (
+			db.peek('leases/lease-1/payment_history/2026') as Record<
+				string,
+				{ transactions: { date: FakeTimestamp }[] }
+			>
+		).November;
+		expect(november.transactions[0].date.toDate().toISOString()).toBe('2026-11-04T11:00:00.000Z');
+		expect(db.peek(`leases/lease-1/bank_payments/${id}`)).toMatchObject({ state: 'succeeded' });
+	});
+
 	it('Scenario: Recorded once: a redelivered invoice or success event records nothing again', async () => {
 		setup();
 		const { params, id } = await startBank(500);
@@ -414,6 +439,38 @@ describe('pending-bank-payments: settling, late fees and autopay', () => {
 			.reduce((sum, item) => sum + (item.amount as number), 0);
 		// $1,500 owed - $600 on its way.
 		expect(charged).toBe(90000);
+	});
+});
+
+describe('pending-bank-payments: autopay notices', () => {
+	it('Scenario: Due date while a bank payment is pending: the autopay notice quotes only the rest', async () => {
+		setup();
+		db.seed('leases/lease-1/autopay/t1', {
+			paymentMethodId: 'pm_bank',
+			type: 'us_bank_account',
+			brand: 'Test Bank',
+			last4: '6789',
+			amountCents: null,
+			enrolledAt: '2026-10-01T00:00:00.000Z'
+		});
+		db.seed('leases/lease-1/bank_payments/pendingbank03', {
+			uid: 't2',
+			amountCents: 60000,
+			feeCents: 500,
+			state: 'pending',
+			createdAt: '2026-10-24T15:00:00.000Z',
+			startedDay: '2026-10-24'
+		});
+
+		// Seven days before November rent is due.
+		setNow('2026-10-25');
+		expect((await runDaily()).status).toBe(200);
+
+		const notice = services.sendEmail.mock.calls
+			.map(([m]) => m)
+			.find((m) => m.to === 't1@example.com');
+		// $1,500 owed - $600 on its way; a bank account has no fee.
+		expect(notice?.subject).toBe('Autopay will charge $900.00 on November 1, 2026');
 	});
 });
 
@@ -517,6 +574,26 @@ describe('pending-bank-payments: failures', () => {
 		setNow('2026-11-06');
 		await runDaily();
 		expect(services.sendEmail.mock.calls.map(([m]) => m.to)).toEqual(['t1@example.com']);
+	});
+
+	it('a payment Stripe says succeeded but that was never recorded is reported, not dropped', async () => {
+		setup();
+		const { id } = await startBank(500);
+		await send(sessionEvent('checkout.session.completed', id, '2026-11-03'));
+		services.stripe.paymentIntents.retrieve.mockResolvedValue({
+			id: 'pi_bank_1',
+			status: 'succeeded'
+		});
+
+		setNow('2026-11-10');
+		const result = await runDaily();
+
+		expect(db.peek(`leases/lease-1/bank_payments/${id}`)).toMatchObject({ state: 'pending' });
+		const runs = db.peek('_jobs/daily/runs/2026-11-10') as { runs: { warnings: string[] }[] };
+		expect(runs.runs.at(-1)!.warnings).toContain(
+			`lease lease-1: bank payment ${id} succeeded at Stripe but is not recorded yet`
+		);
+		expect(result.status).toBe(200);
 	});
 
 	it('Scenario: Lost event: a payment pending more than 7 days is checked with Stripe', async () => {

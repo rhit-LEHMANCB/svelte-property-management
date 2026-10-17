@@ -58,7 +58,7 @@ The system SHALL reject amounts that are not greater than 0, exceed the amount t
 
 #### Scenario: Over balance
 - **WHEN** the tenant enters more than the amount that can be paid now
-- **THEN** an error toast shows and no request is sent
+- **THEN** an error shows in the payment dialog and no request is sent
 
 #### Scenario: Method choice with fees
 - **WHEN** the tenant opens "Make a Payment" and enters an amount

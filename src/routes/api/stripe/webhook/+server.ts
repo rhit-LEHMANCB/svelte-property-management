@@ -184,7 +184,10 @@ export const POST: RequestHandler = async ({ request }) => {
 					const bank = bankRef
 						? ((await tx.get(bankRef)).data() as Omit<BankPayment, 'id'> | undefined)
 						: undefined;
-					const paidAt = bank?.startedAt ? Timestamp.fromDate(new Date(bank.startedAt)) : eventDate;
+					// Without a start time (the completion event and the success page both missed it), the
+					// session's creation is the closest to when the tenant paid.
+					const startedAt = bank?.startedAt ?? bank?.createdAt;
+					const paidAt = startedAt ? Timestamp.fromDate(new Date(startedAt)) : eventDate;
 
 					// The payment goes to late fees, then the deposit, then the oldest unpaid rent, against
 					// what the lease owed when the invoice was created.
