@@ -47,8 +47,12 @@ const setupTenant = (monthsAgo = 0) => {
 	});
 };
 
-const pay = (amount: unknown, leaseId: string | undefined = 'lease-1', userID = 't1') =>
-	call(startPayment, { userID, body: { amount, leaseId } });
+const pay = (
+	amount: unknown,
+	leaseId: string | undefined = 'lease-1',
+	userID = 't1',
+	method: unknown = 'card'
+) => call(startPayment, { userID, body: { amount, leaseId, method } });
 
 /** What the authenticated layout hands the payment page for a tenant's leases. */
 const parentFor = (
@@ -104,8 +108,10 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 			rentCents: '100000',
 			depositCents: '0',
 			lateFeeCents: '0',
-			feeCents: '2930'
+			feeCents: '2930',
+			paymentMethod: 'card'
 		});
+		expect(session.payment_method_types).toEqual(['card']);
 		expect(session.success_url).toBe(`${PUBLIC_FRONTEND_URL}/payment/success`);
 		expect(session.cancel_url).toBe(`${PUBLIC_FRONTEND_URL}/payment`);
 	});
@@ -153,7 +159,10 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 		seedLease('lease-2', { propertyId: 'prop-1', tenantIds: ['t2'], startDate: monthStart() });
 
 		for (const leaseId of [undefined, '', 'nope', 'lease-2']) {
-			const result = await call(startPayment, { userID: 't1', body: { amount: 100, leaseId } });
+			const result = await call(startPayment, {
+				userID: 't1',
+				body: { amount: 100, leaseId, method: 'card' }
+			});
 			expect(result).toMatchObject({
 				status: 403,
 				error: 'You can only pay for a lease you are on.'
@@ -201,7 +210,7 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 		for (const body of [{}, { amount: 0 }, { amount: '50' }, { amount: null }]) {
 			const result = await call(startPayment, {
 				userID: 't1',
-				body: { ...body, leaseId: 'lease-1' }
+				body: { ...body, leaseId: 'lease-1', method: 'card' }
 			});
 			expect(result.status).toBe(400);
 			expect(result.error).toBe('Amount must be a provided number for the amount to charge');
@@ -660,6 +669,8 @@ describe('rent-payments: balance and due date (/payment load)', () => {
 				dueDate: monthStart(),
 				owed: { lateFeesCents: 0, depositCents: 0, rentCents: 100000 },
 				creditCents: 0,
+				payableCents: 100000,
+				bankPayments: { pending: [], failed: null },
 				autopay: { enrollment: null, charge: null }
 			}
 		]);
