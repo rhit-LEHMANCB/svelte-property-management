@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ADMIN, FAKE_STRIPE_URL, LEASE_ID, PROPERTY, TENANT } from '../support/constants';
 import { adminAuth, adminDb, storageFileExists } from '../support/admin';
-import { signIn } from '../support/helpers';
+import { dollarsPattern, nextMonthPayable, signIn } from '../support/helpers';
 
 // leases: the admin lease pages, tenants added by email, the private document and the tenant's
 // lease card, against the emulators. Tests in this file build on each other and run in order.
@@ -246,7 +246,10 @@ test.describe.serial('leases', () => {
 		await page.goto('/payment');
 		await page.waitForLoadState('networkidle');
 
-		await expect(page.getByText(/You have a balance of \$1,000\.00 due on/)).toBeVisible();
+		const owed = nextMonthPayable() ? 2000 : 1000;
+		await expect(
+			page.getByText(new RegExp(`You have a balance of ${dollarsPattern(owed)} due on`))
+		).toBeVisible();
 		expect((await adminDb().doc(`leases/${LEASE_ID}`).get()).exists).toBe(true);
 	});
 
@@ -776,7 +779,13 @@ test.describe.serial('leases: Change the rent', () => {
 		const tenant = await (await browser.newContext()).newPage();
 		await signIn(tenant, RENTER);
 		await tenant.goto('/payment');
-		await expect(tenant.getByText(/You have a balance of \$1,100\.00 due on/)).toBeVisible();
+		// Next month joins the balance in the last week of this one.
+		const next = nextMonthPayable() ? 1 : 0;
+		await expect(
+			tenant.getByText(
+				new RegExp(`You have a balance of ${dollarsPattern(1100 + next * 1000)} due on`)
+			)
+		).toBeVisible();
 
 		const admin = await (await browser.newContext()).newPage();
 		await signIn(admin, ADMIN);
@@ -788,7 +797,11 @@ test.describe.serial('leases: Change the rent', () => {
 		await expect(admin).toHaveURL(/\?tab=leases$/);
 
 		await tenant.goto('/payment');
-		await expect(tenant.getByText(/You have a balance of \$1,300\.00 due on/)).toBeVisible();
+		await expect(
+			tenant.getByText(
+				new RegExp(`You have a balance of ${dollarsPattern(1300 + next * 1200)} due on`)
+			)
+		).toBeVisible();
 		const history = await adminDb()
 			.doc(`leases/${LEASE}/payment_history/${paidMonth.slice(0, 4)}`)
 			.get();
@@ -950,7 +963,8 @@ test.describe('access-control: leases are admin-only and private', () => {
 		expect(document.status).toBe(403);
 		const payment = await callInPage(page, 'POST', '/api/stripe/create-checkout-session/payment', {
 			amount: 5,
-			leaseId: LEASE
+			leaseId: LEASE,
+			method: 'card'
 		});
 		expect(payment.status).toBe(403);
 		expect(payment.text).not.toContain(NEIGHBOR.email);

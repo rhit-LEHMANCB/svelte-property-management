@@ -1,7 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { ADMIN } from '../support/constants';
 import { adminDb } from '../support/admin';
 import { signIn } from '../support/helpers';
+
+/** The users list shows a page at a time; searching keeps a row on screen however many users exist. */
+const findUser = (page: Page, name: string) =>
+	page.getByRole('searchbox', { name: 'Search users' }).fill(name);
 
 const user = (firstName: string, lastName: string, extra: Record<string, unknown> = {}) => ({
 	email: `${firstName.toLowerCase()}@e2e.test`,
@@ -37,8 +41,11 @@ test.describe('renters-insurance: admin visibility', () => {
 
 		const insured = page.getByRole('row').filter({ hasText: 'Ivy Insured' });
 		const uninsured = page.getByRole('row').filter({ hasText: 'Una Uninsured' });
+		await findUser(page, 'Una Uninsured');
 		await expect(uninsured).toBeVisible();
 		await expect(uninsured.locator('.badge-icon', { hasText: '!' })).toBeVisible();
+		await findUser(page, 'Ivy Insured');
+		await expect(insured).toBeVisible();
 		await expect(insured.locator('.badge-icon', { hasText: '!' })).toHaveCount(0);
 	});
 
@@ -49,6 +56,7 @@ test.describe('renters-insurance: admin visibility', () => {
 		await page.goto('/admin/users');
 		await page.waitForLoadState('networkidle');
 
+		await findUser(page, 'Ivy Insured');
 		await page
 			.getByRole('row')
 			.filter({ hasText: 'Ivy Insured' })
@@ -67,6 +75,7 @@ test.describe('renters-insurance: admin visibility', () => {
 		await page.goto('/admin/users');
 		await page.waitForLoadState('networkidle');
 
+		await findUser(page, 'Una Uninsured');
 		await page
 			.getByRole('row')
 			.filter({ hasText: 'Una Uninsured' })

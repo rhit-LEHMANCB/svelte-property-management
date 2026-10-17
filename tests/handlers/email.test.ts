@@ -17,7 +17,10 @@ import { PUT as requestReset } from '../../src/routes/api/signin/reset/+server';
 import { call } from '../helpers/callHandler';
 import { services } from '../helpers/services';
 
-const LINK = 'https://reset.test/?oobCode=abc';
+// Firebase builds the link on the project's action URL, which may be a stale domain.
+const LINK = 'https://old-domain.test/reset?mode=resetPassword&oobCode=abc';
+const SENT_LINK = `${PUBLIC_FRONTEND_URL}/reset?mode=resetPassword&oobCode=abc`;
+const SENT_LINK_HTML = SENT_LINK.replace(/&/g, '&amp;');
 
 beforeEach(() => {
 	resend.send.mockReset().mockResolvedValue({ data: { id: 'email-1' }, error: null });
@@ -45,8 +48,9 @@ describe('authentication: password reset request (real email module)', () => {
 		expect(resend.send).toHaveBeenCalledOnce();
 		const message = resend.send.mock.calls[0][0];
 		expect(message.to).toBe('tenant@example.com');
-		expect(message.html).toContain(LINK);
-		expect(message.text).toContain(LINK);
+		expect(message.html).toContain(SENT_LINK_HTML);
+		expect(message.text).toContain(SENT_LINK);
+		expect(message.html).not.toContain('old-domain.test');
 	});
 
 	it('Scenario: Email sender identity is Lehman Family LLC at support@lehmanfamilyllc.com with HTML and text bodies', async () => {
@@ -66,8 +70,8 @@ describe('authentication: password reset request (real email module)', () => {
 		expect(welcome.subject).toBeTruthy();
 		expect(welcome.subject).not.toBe(reset.subject);
 		expect(welcome.html).not.toBe(reset.html);
-		expect(welcome.html).toContain(LINK);
-		expect(welcome.text).toContain(LINK);
+		expect(welcome.html).toContain(SENT_LINK_HTML);
+		expect(welcome.text).toContain(SENT_LINK);
 	});
 
 	it('Scenario: Email failure when link generation fails: nothing is sent and the endpoint responds 500', async () => {

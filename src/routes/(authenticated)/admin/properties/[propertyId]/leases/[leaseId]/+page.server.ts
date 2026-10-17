@@ -5,6 +5,7 @@ import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpe
 import type { LeaseDoc } from '$lib/server/leaseDates';
 import { emptyLeaseForm, leaseFormAction } from '$lib/server/leaseForm';
 import { propertyAddress, summarizeLease } from '$lib/server/leases';
+import { defaultLateFee } from '$lib/lateFee';
 
 export const load = (async ({ locals, params }) => {
 	const userId = getUserIdOrError(locals.userID);
@@ -28,7 +29,12 @@ export const load = (async ({ locals, params }) => {
 			rent: lease.rent,
 			startDate: lease.startDate,
 			endDate: lease.endDate ?? '',
-			emails: summary.tenants.length > 0 ? summary.tenants.map((t) => t.email) : ['']
+			emails: summary.tenants.length > 0 ? summary.tenants.map((t) => t.email) : [''],
+			deposit: lease.deposit?.amount,
+			depositDueDate: lease.deposit?.dueDate ?? '',
+			// A lease saved before late fees existed shows the default it would get.
+			lateFee: lease.lateFee ?? defaultLateFee(lease.rent),
+			graceDays: lease.graceDays ?? 5
 		}),
 		property: { id: params.propertyId, title: property.title, address: propertyAddress(property) },
 		lease: {

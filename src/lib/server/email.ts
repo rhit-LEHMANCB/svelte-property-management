@@ -49,6 +49,11 @@ export const sendPasswordResetEmail = async (
 		throw error;
 	}
 
+	// Firebase builds the link on the project's action URL, which can still point at an old domain.
+	// Keep its query (the one-time code) but always send people to this site's /reset page.
+	const query = new URL(link).search;
+	link = `${PUBLIC_FRONTEND_URL}/reset${query}`;
+
 	const content = isWelcomeEmail ? renderWelcomeEmail(link, lease) : renderPasswordResetEmail(link);
 	await sendEmail({ to: email, ...content });
 };

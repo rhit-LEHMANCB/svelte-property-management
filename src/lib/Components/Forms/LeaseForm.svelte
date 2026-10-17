@@ -5,15 +5,19 @@
 	import { IconCurrencyDollar, IconPlus, IconTrash } from '@tabler/icons-svelte';
 	import { leaseSchema, type LeaseInput } from '$lib/schemas';
 	import type { LeaseFormMessage } from '$lib/leaseTypes';
+	import { defaultLateFee } from '$lib/lateFee';
 
 	let {
 		data,
 		propertyId,
-		documentName = null
+		documentName = null,
+		lateFeeFollowsRent = false
 	}: {
 		data: SuperValidated<LeaseInput, LeaseFormMessage>;
 		propertyId: string;
 		documentName?: string | null;
+		/** On a new lease, the late fee tracks 5% of the rent until the admin edits it. */
+		lateFeeFollowsRent?: boolean;
 	} = $props();
 
 	const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
@@ -46,6 +50,13 @@
 			documentError = 'The lease document must be 10 MB or smaller.';
 			input.value = '';
 		}
+	}
+
+	// svelte-ignore state_referenced_locally
+	let lateFeeEdited = !lateFeeFollowsRent;
+	function rentChanged(event: Event) {
+		const rent = (event.currentTarget as HTMLInputElement).valueAsNumber;
+		if (!lateFeeEdited && Number.isFinite(rent) && rent > 0) $form.lateFee = defaultLateFee(rent);
 	}
 
 	async function saveAnyway() {
@@ -120,6 +131,7 @@
 					<input
 						name="rent"
 						bind:value={$form.rent}
+						oninput={rentChanged}
 						class="input"
 						class:input-error={$errors.rent}
 						aria-invalid={$errors.rent ? 'true' : undefined}
@@ -157,6 +169,85 @@
 					>{/if}
 			</label>
 		</div>
+
+		<fieldset class="space-y-2">
+			<legend class="label-text">Deposit and late fees</legend>
+			<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+				<label class="label">
+					<span>Security deposit <span class="opacity-70">(optional)</span></span>
+					<div class="flex items-center gap-2">
+						<IconCurrencyDollar aria-hidden="true" />
+						<input
+							name="deposit"
+							bind:value={$form.deposit}
+							class="input"
+							class:input-error={$errors.deposit}
+							aria-invalid={$errors.deposit ? 'true' : undefined}
+							type="number"
+							step="0.01"
+							min="0"
+						/>
+					</div>
+					{#if $errors.deposit}<span class="text-error-600-400 text-sm">{$errors.deposit[0]}</span
+						>{/if}
+				</label>
+				<label class="label">
+					<span>Deposit due <span class="opacity-70">(empty: when the lease begins)</span></span>
+					<input
+						name="depositDueDate"
+						bind:value={$form.depositDueDate}
+						class="input"
+						class:input-error={$errors.depositDueDate}
+						aria-invalid={$errors.depositDueDate ? 'true' : undefined}
+						type="date"
+					/>
+					{#if $errors.depositDueDate}<span class="text-error-600-400 text-sm"
+							>{$errors.depositDueDate[0]}</span
+						>{/if}
+				</label>
+				<label class="label">
+					<span>Late fee</span>
+					<div class="flex items-center gap-2">
+						<IconCurrencyDollar aria-hidden="true" />
+						<input
+							name="lateFee"
+							bind:value={$form.lateFee}
+							oninput={() => (lateFeeEdited = true)}
+							class="input"
+							class:input-error={$errors.lateFee}
+							aria-invalid={$errors.lateFee ? 'true' : undefined}
+							type="number"
+							step="0.01"
+							min="0"
+						/>
+					</div>
+					{#if $errors.lateFee}<span class="text-error-600-400 text-sm">{$errors.lateFee[0]}</span
+						>{/if}
+				</label>
+				<label class="label">
+					<span>Grace days</span>
+					<input
+						name="graceDays"
+						bind:value={$form.graceDays}
+						class="input"
+						class:input-error={$errors.graceDays}
+						aria-invalid={$errors.graceDays ? 'true' : undefined}
+						type="number"
+						step="1"
+						min="0"
+						max="31"
+					/>
+					{#if $errors.graceDays}<span class="text-error-600-400 text-sm"
+							>{$errors.graceDays[0]}</span
+						>{/if}
+				</label>
+			</div>
+			<p class="text-sm opacity-80">
+				The late fee is charged once for each month whose rent is not paid in full by the end of the
+				grace days after it is due. Use 0 for no late fee. Partial first and last months are
+				prorated by day.
+			</p>
+		</fieldset>
 
 		<fieldset class="space-y-2">
 			<legend class="label-text">Tenant emails</legend>

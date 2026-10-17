@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-	allocatePayment,
-	computeBalance,
-	getMonthKey,
-	monthsOwed
-} from '../../src/lib/server/payments';
+import { computeBalance, getMonthKey, monthsOwed } from '../../src/lib/server/payments';
 
 const at = (iso: string) => new Date(iso);
 
@@ -154,47 +149,5 @@ describe('monthsOwed', () => {
 
 	it('ignores a malformed end month', () => {
 		expect(keys('2026-02', '1026-01')).toEqual(['2026-02', '2026-03']);
-	});
-});
-
-describe('allocatePayment', () => {
-	const now = at('2026-03-15T16:00:00Z');
-
-	it('pays the oldest unpaid months of an ended lease first and nothing after its end', () => {
-		const allocations = allocatePayment({
-			rent: 1000,
-			startMonth: '2025-12',
-			endMonth: '2026-01',
-			histories: {},
-			now,
-			amountCents: 150000
-		});
-		expect(allocations.map((a) => [a.month.key, a.cents])).toEqual([
-			['2025-12', 100000],
-			['2026-01', 50000]
-		]);
-	});
-
-	it('puts anything beyond what is owed on the last month owed', () => {
-		const allocations = allocatePayment({
-			rent: 1000,
-			startMonth: '2026-01',
-			endMonth: '2026-01',
-			histories: {},
-			now,
-			amountCents: 120000
-		});
-		expect(allocations.map((a) => [a.month.key, a.cents])).toEqual([['2026-01', 120000]]);
-	});
-
-	it('records a payment against a lease that owes nothing yet in this month', () => {
-		const allocations = allocatePayment({
-			rent: 1000,
-			startMonth: '2026-06',
-			histories: {},
-			now,
-			amountCents: 5000
-		});
-		expect(allocations.map((a) => [a.month.key, a.cents])).toEqual([['2026-03', 5000]]);
 	});
 });

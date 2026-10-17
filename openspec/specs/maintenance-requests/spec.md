@@ -6,7 +6,7 @@ Tenants report problems at their property, and admins review and close them with
 ## Requirements
 
 ### Requirement: Submit request
-The system SHALL let a tenant submit a request with a subject and description.
+The system SHALL let a tenant on a current lease submit a request with a subject and description for that lease's property.
 
 #### Scenario: Valid submission
 - **WHEN** subject is 1 to 50 characters and description is 1 to 10,000
@@ -16,12 +16,20 @@ The system SHALL let a tenant submit a request with a subject and description.
 - **WHEN** validation fails
 - **THEN** nothing is created and the form returns "Invalid form"
 
+#### Scenario: Lease ended
+- **WHEN** a tenant whose lease has ended, and who has no other current lease, submits a request
+- **THEN** nothing is created and they are redirected to `/`
+
 ### Requirement: Tenant request list
 The system SHALL show a tenant the 5 newest open requests (by `dateAdded`) and 5 most recently closed (by `dateClosed`) for their own property.
 
 #### Scenario: View
 - **WHEN** a tenant opens `/maintenance`
 - **THEN** only requests with their `propertyId` appear
+
+#### Scenario: No current lease
+- **WHEN** a tenant without a current lease opens `/maintenance`
+- **THEN** the page stays open and, in place of the form and lists, says that requests open when their upcoming lease starts (naming its address and start date), or that no property is assigned when there is no upcoming lease
 
 ### Requirement: Admin request list
 The system SHALL show admins the 5 newest open and 5 most recently closed requests across all properties.

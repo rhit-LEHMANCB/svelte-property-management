@@ -10,9 +10,19 @@ export type LeaseDoc = {
 	/** Null for a month-to-month lease. */
 	endDate: string | null;
 	document: LeaseDocument | null;
+	/** The security deposit in dollars and its due date; null or absent for none. */
+	deposit?: LeaseDeposit | null;
+	/** Late fee in dollars charged once for each late month; absent on leases not yet migrated. */
+	lateFee?: number;
+	/** Days after a rent due date before the rent is late. */
+	graceDays?: number;
+	/** Months due before this day (`YYYY-MM-DD`) never incur a late fee. */
+	lateFeesFrom?: string;
 	createdAt?: unknown;
 	updatedAt?: unknown;
 };
+
+export type LeaseDeposit = { amount: number; dueDate: string };
 
 export type LeaseDocument = { path: string; fileName: string; size: number; uploadedAt: string };
 

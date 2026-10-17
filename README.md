@@ -122,6 +122,79 @@ recorded backup. Backups restore into a new database, never in place:
 `gcloud firestore databases restore --source-backup=<restorePoint.backup> --destination-database=<new-name> --project=<project>`,
 then copy back the documents you need and delete the new database.
 
+## Lease billing
+
+What a lease owes is computed whenever it is read (`src/lib/server/billing.ts`), from its terms and
+what has been recorded against it; nothing is written by a scheduled job.
+
+- **Rent** is prorated by day: a month the lease covers only in part is charged rent × days covered
+  ÷ days in the month, to the cent. The first month is due on the start date, later months on the
+  1st. What a month has been paid is the sum of the `transactions` in its
+  `leases/{id}/payment_history/{year}` entry (`remainingBalance` is still written, but not read
+  except for old entries that have no transactions).
+- **Credit** is anything recorded beyond a month's charge; it pays the oldest rent still owed.
+- **Rent becomes payable** 7 days before it is due, the day of its first reminder.
+- **Late fees**: a lease has `lateFee` (dollars), `graceDays` and `lateFeesFrom`. A month due on or
+  after `lateFeesFrom` that was not paid in full by the end of its grace days is late. The **daily
+  billing job** (below) charges its fee once by writing `leases/{id}/late_fees/{YYYY-MM}` with
+  `chargedAt`; a fee is owed only from then on.
+- **Deposit**: `deposit: { amount, dueDate }` on the lease; payments and the settlement are in
+  `leases/{id}/deposit/ledger` (`paid`, `transactions`, `settlement`).
+- **Paying**: one amount is applied to late fees, then the deposit, then the oldest rent. Checkout
+  shows a line per part and the invoice metadata carries `lateFeeCents`, `depositCents`,
+  `rentCents` and `feeCents`; the webhook recomputes the split when it records the payment.
+- **Fees**: card payments (Checkout and autopay) add 2.9% + $0.30 (`cardFeeCents` in
+  `src/lib/server/autopay.ts`); autopay from a bank account (ACH) has no fee.
+- **Autopay**: each tenant on a lease can save a card or bank account and enroll with an optional
+  amount cap (`leases/{id}/autopay/{uid}`). The daily job charges enrolled tenants in enrollment
+  order when money is due, never more than is owed, and keeps one record per due date and tenant in
+  `leases/{id}/autopay_charges/{dueDate}_{uid}` (`claimed`, `pending`, `succeeded`, `failed`,
+  `gave-up`). A declined charge moves to the next tenant and is retried on the next 3 daily runs.
+  While a charge is `pending` (ACH settling), the lease is not charged late fees. Stripe dashboard
+  steps are in [docs/stripe-setup.md](docs/stripe-setup.md#autopay).
+
+### Daily billing job
+
+`POST /api/jobs/daily` (`src/lib/server/billingJob.ts`) runs once a day. Each run:
+
+1. Charges every late month that has no fee yet. A missed day is caught up on the next run.
+2. Charges autopay for leases with money due (see Autopay above).
+3. Emails each tenant on the lease a late-fee notice for every fee it charged, and each autopay
+   tenant a notice when their charge fails or autopay gives up.
+4. Emails rent and deposit reminders 7 days before and on the due date, while the amount is unpaid.
+   A tenant gets one reminder email per lease per day, listing everything due; late-fee and autopay
+   notices are separate emails. A tenant with autopay gets one "autopay will charge" email 7 days
+   before instead of the reminders.
+
+It sends every email once (records in `leases/{id}/notices`). Only one run proceeds at a time (lock
+in `_jobs/daily`). Each run appends a summary to `_jobs/daily/runs/{YYYY-MM-DD}`: the fees charged,
+the emails sent and any errors. Check that document if fees or emails seem missing.
+
+The route accepts `Authorization: Bearer <JOBS_SECRET>` or a signed-in admin, and answers 401 to
+everyone else. To run it by hand, sign in as an admin and run
+`await fetch('/api/jobs/daily', { method: 'POST' })` in the browser console.
+
+**Setup, once per Firebase project** (until it is done, no fees are charged and no emails are sent):
+
+1. Generate a secret (`openssl rand -hex 32`). Add it as `JOBS_SECRET` to the GitHub environment
+   (`develop` or `production`) and to the 1Password `.env` item. Every `.env` needs the line, even
+   empty, or the build fails. Redeploy.
+2. Enable Cloud Scheduler and create the job, replacing the project, site URL and secret:
+
+```bash
+gcloud services enable cloudscheduler.googleapis.com --project=<project-id>
+gcloud scheduler jobs create http daily-billing \
+  --project=<project-id> --location=us-central1 \
+  --schedule="0 6 * * *" --time-zone="America/Indiana/Indianapolis" \
+  --uri="https://<site>/api/jobs/daily" --http-method=POST \
+  --headers="Authorization=Bearer <JOBS_SECRET>" \
+  --attempt-deadline=600s --max-retry-attempts=3
+gcloud scheduler jobs run daily-billing --project=<project-id> --location=us-central1   # try it once
+```
+
+Migration `0003-lease-billing-terms` gave leases created before this their terms: no deposit, a 5%
+late fee, 5 grace days, and late fees only for months due from the day it ran.
+
 ## Stripe
 
 Dev and local environments use Stripe test-mode keys; only production may use a live key. The server

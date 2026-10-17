@@ -16,7 +16,7 @@ The system SHALL reject admin operations from non-admins with 401 "You must be a
 - **WHEN** no user is signed in
 - **THEN** the response is 401 "You must be logged in to do this."
 
-Admin operations are: creating and deleting users; creating, editing and deleting properties; managing property photos; assigning tenants; closing maintenance requests; viewing all users, properties and requests.
+Admin operations are: creating and deleting users; creating, editing and deleting properties; managing property photos; creating, editing and deleting leases and uploading lease documents; closing maintenance requests; viewing all users, properties, leases and requests.
 
 ### Requirement: Role-based landing
 The system SHALL send admins from `/` to `/admin`.
@@ -26,22 +26,23 @@ The system SHALL send admins from `/` to `/admin`.
 - **THEN** they are redirected 303 to `/admin`
 
 ### Requirement: Tenant property context
-The system SHALL give each non-admin user in the authenticated area at most one property, found through `junction_user_property`, and SHALL let a tenant with no property use the app instead of failing.
+The system SHALL give each non-admin user in the authenticated area at most one property, the property of their current lease, and SHALL let a tenant with no current lease use the app instead of failing.
 
 #### Scenario: One property
-- **WHEN** a tenant has exactly one junction
-- **THEN** the layout exposes `userProperty` to all child pages
+- **WHEN** a tenant is on exactly one current lease
+- **THEN** the layout exposes that lease's property as `userProperty` to all child pages
 
 #### Scenario: No property
-- **WHEN** a tenant has no junction, because they were never assigned or their property was deleted
+- **WHEN** a tenant has no current lease, because they were never added to one, their lease has not started, it has ended, or their property was deleted
 - **THEN** the layout loads without `userProperty` and without an error
-- **AND** the dashboard shows that no property is assigned
-- **AND** `/payment` and `/maintenance` redirect the tenant to `/`
+- **AND** the dashboard names the upcoming lease that starts next, with its start date and a link to `/payment` when money can be paid now, or, with no upcoming lease, shows that no property is assigned
+- **AND** `/maintenance` stays on the page and explains why requests are not available, naming the upcoming lease and its start date when there is one
+- **AND** `/payment` lists their upcoming leases (with autopay setup) and any ended lease with money owed, and with none says there is no lease to pay for
 - **AND** `/profile` and `/insurance` load normally
 
 #### Scenario: Wrong number of properties
-- **WHEN** a tenant has more than one junction
-- **THEN** the layout fails with 500 "User is associated with wrong number of properties: N"
+- **WHEN** a tenant is on more than one current lease, which only data written outside the app can cause
+- **THEN** the layout uses the one with the latest start date and logs the conflict
 
 ### Requirement: Role-specific navigation
 The system SHALL show admins Home, Maintenance, Properties, Users and Profile, and tenants Dashboard, Maintenance, Payment, Profile, Insurance and About Us.
@@ -78,6 +79,13 @@ The system SHALL redirect admins who open `/maintenance`, `/insurance`, `/paymen
 #### Scenario: Tenant opens a tenant page
 - **WHEN** a tenant with one property loads `/payment`
 - **THEN** the page loads as before
+
+### Requirement: Lease visibility
+The system SHALL show a tenant only the leases they are on, and SHALL NOT expose other leases' tenants, rent or documents to them.
+
+#### Scenario: Another household's lease
+- **WHEN** a tenant requests a lease page, document or payment for a lease they are not on
+- **THEN** the response is 403 and nothing about that lease is returned
 
 ## Known Gaps
 - `isFirstLogin` is read but never written anywhere, so the redirect never triggers for users created by `/api/user/add`.

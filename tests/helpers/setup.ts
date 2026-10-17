@@ -16,7 +16,10 @@ vi.mock('$lib/server/stripe', async () => {
 });
 vi.mock('$lib/server/email', async () => {
 	const { services } = await import('./services');
-	return { sendPasswordResetEmail: services.sendPasswordResetEmail };
+	return {
+		sendPasswordResetEmail: services.sendPasswordResetEmail,
+		sendEmail: services.sendEmail
+	};
 });
 
 vi.mock('$lib/server/verifyPassword', async () => {
