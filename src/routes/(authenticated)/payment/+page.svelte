@@ -1,13 +1,15 @@
 <script lang="ts">
 	import { errorToast } from '$lib/Hooks/toasts';
 	import { getModalStore, getToastStore, type ModalSettings } from '$lib/ui';
-	import { type ZodError, z } from 'zod';
+	import { z } from 'zod';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import { successToast } from '$lib/Hooks/toasts';
 	import { refresh } from '$lib/Hooks/refresh';
+	import PaymentDialog from '$lib/Components/Payments/PaymentDialog.svelte';
+	import type { OneTimeMethod } from '$lib/fees';
 
 	type LeaseBalance = {
 		id: string;
@@ -19,6 +21,12 @@
 		dueDate: string | null;
 		owed: { rentCents: number; depositCents: number; lateFeesCents: number };
 		creditCents: number;
+		/** The balance minus money already on its way. */
+		payableCents: number;
+		bankPayments: {
+			pending: { amountCents: number; day: string }[];
+			failed: { amountCents: number; day: string } | null;
+		};
 		autopay: {
 			enrollment: { method: string; amountCents: number | null; type: string } | null;
 			charge: {
@@ -151,29 +159,14 @@
 		await goto('/payment', { replaceState: true, invalidateAll: true });
 	});
 
-	async function startCheckout(lease: LeaseBalance, response: string) {
-		if (!response || lease.balanceCents <= 0) {
-			return;
-		}
-		const balance = lease.balanceCents / 100;
-		const amount = parseFloat(response);
-		try {
-			const balanceSchema = z
-				.number()
-				.gt(0, 'Number must be greater than 0')
-				.lte(balance, `Number must be less than or equal to ${currency.format(balance)}`)
-				.multipleOf(0.01, 'Number must be a multiple of 0.01');
-			balanceSchema.parse(amount);
-		} catch (error) {
-			errorToast((error as ZodError).issues[0].message, toastStore);
-			return;
-		}
+	async function startCheckout(lease: LeaseBalance, amount: number, method: OneTimeMethod) {
+		// The dialog has checked the amount against what can be paid now; the server checks again.
 		const fetchResponse = await fetch(`/api/stripe/create-checkout-session/payment`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
 			},
-			body: JSON.stringify({ amount, leaseId: lease.id })
+			body: JSON.stringify({ amount, leaseId: lease.id, method })
 		});
 		if (fetchResponse.ok) {
 			const body = await fetchResponse.json();
@@ -197,12 +190,14 @@
 
 	function viewPaymentClicked(lease: LeaseBalance) {
 		const paymentModal: ModalSettings = {
-			type: 'prompt',
-			title: 'Enter Payment Amount',
-			body: 'Provide the amount you would like to pay.\nNote: Card payments include a transaction fee of 2.9% + $0.30.',
-			// Populates the input value and attributes
-			valueAttr: { type: 'number', required: true, step: '0.01' },
-			response: (response: string) => startCheckout(lease, response)
+			type: 'component',
+			component: {
+				ref: PaymentDialog,
+				props: {
+					payableCents: lease.payableCents,
+					onSubmit: (amount: number, method: OneTimeMethod) => startCheckout(lease, amount, method)
+				}
+			}
 		};
 		modalStore.trigger(paymentModal);
 	}
@@ -255,6 +250,21 @@
 							</p>
 						{/if}
 					{/if}
+					{#each lease.bankPayments.pending as pending, i (i)}
+						<p class="text-sm" role="status" data-bank-pending>
+							A bank payment of {currency.format(pending.amountCents / 100)} started on
+							{shortDate(pending.day)} is processing.
+						</p>
+					{/each}
+					{#if lease.bankPayments.failed}
+						<p class="text-error-700-300 text-sm" role="status" data-bank-failed>
+							Your bank payment of {currency.format(lease.bankPayments.failed.amountCents / 100)} started
+							on {shortDate(lease.bankPayments.failed.day)} did not go through. The amount is still owed.
+						</p>
+					{/if}
+					{#if lease.balanceCents > 0 && lease.payableCents <= 0}
+						<p class="text-sm" role="status">Your balance is being paid.</p>
+					{/if}
 					{#if lease.creditCents > 0}
 						<p class="text-sm">
 							Credit: <strong>{currency.format(lease.creditCents / 100)}</strong>
@@ -264,7 +274,7 @@
 						<button
 							data-needs-hydration
 							class="btn preset-filled-primary-500"
-							disabled={lease.balanceCents <= 0}
+							disabled={lease.payableCents <= 0}
 							aria-label={data.leases.length > 1
 								? `Make a Payment for ${lease.address}`
 								: undefined}

@@ -3,6 +3,8 @@ import {
 	renderAutopayFailedEmail,
 	renderAutopayGaveUpEmail,
 	renderAutopayNoticeEmail,
+	renderBankPaymentFailedAdminEmail,
+	renderBankPaymentFailedEmail,
 	renderDueReminderEmail,
 	renderLateFeeEmail,
 	renderPasswordResetEmail,
@@ -196,5 +198,46 @@ describe('autopay: email templates', () => {
 		expect(gaveUp.text).toContain('please pay on the payment page');
 		expect(gaveUp.text).toContain('Autopay stays on for your next due date');
 		expect(gaveUp.html).not.toContain('<b>');
+	});
+});
+
+describe('pending-bank-payments: failure emails', () => {
+	const failure = {
+		address: '1 Main <St>',
+		amountCents: 96452,
+		startedDay: '2026-11-03',
+		reason: 'Insufficient funds',
+		link: 'https://app.test/payment'
+	};
+
+	it('the tenant email names the amount, start day and reason, says it is still owed, and links to /payment', () => {
+		const email = renderBankPaymentFailedEmail(failure);
+		expect(email.subject).toBe('Your bank payment did not go through');
+		for (const part of [
+			'$964.52',
+			'November 3, 2026',
+			'Insufficient funds',
+			'still owed',
+			'no transaction fee',
+			'https://app.test/payment',
+			'Lehman Family LLC'
+		]) {
+			expect(email.text).toContain(part);
+		}
+		expect(email.html).toContain('1 Main &lt;St&gt;');
+		expect(email.html).not.toContain('<St>');
+	});
+
+	it('the admin email names the tenant and links to the lease', () => {
+		const email = renderBankPaymentFailedAdminEmail({
+			...failure,
+			tenant: 'Tom Tenant',
+			link: 'https://app.test/admin/properties/p/leases/l'
+		});
+		expect(email.subject).toBe('Bank payment failed: 1 Main <St>');
+		expect(email.text).toContain('Tom Tenant');
+		expect(email.text).toContain('$964.52');
+		expect(email.text).toContain('https://app.test/admin/properties/p/leases/l');
+		expect(email.text).toContain('Lehman Family LLC');
 	});
 });

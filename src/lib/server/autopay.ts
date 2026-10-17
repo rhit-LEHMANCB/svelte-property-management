@@ -1,4 +1,7 @@
 import type { Ledger } from './billing';
+import { cardFeeCents } from '../fees';
+
+export { cardFeeCents };
 
 /**
  * Autopay: the pure parts. A tenant saves a card or bank account and enrolls it for a lease; the
@@ -77,9 +80,6 @@ export const MIN_CHARGE_CENTS = 50;
 export function autopayFeeCents(type: PaymentMethodType, amountCents: number) {
 	return type === 'card' ? cardFeeCents(amountCents) : 0;
 }
-
-/** The card fee, the same for one-time Checkout payments and autopay. */
-export const cardFeeCents = (amountCents: number) => Math.round(amountCents * 0.029 + 30);
 
 const BRANDS: Record<string, string> = {
 	visa: 'Visa',
@@ -175,6 +175,8 @@ export function planAutopay(input: {
 	tenantIds: string[];
 	/** Treated as live claims, not crashed ones. */
 	isStaleClaim?: (charge: ChargeRecord) => boolean;
+	/** Other money on its way to the lease: one-time bank payments that have not settled. */
+	otherInFlightCents?: number;
 }): AutopayPlan {
 	const { ledger, charges, today } = input;
 	const { cycleKey, dueCents } = dueNow(ledger);
@@ -183,7 +185,10 @@ export function planAutopay(input: {
 	// A live claim belongs to another run that may be charging right now: count it as in flight.
 	const live = (c: ChargeRecord) => c.state === 'claimed' && !input.isStaleClaim?.(c);
 	let remaining =
-		dueCents - inFlightCents(charges) - charges.filter(live).reduce((s, c) => s + c.amountCents, 0);
+		dueCents -
+		inFlightCents(charges) -
+		(input.otherInFlightCents ?? 0) -
+		charges.filter(live).reduce((s, c) => s + c.amountCents, 0);
 
 	const planned: PlannedCharge[] = [];
 	const enrollments = input.enrollments

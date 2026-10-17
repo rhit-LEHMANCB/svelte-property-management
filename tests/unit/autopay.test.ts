@@ -136,6 +136,27 @@ describe('autopay: Autopay charge in the daily job (planning)', () => {
 		expect(plan('2026-11-01', [enrolled('t1'), enrolled('t2')], [claimed]).charges).toEqual([]);
 	});
 
+	it('Scenario: Due date while a bank payment is pending: other money on its way is not charged', () => {
+		const result = planAutopay({
+			ledger: ledgerOn('2026-11-01'),
+			enrollments: [enrolled('t1')],
+			charges: [],
+			today: '2026-11-01',
+			tenantIds: ['t1'],
+			otherInFlightCents: 60000
+		});
+		expect(result.charges).toEqual([{ uid: 't1', attempt: 1, amountCents: 40000 }]);
+		const covered = planAutopay({
+			ledger: ledgerOn('2026-11-01'),
+			enrollments: [enrolled('t1')],
+			charges: [],
+			today: '2026-11-01',
+			tenantIds: ['t1'],
+			otherInFlightCents: 100000
+		});
+		expect(covered.charges).toEqual([]);
+	});
+
 	it('Scenario: Crash after claiming: a stale claim continues under the same attempt number', () => {
 		const claimed = charge('t1', { state: 'claimed', attempts: 2, amountCents: 100000 });
 		const result = planAutopay({

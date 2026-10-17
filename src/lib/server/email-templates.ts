@@ -252,3 +252,48 @@ Pay online: ${failure.link}
 Lehman Family LLC`
 	};
 };
+
+/** A one-time bank payment that did not go through. */
+export type BankPaymentFailure = {
+	address: string;
+	amountCents: number;
+	/** The day the tenant started it (YYYY-MM-DD). */
+	startedDay: string;
+	reason: string;
+	link: string;
+};
+
+export const renderBankPaymentFailedEmail = (failure: BankPaymentFailure): EmailContent => {
+	const subject = 'Your bank payment did not go through';
+	const intro = `Your bank payment of ${money(failure.amountCents)} for your lease at ${failure.address}, started on ${longDate(failure.startedDay)}, did not go through: ${failure.reason}. The amount is still owed and no transaction fee was charged. Please make a payment on the payment page.`;
+	return {
+		subject,
+		html: layout(subject, intro, 'Make a payment', failure.link),
+		text: `${subject}
+
+${intro}
+
+Pay online: ${failure.link}
+
+Lehman Family LLC`
+	};
+};
+
+/** The admins' copy of a failed one-time bank payment. */
+export const renderBankPaymentFailedAdminEmail = (
+	failure: BankPaymentFailure & { tenant: string }
+): EmailContent => {
+	const subject = `Bank payment failed: ${failure.address}`;
+	const intro = `A one-time bank payment of ${money(failure.amountCents)} by ${failure.tenant} for the lease at ${failure.address}, started on ${longDate(failure.startedDay)}, did not go through: ${failure.reason}. The tenant has been emailed and the amount is owed again.`;
+	return {
+		subject,
+		html: layout(subject, intro, 'View the lease', failure.link),
+		text: `${subject}
+
+${intro}
+
+View the lease: ${failure.link}
+
+Lehman Family LLC`
+	};
+};
