@@ -1,7 +1,7 @@
 # Lifecycle: add-one-time-bank-payments
 
 - Branch: `claude/add-one-time-bank-payments`
-- Stage: 3 Implement
+- Stage: 4 Review loop
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 0 of 5
 - QA cycle: 0 of 3
@@ -65,6 +65,9 @@ Run 2026-10-16.
 | Java + Firebase CLI for emulator e2e | OK: Java present, firebase 15.32.1 |
 | Secrets/variables for this change | None needed |
 | Stripe webhook events (rollout, not a run blocker) | Needed: add `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` to the dev endpoint before QA (the success page covers pending without them) and to the live endpoint before production |
+
+## Implementation (stage 3, 2026-10-17)
+All 22 tasks done. Local checks: `npm run lint` OK; `npm run check` OK (placeholder `JOBS_SECRET`); `vitest run` 42 files / 726 tests OK; full e2e on emulators 160/161, the one failure was `leases.spec.ts` posting without the new `method`, fixed and re-run (35/35); `npm run build` OK.
 
 ## Rollout notes
 - Stripe dev and live webhook endpoints: add `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `checkout.session.async_payment_failed` (keep `invoice.payment_succeeded` and `invoice.payment_failed`). Dev before QA; live before the production merge.

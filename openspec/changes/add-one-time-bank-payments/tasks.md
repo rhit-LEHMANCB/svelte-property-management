@@ -43,5 +43,5 @@
 
 ## 8. Wrap-up
 
-- [ ] 8.1 Update the Known Gaps of `rent-payments` if any remain, run lint, check, unit, handler and e2e tests and build
-- [ ] 8.2 Add the rollout notes (three `checkout.session.*` webhook events on dev and live endpoints; live ACH enabled) to the change's lifecycle and the production PR checklist
+- [x] 8.1 Update the Known Gaps of `rent-payments` if any remain, run lint, check, unit, handler and e2e tests and build
+- [x] 8.2 Add the rollout notes (three `checkout.session.*` webhook events on dev and live endpoints; live ACH enabled) to the change's lifecycle and the production PR checklist

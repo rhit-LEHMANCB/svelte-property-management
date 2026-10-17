@@ -963,7 +963,8 @@ test.describe('access-control: leases are admin-only and private', () => {
 		expect(document.status).toBe(403);
 		const payment = await callInPage(page, 'POST', '/api/stripe/create-checkout-session/payment', {
 			amount: 5,
-			leaseId: LEASE
+			leaseId: LEASE,
+			method: 'card'
 		});
 		expect(payment.status).toBe(403);
 		expect(payment.text).not.toContain(NEIGHBOR.email);
