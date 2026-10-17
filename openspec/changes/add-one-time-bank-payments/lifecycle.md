@@ -1,7 +1,7 @@
 # Lifecycle: add-one-time-bank-payments
 
 - Branch: `claude/add-one-time-bank-payments`
-- Stage: 5 Ship to develop: PR #167 open, waiting on its required checks (`tests`, `build_and_preview`); subscribed to PR activity. PR check fix attempts: 0 of 2.
+- Stage: 6 QA: PR #167 merged into develop (07cf890) on 2026-10-17 after `tests` and `build_and_preview` passed (0 fix attempts); waiting on dev deploy run 39005890474. Deploy re-checks: 0 of 6.
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 2 of 5
 - QA cycle: 0 of 3
