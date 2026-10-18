@@ -405,6 +405,21 @@ describe('access-control: dashboard for a tenant without a current lease', () =>
 		expect(result.data.noLease).toBe(true);
 	});
 
+	it('Scenario: only an ended lease, still owing: the notice and the balance both show', async () => {
+		seedTenant('t1');
+		seedProperty('p1', { streetAddress: '9 Old St', apartmentInfo: '', city: 'Carmel' });
+		seedLease('past', {
+			propertyId: 'p1',
+			tenantIds: ['t1'],
+			rent: 1000,
+			startDate: '2019-01-01',
+			endDate: '2019-01-31'
+		});
+		const result = await home('t1');
+		expect(result.data.noLease).toBe(true);
+		expect(result.data.summary.balanceCents).toBeGreaterThan(0);
+	});
+
 	it('Scenario: a tenant with a current property gets no notice', async () => {
 		upcoming();
 		const result = await call(homeLoad, {

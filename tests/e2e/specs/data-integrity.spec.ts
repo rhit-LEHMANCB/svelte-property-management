@@ -323,6 +323,10 @@ test.describe('access-control: a tenant without a property', () => {
 		await page.waitForLoadState('networkidle');
 
 		await expect(page.getByText('No property is assigned to your account yet.')).toBeVisible();
+		// page-layout "Warning notice": a status with the shared notice padding.
+		const notice = page.locator('[data-notice="warning"]');
+		await expect(notice).toHaveAttribute('role', 'status');
+		expect(await notice.evaluate((el) => getComputedStyle(el).paddingTop)).toBe('16px');
 
 		// #165: Payment stays too, with nothing to pay.
 		await page.goto('/payment');
@@ -331,13 +335,10 @@ test.describe('access-control: a tenant without a property', () => {
 		// #165: Maintenance stays and says why, rather than bouncing to the dashboard.
 		await page.goto('/maintenance');
 		await expect(page).toHaveURL(/\/maintenance$/);
-		await expect(page.getByRole('status')).toContainText(
+		// The reason sits in the "Your requests" card, not on the page background.
+		await expect(page.locator('[data-card]').filter({ hasText: 'Your requests' })).toContainText(
 			'No property is assigned to your account yet.'
 		);
-		// page-layout "Warning notice": a status with the shared notice padding.
-		const notice = page.locator('[data-notice="warning"]');
-		await expect(notice).toHaveAttribute('role', 'status');
-		expect(await notice.evaluate((el) => getComputedStyle(el).paddingTop)).toBe('16px');
 		await expect(page.getByRole('button', { name: 'Send request' })).toHaveCount(0);
 
 		for (const path of ['/profile', '/insurance']) {
@@ -383,9 +384,12 @@ test.describe('access-control: a tenant without a property', () => {
 			await expect(page).toHaveURL(/\/payment$/);
 
 			await page.goto('/maintenance');
-			await expect(page.getByRole('status')).toContainText(
-				'Maintenance requests open when your lease starts.'
+			const requests = page.locator('[data-card]').filter({ hasText: 'Your requests' });
+			await expect(requests).toContainText('Requests open when your lease starts');
+			await expect(requests).toContainText(
+				'Your lease at 570 Maple Ave, Apt 317, Noblesville starts on October 23, 2099.'
 			);
+			await expect(page.locator('[data-notice]')).toHaveCount(0);
 		} finally {
 			await db.doc('leases/e2e-upcoming-lease').delete();
 			await db.doc('properties/e2e-upcoming-property').delete();

@@ -15,7 +15,7 @@ The system SHALL show a tenant three tiles on `/`: the balance owed across their
 
 #### Scenario: Only an ended lease, still owing
 - **WHEN** a tenant whose only lease has ended still owes $500.00
-- **THEN** the balance tile shows $500.00 with a "Make a payment" link, and no autopay or maintenance tiles are shown
+- **THEN** the "no property" notice is shown above a balance tile with $500.00 and a "Make a payment" link, and no autopay or maintenance tiles are shown
 
 #### Scenario: Nothing owed
 - **WHEN** a tenant owes nothing

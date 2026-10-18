@@ -94,6 +94,8 @@ The revised proposal was approved as a new Gate A on 2026-10-18 ("approve"). Sta
 ## Scope change 3 (2026-10-18, owner feedback)
 While QA cycle 2 ran on `a074d8c`, the owner said the dashboard's upcoming-lease notice was redundant and sat outside a card. The notice is removed: the upcoming lease shows in its "Your lease" card, what can be paid now in the balance tile, and autopay and maintenance in their tiles. The no-property warning stays. Spec deltas: `access-control` (Tenant property context, MODIFIED) and a new "Upcoming lease" scenario in `home-dashboards`. Task group 11. It gets one review round, and the next QA cycle covers it.
 
+Later the owner flagged the same problem on Maintenance: "Maintenance requests open when your lease starts" was a notice on the page background. Without a current lease, Maintenance now shows the reason in a "Your requests" card with an empty state, for both cases (upcoming lease, or no property). The `maintenance-requests` "No current lease" scenario names the card. The page-layout "Warning notice" example moves to the dashboard's no-property notice, which still shows. Task 11.2. The round-5 review ran before this part, so it was checked against the specs, the rendering and e2e tests, and the full checks. A sixth review round would exceed the limit.
+
 ## Gate A
 Approved: yes, 2026-10-18 ("approve")
 Accepted preflight gaps:
@@ -165,6 +167,11 @@ Found while implementing and folded into the change:
   Rejected, with reason: using Firestore `count()` for the open-request counts. The handler tests' fake Firestore has no aggregation queries, the counts are small at this scale, and design decision 15 records the choice.
 
   Checks: lint, check, 783 unit tests, the build, and the affected e2e specs (68) pass.
+
+- Round 5 (2026-10-18, scope change 3): 0 blockers, 0 majors, 1 minor, 2 nits. This is the last allowed round. All fixed:
+  - Tests now cover a tenant whose only lease has ended and still owes: the no-property notice shows with the balance tile. The "Only an ended lease, still owing" scenario says so.
+  - The upcoming-lease rendering test checks the Maintenance tile's "Requests open when your lease starts."
+  - Removed an extra blank line in `tasks.md`.
 
 ## Ship to develop
 - 2026-10-18: opened PR #175 into `develop`. Waiting on the required checks `tests` and `build_and_preview`, with a PR activity subscription. Next: merge with a merge commit once both are green, then stage 6.

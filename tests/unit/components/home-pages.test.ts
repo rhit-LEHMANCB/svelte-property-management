@@ -61,8 +61,11 @@ describe('home-dashboards: Tenant summary tiles', () => {
 
 	it('Scenario: Only an ended lease, still owing', () => {
 		const doc = dashboard(
-			{ leaseCards: [{ ...lease, status: 'ended' }] },
+			{ leaseCards: [{ ...lease, status: 'ended' }], noLease: true },
 			{ balanceCents: 50000, dueDate: '2026-09-01', hasProperty: false }
+		);
+		expect(text(doc.querySelector('[data-notice="warning"]'))).toContain(
+			'No property is assigned to your account yet.'
 		);
 		const balance = region(doc, 'Balance')!;
 		expect(text(balance)).toContain('$500.00');
@@ -133,6 +136,7 @@ describe('home-dashboards: Tenant lease and insurance cards', () => {
 		const balance = region(doc, 'Balance')!;
 		expect(text(balance)).toContain('$500.00');
 		expect(text(balance.querySelector('a'))).toBe('Make a payment');
+		expect(text(region(doc, 'Maintenance'))).toContain('Requests open when your lease starts.');
 		expect(doc.querySelector('[data-notice]')).toBeNull();
 	});
 
