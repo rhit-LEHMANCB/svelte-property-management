@@ -1,14 +1,14 @@
 # Lifecycle: make-ui-consistent
 
 - Branch: `claude/make-ui-consistent`
-- Stage: 1 Interview
+- Stage: 2 Propose + preflight
 - Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-18
 - Issue: #154
 
 ## Interview summary
-(approved: no)
+(approved: yes, 2026-10-18)
 
 **Goal.** Make every page look and behave the same: one card style, one page width, one place for section headings, one auth card, one button rule, Svelte 5 event syntax only. Also add breadcrumbs on nested pages and show validation errors under each field with a red outline. Shared components enforce the standards, so new pages get them by default.
 
@@ -79,7 +79,21 @@ Approved: no
 Accepted preflight gaps: none
 
 ## Preflight
-(table of checks and results, from stage 2)
+Run 2026-10-18. GitHub backend: **GitHub MCP**. `gh` fails because `GH_TOKEN` is invalid; this is a cloud session, and `get_me` returns `rhit-LEHMANCB`.
+
+| Check | Result |
+| --- | --- |
+| git commit and push to `origin` | OK: pushed `claude/make-ui-consistent` |
+| GitHub backend | OK: MCP (`get_me` works) |
+| Env files from 1Password (`scripts/pull-env.sh`) | OK: `.env` and `.env.qa` written, mode 600, gitignored |
+| QA credentials (`.env.qa`) | OK: all four set (not printed) |
+| Dev deploy (`firebase-hosting-merge.yml` on `develop`) | OK: run 105 succeeded on 6fca372 |
+| Dev site reachable | OK: `/signin` returns 200 |
+| `npm run lint` | OK |
+| `npm run check` | OK after a local fix. The 1Password `.env` item has no `JOBS_SECRET` line, so the check failed. An empty `JOBS_SECRET=` was appended to the local `.env` only, matching `.env.example`. **Gap:** add the line to the 1Password `.env` item. |
+| `npm test` | OK: 733 passed |
+| Playwright + Java + emulators | OK with a workaround. The installed Playwright expects Chromium build 1243, but the container has 1194. A scratchpad `PLAYWRIGHT_BROWSERS_PATH` symlinks the installed Chromium; the `appearance` e2e spec passed with it. No repo change. |
+| `develop` environment secrets for this change | None needed |
 
 ## Review rounds
 (none yet; one line per round: blockers, majors, minors, nits, fixed, rejected with reason)
