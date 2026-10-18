@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Dialog, Portal } from '@skeletonlabs/skeleton-svelte';
-	import { getModalStore, type ModalSettings } from './stores';
+	import Field from '$lib/Components/Forms/Field.svelte';
+	import { getModalStore, promptProblem, type ModalSettings } from './stores';
 
 	let { settings }: { settings: ModalSettings } = $props();
 
@@ -9,6 +10,8 @@
 	// svelte-ignore state_referenced_locally
 	let value = $state<string | number>(settings.value ?? '');
 	let finished = false;
+	let problem = $state<string | undefined>();
+	let promptInput = $state<HTMLInputElement>();
 
 	// The modal leaves the queue before its callback runs, so the callback can open another modal.
 	function finish(result: unknown) {
@@ -16,6 +19,15 @@
 		finished = true;
 		modalStore.close();
 		settings.response?.(result);
+	}
+
+	function submit(event: SubmitEvent) {
+		event.preventDefault();
+		if (settings.type !== 'prompt') return finish(true);
+		const text = String(value ?? '');
+		problem = promptProblem(settings, text);
+		if (problem) return promptInput?.focus();
+		finish(text);
 	}
 
 	const Body = $derived(settings.component?.ref);
@@ -37,13 +49,7 @@
 				{#if settings.type === 'component' && Body}
 					<Body {...settings.component?.props} />
 				{:else}
-					<form
-						class="space-y-4"
-						onsubmit={(event) => {
-							event.preventDefault();
-							finish(settings.type === 'prompt' ? String(value ?? '') : true);
-						}}
-					>
+					<form class="space-y-4" onsubmit={submit} novalidate>
 						<Dialog.Title>
 							{#snippet element(attributes)}
 								<h2 {...attributes} class="h4">{settings.title ?? 'Dialog'}</h2>
@@ -53,12 +59,26 @@
 							<Dialog.Description class="whitespace-pre-line">{settings.body}</Dialog.Description>
 						{/if}
 						{#if settings.type === 'prompt'}
-							<input
-								class="input"
-								aria-label={settings.title ?? 'Value'}
-								bind:value
-								{...settings.valueAttr}
-							/>
+							<Field
+								label={settings.title ?? 'Value'}
+								srOnlyLabel
+								errors={problem ? [problem] : undefined}
+							>
+								{#snippet children({ attrs, invalid })}
+									<input
+										bind:this={promptInput}
+										class="input"
+										class:input-error={invalid}
+										bind:value
+										oninput={() => {
+											// Once shown, the message follows what is typed.
+											if (problem) problem = promptProblem(settings, String(value ?? ''));
+										}}
+										{...settings.valueAttr}
+										{...attrs}
+									/>
+								{/snippet}
+							</Field>
 						{/if}
 						<footer class="flex justify-end gap-2">
 							<button type="button" class="btn preset-tonal" onclick={() => finish(false)}>
