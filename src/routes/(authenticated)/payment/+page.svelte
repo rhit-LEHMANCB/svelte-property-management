@@ -213,9 +213,12 @@
 </script>
 
 <PageBody>
-	<PageHeader title="Payment" />
+	<PageHeader
+		title="Payment"
+		subtitle={data.leases.length === 1 ? data.leases[0].address : undefined}
+	/>
 	<div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-		<Card as="section" title="Your current balance">
+		<Card as="section" title="Balance">
 			{#if data.leases.length === 0}
 				<p role="status">
 					You have no lease to pay for. If you expect one, please contact your property manager.
@@ -223,7 +226,6 @@
 			{/if}
 			{#each data.leases as lease (lease.id)}
 				{@const dueDate = dueDateOf(lease)}
-				{@const autopay = lease.autopay}
 				<div class="flex flex-col gap-3" data-lease={lease.id}>
 					{#if data.leases.length > 1}
 						<h3 class="font-semibold">
@@ -289,100 +291,111 @@
 							onclick={() => viewPaymentClicked(lease)}>Make a Payment</button
 						>
 					</div>
-					<div class="border-surface-300-700 flex flex-col gap-2 border-t pt-3" data-autopay>
-						<h3 class="font-semibold">Autopay</h3>
-						{#if autopay.enrollment}
-							<p>
-								Autopay is <strong>on</strong> with your
-								<strong>{autopay.enrollment.method}</strong>, paying
-								<strong
-									>{autopay.enrollment.amountCents === null
-										? 'Full balance'
-										: currency.format(autopay.enrollment.amountCents / 100)}</strong
-								> on each due date.
-							</p>
-							{#if autopay.enrollment.type === 'card'}
-								<p class="text-sm opacity-80">Card payments include a transaction fee of 3%.</p>
-							{/if}
-							<div class="flex flex-wrap items-center gap-2">
-								<button
-									data-needs-hydration
-									class="btn preset-tonal"
-									onclick={() => changeAutopayAmount(lease)}>Change amount</button
-								>
-								<button
-									data-needs-hydration
-									class="btn preset-tonal-error"
-									onclick={() => turnOffAutopay(lease)}>Turn off autopay</button
-								>
-							</div>
-						{:else}
-							<p class="text-sm opacity-80">
-								Save a card or bank account and we charge it on each due date. Bank accounts have no
-								fee; cards include a transaction fee of 3%.
-							</p>
-							<Field
-								label="Amount"
-								hint="(optional)"
-								errors={autopayProblems[lease.id] ? [autopayProblems[lease.id]!] : undefined}
-							>
-								{#snippet children({ attrs, invalid })}
-									<div class="flex flex-wrap items-center gap-2">
-										<input
-											{...attrs}
-											class="input w-48"
-											class:input-error={invalid}
-											type="number"
-											min="0.01"
-											step="0.01"
-											placeholder="Full balance"
-											bind:value={autopayAmounts[lease.id]}
-											oninput={() => {
-												// Once shown, the message follows what is typed.
-												if (autopayProblems[lease.id])
-													autopayProblems[lease.id] = amountProblem(autopayAmounts[lease.id]);
-											}}
-										/>
-										<button
-											data-needs-hydration
-											class="btn preset-tonal"
-											disabled={busy}
-											aria-label={data.leases.length > 1
-												? `Set up autopay for ${lease.address}`
-												: undefined}
-											onclick={() => startAutopay(lease)}>Set up autopay</button
-										>
-									</div>
-								{/snippet}
-							</Field>
-						{/if}
-						{#if autopay.charge?.state === 'pending' || autopay.charge?.state === 'claimed'}
-							<p class="text-sm" role="status">
-								An autopay payment of {currency.format(autopay.charge.amountCents / 100)} started on
-								{shortDate(autopay.charge.day)} is processing.
-							</p>
-						{:else if autopay.charge?.state === 'failed'}
-							<p class="text-error-700-300 text-sm" role="status">
-								Your autopay payment of {currency.format(autopay.charge.amountCents / 100)} on
-								{shortDate(autopay.charge.day)} did not go through. We will try again tomorrow.
-							</p>
-						{:else if autopay.charge?.state === 'gave-up'}
-							<p class="text-error-700-300 text-sm" role="status">
-								Autopay could not charge {currency.format(autopay.charge.amountCents / 100)} after several
-								tries (last on {shortDate(autopay.charge.day)}). Please make a payment.
-							</p>
-						{/if}
-					</div>
 				</div>
 			{/each}
 		</Card>
-		<Card as="section" title="Transaction History">
-			<p class="opacity-80">See past payments and manage payment methods in the Stripe portal.</p>
-			<FormActions>
-				<button data-needs-hydration class="btn preset-tonal" onclick={startCustomerPortal}
-					>View Portal</button
-				>
-			</FormActions>
-		</Card>
+		<div class="flex flex-col gap-4">
+			{#if data.leases.length > 0}
+				<Card as="section" title="Autopay">
+					{#each data.leases as lease (lease.id)}
+						{@const autopay = lease.autopay}
+						<div class="flex flex-col gap-2" data-autopay>
+							{#if data.leases.length > 1}<h3 class="font-semibold">{lease.address}</h3>{/if}
+							{#if autopay.enrollment}
+								<p>
+									Autopay is <strong>on</strong> with your
+									<strong>{autopay.enrollment.method}</strong>, paying
+									<strong
+										>{autopay.enrollment.amountCents === null
+											? 'Full balance'
+											: currency.format(autopay.enrollment.amountCents / 100)}</strong
+									> on each due date.
+								</p>
+								{#if autopay.enrollment.type === 'card'}
+									<p class="text-sm opacity-80">Card payments include a transaction fee of 3%.</p>
+								{/if}
+								<div class="flex flex-wrap items-center gap-2">
+									<button
+										data-needs-hydration
+										class="btn preset-tonal"
+										onclick={() => changeAutopayAmount(lease)}>Change amount</button
+									>
+									<button
+										data-needs-hydration
+										class="btn preset-tonal-error"
+										onclick={() => turnOffAutopay(lease)}>Turn off autopay</button
+									>
+								</div>
+							{:else}
+								<p class="text-sm opacity-80">
+									Save a card or bank account and we charge it on each due date. Bank accounts have
+									no fee; cards include a transaction fee of 3%.
+								</p>
+								<Field
+									label="Amount"
+									hint="(optional)"
+									errors={autopayProblems[lease.id] ? [autopayProblems[lease.id]!] : undefined}
+								>
+									{#snippet children({ attrs, invalid })}
+										<div class="flex flex-wrap items-center gap-2">
+											<input
+												{...attrs}
+												class="input w-48"
+												class:input-error={invalid}
+												type="number"
+												min="0.01"
+												step="0.01"
+												placeholder="Full balance"
+												bind:value={autopayAmounts[lease.id]}
+												oninput={() => {
+													// Once shown, the message follows what is typed.
+													if (autopayProblems[lease.id])
+														autopayProblems[lease.id] = amountProblem(autopayAmounts[lease.id]);
+												}}
+											/>
+											<button
+												data-needs-hydration
+												class="btn preset-tonal"
+												disabled={busy}
+												aria-label={data.leases.length > 1
+													? `Set up autopay for ${lease.address}`
+													: undefined}
+												onclick={() => startAutopay(lease)}>Set up autopay</button
+											>
+										</div>
+									{/snippet}
+								</Field>
+							{/if}
+							{#if autopay.charge?.state === 'pending' || autopay.charge?.state === 'claimed'}
+								<p class="text-sm" role="status">
+									An autopay payment of {currency.format(autopay.charge.amountCents / 100)} started on
+									{shortDate(autopay.charge.day)} is processing.
+								</p>
+							{:else if autopay.charge?.state === 'failed'}
+								<p class="text-error-700-300 text-sm" role="status">
+									Your autopay payment of {currency.format(autopay.charge.amountCents / 100)} on
+									{shortDate(autopay.charge.day)} did not go through. We will try again tomorrow.
+								</p>
+							{:else if autopay.charge?.state === 'gave-up'}
+								<p class="text-error-700-300 text-sm" role="status">
+									Autopay could not charge {currency.format(autopay.charge.amountCents / 100)} after several
+									tries (last on {shortDate(autopay.charge.day)}). Please make a payment.
+								</p>
+							{/if}
+						</div>
+					{/each}
+				</Card>
+			{/if}
+			<Card as="section" title="Payment history">
+				<p class="opacity-80">
+					See past payments and manage saved payment methods in the Stripe portal.
+				</p>
+				<FormActions>
+					<button data-needs-hydration class="btn preset-tonal" onclick={startCustomerPortal}
+						>Open the Stripe portal</button
+					>
+				</FormActions>
+			</Card>
+		</div>
 	</div>
 </PageBody>

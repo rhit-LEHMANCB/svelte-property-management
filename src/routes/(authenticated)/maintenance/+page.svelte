@@ -6,6 +6,7 @@
 	import { successToast } from '$lib/Hooks/toasts';
 	import { getToastStore } from '$lib/ui';
 	import { IconClipboardCheck, IconTool } from '@tabler/icons-svelte';
+	import { Tabs } from '@skeletonlabs/skeleton-svelte';
 	import type { MaintenanceRequest } from '../../../app';
 	import DataList, { type DataColumn } from '$lib/Components/DataList/DataList.svelte';
 	import EmptyState from '$lib/Components/DataList/EmptyState.svelte';
@@ -58,12 +59,18 @@
 	const longDate = (day: string) =>
 		new Date(`${day}T00:00:00`).toLocaleDateString('en-US', { dateStyle: 'long' });
 
+	// Open or Closed requests; only the selected list is rendered.
+	let tab = $state('open');
+
 	const searchText = (r: MaintenanceRequest) =>
 		`${r.subject} ${r.submitter} ${r.description ?? ''} ${r.workDone ?? ''}`;
 </script>
 
 <PageBody>
-	<PageHeader title="Maintenance" />
+	<PageHeader
+		title="Maintenance"
+		subtitle="Report a problem with your home and follow it until it is fixed."
+	/>
 	{#if data.noProperty}
 		<Notice tone="warning">
 			{#if data.noProperty.upcoming}
@@ -79,7 +86,7 @@
 			{/if}
 		</Notice>
 	{:else}
-		<Card title="Add Maintenance Request">
+		<Card title="New request">
 			<form method="POST" use:enhance class="space-y-4" novalidate>
 				<Field label="Subject" errors={$shown.subject}>
 					{#snippet children({ attrs, invalid })}
@@ -110,67 +117,81 @@
 					<Notice tone="error"><p>{problem}</p></Notice>
 				{/if}
 				<FormActions>
-					<button type="submit" class="btn preset-filled-primary-500">Add</button>
+					<button type="submit" class="btn preset-filled-primary-500">Send request</button>
 				</FormActions>
 			</form>
 		</Card>
 
-		<section class="space-y-3" aria-labelledby="open-requests">
-			<h2 id="open-requests" class="h4">Open Maintenance Requests</h2>
-			<DataList
-				label="open maintenance requests"
-				items={data.openMaintenanceRequests}
-				key={(r) => r.id}
-				columns={openColumns}
-				sortBy="opened"
-				sortDirection="desc"
-				{searchText}
-			>
-				{#snippet cell(request, column)}
-					{#if column.id === 'subject'}
-						<strong>{request.subject}</strong>
-					{:else if column.id === 'opened'}
-						{formatDateTime(request.dateAdded)}
-					{:else if column.id === 'submitter'}
-						{request.submitter}
-					{:else if column.id === 'description'}
-						<span class="whitespace-pre-line">{request.description}</span>
+		<Card title="Your requests">
+			<Tabs value={tab} onValueChange={(details) => (tab = details.value)}>
+				<Tabs.List class="border-surface-200-800 border-b">
+					<Tabs.Trigger value="open" class="btn hover:preset-tonal"
+						>Open ({data.openMaintenanceRequests.length})</Tabs.Trigger
+					>
+					<Tabs.Trigger value="closed" class="btn hover:preset-tonal"
+						>Closed ({data.closedMaintenanceRequests.length})</Tabs.Trigger
+					>
+					<Tabs.Indicator class="bg-primary-500 h-0.5" />
+				</Tabs.List>
+				<Tabs.Content value="open" class="pt-4">
+					{#if tab === 'open'}
+						<DataList
+							label="open maintenance requests"
+							items={data.openMaintenanceRequests}
+							key={(r) => r.id}
+							columns={openColumns}
+							sortBy="opened"
+							sortDirection="desc"
+							{searchText}
+						>
+							{#snippet cell(request, column)}
+								{#if column.id === 'subject'}
+									<strong>{request.subject}</strong>
+								{:else if column.id === 'opened'}
+									{formatDateTime(request.dateAdded)}
+								{:else if column.id === 'submitter'}
+									{request.submitter}
+								{:else if column.id === 'description'}
+									<span class="whitespace-pre-line">{request.description}</span>
+								{/if}
+							{/snippet}
+							{#snippet empty()}
+								<EmptyState icon={IconClipboardCheck} title="No open maintenance requests">
+									Use the New request form to report a problem with your home.
+								</EmptyState>
+							{/snippet}
+						</DataList>
 					{/if}
-				{/snippet}
-				{#snippet empty()}
-					<EmptyState icon={IconClipboardCheck} title="No open maintenance requests">
-						Use the form above to report a problem with your home.
-					</EmptyState>
-				{/snippet}
-			</DataList>
-		</section>
-
-		<section class="space-y-3" aria-labelledby="closed-requests">
-			<h2 id="closed-requests" class="h4">Closed Maintenance Requests</h2>
-			<DataList
-				label="closed maintenance requests"
-				items={data.closedMaintenanceRequests}
-				key={(r) => r.id}
-				columns={closedColumns}
-				sortBy="closed"
-				sortDirection="desc"
-				{searchText}
-			>
-				{#snippet cell(request, column)}
-					{#if column.id === 'subject'}
-						<strong>{request.subject}</strong>
-					{:else if column.id === 'closed'}
-						{formatDateTime(request.dateClosed)}
-					{:else if column.id === 'submitter'}
-						{request.submitter}
-					{:else if column.id === 'workDone'}
-						<span class="whitespace-pre-line">{request.workDone ?? ''}</span>
+				</Tabs.Content>
+				<Tabs.Content value="closed" class="pt-4">
+					{#if tab === 'closed'}
+						<DataList
+							label="closed maintenance requests"
+							items={data.closedMaintenanceRequests}
+							key={(r) => r.id}
+							columns={closedColumns}
+							sortBy="closed"
+							sortDirection="desc"
+							{searchText}
+						>
+							{#snippet cell(request, column)}
+								{#if column.id === 'subject'}
+									<strong>{request.subject}</strong>
+								{:else if column.id === 'closed'}
+									{formatDateTime(request.dateClosed)}
+								{:else if column.id === 'submitter'}
+									{request.submitter}
+								{:else if column.id === 'workDone'}
+									<span class="whitespace-pre-line">{request.workDone ?? ''}</span>
+								{/if}
+							{/snippet}
+							{#snippet empty()}
+								<EmptyState icon={IconTool} title="No closed maintenance requests" />
+							{/snippet}
+						</DataList>
 					{/if}
-				{/snippet}
-				{#snippet empty()}
-					<EmptyState icon={IconTool} title="No closed maintenance requests" />
-				{/snippet}
-			</DataList>
-		</section>
+				</Tabs.Content>
+			</Tabs>
+		</Card>
 	{/if}
 </PageBody>

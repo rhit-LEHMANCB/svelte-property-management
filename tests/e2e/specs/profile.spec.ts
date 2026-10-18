@@ -18,7 +18,7 @@ test.describe('user-profile: request password reset', () => {
 		await page.goto('/profile');
 		await page.waitForLoadState('networkidle');
 
-		await page.getByRole('button', { name: 'Reset', exact: true }).click();
+		await page.getByRole('button', { name: 'Send reset link' }).click();
 
 		await expect(page.getByText('Reset email requested. Check your inbox.')).toBeVisible();
 		expect(sent).toEqual({ method: 'PUT', body: { email: TENANT.email } });
@@ -30,7 +30,7 @@ test.describe('user-profile: request password reset', () => {
 		await page.goto('/profile');
 		await page.waitForLoadState('networkidle');
 
-		await page.getByRole('button', { name: 'Reset', exact: true }).click();
+		await page.getByRole('button', { name: 'Send reset link' }).click();
 
 		await expect(page.getByText('Error sending reset email.')).toBeVisible();
 	});

@@ -47,16 +47,17 @@
 			{ label: data.property.title, href: backHref },
 			{ label: 'Edit lease' }
 		]}
-	/>
-	<div class="flex flex-wrap items-center gap-3">
-		<p class="opacity-80">{data.property.address}</p>
-		<span class="badge preset-tonal capitalize">{data.lease.status}</span>
-		{#if data.lease.hasDocument}
-			<a class="anchor inline-flex items-center gap-1" href="/api/lease/{data.lease.id}/document"
-				><IconFileText size={18} aria-hidden="true" />View document</a
-			>
-		{/if}
-	</div>
+		subtitle={data.property.address}
+	>
+		<div class="flex flex-wrap items-center gap-3">
+			<span class="badge preset-tonal capitalize">{data.lease.status}</span>
+			{#if data.lease.hasDocument}
+				<a class="anchor inline-flex items-center gap-1" href="/api/lease/{data.lease.id}/document"
+					><IconFileText size={18} aria-hidden="true" />View document</a
+				>
+			{/if}
+		</div>
+	</PageHeader>
 	{#if data.lease.hasPayments}
 		<Notice tone="warning">
 			This lease has recorded payments. Changing its dates changes which months are billed: months
@@ -71,14 +72,12 @@
 			from it when you save.
 		</Notice>
 	{/if}
-	<Card>
-		<LeaseForm
-			data={data.form}
-			propertyId={data.property.id}
-			documentName={data.lease.documentName}
-		/>
-	</Card>
-	<Card>
+	<LeaseForm
+		data={data.form}
+		propertyId={data.property.id}
+		documentName={data.lease.documentName}
+	/>
+	<Card title="Delete lease">
 		<div class="flex flex-wrap items-center justify-between gap-3">
 			<p class="max-w-prose opacity-80">
 				A lease with recorded payments cannot be deleted. Set an end date instead.

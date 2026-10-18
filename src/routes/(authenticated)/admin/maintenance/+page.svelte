@@ -9,9 +9,14 @@
 	import EmptyState from '$lib/Components/DataList/EmptyState.svelte';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
 	import PageBody from '$lib/Components/Shell/PageBody.svelte';
+	import Card from '$lib/Components/Shell/Card.svelte';
+	import { Tabs } from '@skeletonlabs/skeleton-svelte';
 	import { formatDateTime } from '$lib/Components/DataList/format';
 
 	let { data }: { data: PageData } = $props();
+
+	// Open or Closed requests; only the selected list is rendered.
+	let tab = $state('open');
 
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
@@ -71,76 +76,91 @@
 {/snippet}
 
 <PageBody>
-	<PageHeader title="Maintenance" />
-	<section class="space-y-3" aria-labelledby="open-requests">
-		<h2 id="open-requests" class="h4">Open Maintenance Requests</h2>
-		<DataList
-			label="open maintenance requests"
-			items={data.openMaintenanceRequests}
-			key={(r) => r.id}
-			columns={openColumns}
-			sortBy="opened"
-			sortDirection="desc"
-			{searchText}
-		>
-			{#snippet cell(request, column)}
-				{#if column.id === 'subject'}
-					<strong>{request.subject}</strong>
-				{:else if column.id === 'opened'}
-					{formatDateTime(request.dateAdded)}
-				{:else if column.id === 'submitter'}
-					{request.submitter}
-				{:else if column.id === 'address'}
-					{@render addressLink(request)}
-				{:else if column.id === 'description'}
-					<span class="whitespace-pre-line">{request.description}</span>
-				{:else if column.id === 'actions'}
-					<div class="flex justify-end">
-						<button
-							data-needs-hydration
-							type="button"
-							class="btn btn-sm preset-filled-primary-500"
-							aria-label="Close request {request.subject}"
-							onclick={() => confirmModal(request)}
-							><IconCheck class="size-4" aria-hidden="true" />Close</button
-						>
-					</div>
+	<PageHeader title="Maintenance" subtitle="Requests from tenants across all properties." />
+	<Card title="Requests">
+		<Tabs value={tab} onValueChange={(details) => (tab = details.value)}>
+			<Tabs.List class="border-surface-200-800 border-b">
+				<Tabs.Trigger value="open" class="btn hover:preset-tonal"
+					>Open ({data.openMaintenanceRequests.length})</Tabs.Trigger
+				>
+				<Tabs.Trigger value="closed" class="btn hover:preset-tonal"
+					>Closed ({data.closedMaintenanceRequests.length})</Tabs.Trigger
+				>
+				<Tabs.Indicator class="bg-primary-500 h-0.5" />
+			</Tabs.List>
+			<Tabs.Content value="open" class="pt-4">
+				{#if tab === 'open'}
+					<DataList
+						label="open maintenance requests"
+						items={data.openMaintenanceRequests}
+						key={(r) => r.id}
+						columns={openColumns}
+						sortBy="opened"
+						sortDirection="desc"
+						{searchText}
+					>
+						{#snippet cell(request, column)}
+							{#if column.id === 'subject'}
+								<strong>{request.subject}</strong>
+							{:else if column.id === 'opened'}
+								{formatDateTime(request.dateAdded)}
+							{:else if column.id === 'submitter'}
+								{request.submitter}
+							{:else if column.id === 'address'}
+								{@render addressLink(request)}
+							{:else if column.id === 'description'}
+								<span class="whitespace-pre-line">{request.description}</span>
+							{:else if column.id === 'actions'}
+								<div class="flex justify-end">
+									<button
+										data-needs-hydration
+										type="button"
+										class="btn btn-sm preset-filled-primary-500"
+										aria-label="Close request {request.subject}"
+										onclick={() => confirmModal(request)}
+										><IconCheck class="size-4" aria-hidden="true" />Close</button
+									>
+								</div>
+							{/if}
+						{/snippet}
+						{#snippet empty()}
+							<EmptyState icon={IconClipboardCheck} title="No open maintenance requests">
+								New requests from tenants appear here.
+							</EmptyState>
+						{/snippet}
+					</DataList>
 				{/if}
-			{/snippet}
-			{#snippet empty()}
-				<EmptyState icon={IconClipboardCheck} title="No open maintenance requests">
-					New requests from tenants appear here.
-				</EmptyState>
-			{/snippet}
-		</DataList>
-	</section>
-	<section class="space-y-3" aria-labelledby="closed-requests">
-		<h2 id="closed-requests" class="h4">Closed Maintenance Requests</h2>
-		<DataList
-			label="closed maintenance requests"
-			items={data.closedMaintenanceRequests}
-			key={(r) => r.id}
-			columns={closedColumns}
-			sortBy="closed"
-			sortDirection="desc"
-			{searchText}
-		>
-			{#snippet cell(request, column)}
-				{#if column.id === 'subject'}
-					<strong>{request.subject}</strong>
-				{:else if column.id === 'closed'}
-					{formatDateTime(request.dateClosed)}
-				{:else if column.id === 'submitter'}
-					{request.submitter}
-				{:else if column.id === 'address'}
-					{@render addressLink(request)}
-				{:else if column.id === 'workDone'}
-					<span class="whitespace-pre-line">{request.workDone ?? ''}</span>
+			</Tabs.Content>
+			<Tabs.Content value="closed" class="pt-4">
+				{#if tab === 'closed'}
+					<DataList
+						label="closed maintenance requests"
+						items={data.closedMaintenanceRequests}
+						key={(r) => r.id}
+						columns={closedColumns}
+						sortBy="closed"
+						sortDirection="desc"
+						{searchText}
+					>
+						{#snippet cell(request, column)}
+							{#if column.id === 'subject'}
+								<strong>{request.subject}</strong>
+							{:else if column.id === 'closed'}
+								{formatDateTime(request.dateClosed)}
+							{:else if column.id === 'submitter'}
+								{request.submitter}
+							{:else if column.id === 'address'}
+								{@render addressLink(request)}
+							{:else if column.id === 'workDone'}
+								<span class="whitespace-pre-line">{request.workDone ?? ''}</span>
+							{/if}
+						{/snippet}
+						{#snippet empty()}
+							<EmptyState icon={IconTool} title="No closed maintenance requests" />
+						{/snippet}
+					</DataList>
 				{/if}
-			{/snippet}
-			{#snippet empty()}
-				<EmptyState icon={IconTool} title="No closed maintenance requests" />
-			{/snippet}
-		</DataList>
-	</section>
+			</Tabs.Content>
+		</Tabs>
+	</Card>
 </PageBody>
