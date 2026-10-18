@@ -1,9 +1,9 @@
 # Lifecycle: make-ui-consistent
 
 - Branch: `claude/make-ui-consistent`
-- Stage: 7 Production PR (Gate B: waiting on the human)
+- Stage: 3 Implement (scope change 2)
 - Review round: 2 of 5
-- QA cycle: 1 of 3
+- QA cycle: 1 of 3 (cycle 2 follows scope change 2)
 - Started: 2026-10-18
 - Issue: #154
 
@@ -73,6 +73,23 @@
 - Dialogs keep the `ModalDialog` width.
 - "Form errors underneath inputs" uses the server validation already in each superforms schema.
 - Dialogs that are not superforms (Payment, autopay, Add user) show their existing checks per field.
+
+## Scope change 2 (2026-10-18, option B)
+After QA cycle 1 the owner found loose text on tenant pages. A design pass was published as a canvas: https://claude.ai/artifact/17RZQ1iMPo16m3Dgb8F8LT. The owner then chose to build its direction in this release and hold production PR #177, which is now a draft.
+
+Decisions:
+- Build the dashboard tiles and the insurance card.
+- Build admin "Needs attention" with real counts.
+- Adopt the mockup wording.
+- Maintenance gets Open/Closed tabs.
+- Add a no-loose-content rule with an e2e check.
+
+Assumptions:
+- With several leases, the balance tile shows the total payable now and the earliest due date.
+- Insurance counts as "Ending soon" within 30 days.
+- Rows at 0 are hidden in "Needs attention".
+
+The revised proposal was approved as a new Gate A on 2026-10-18 ("approve"). Stages 3 to 6 run again for task groups 7 to 10.
 
 ## Gate A
 Approved: yes, 2026-10-18 ("approve")

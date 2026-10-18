@@ -48,3 +48,28 @@
   - a 60-character property title in breadcrumbs does not overflow at 360px.
 - [x] 6.2 Extend the contrast e2e check to cover a page with visible field errors and a breadcrumb trail, in both modes. Verify that it passes.
 - [x] 6.3 Run `npm run lint`, `npm run check`, `npm test`, `npm run test:e2e` and `npm run build`. Verify that all pass, and run `openspec validate make-ui-consistent --strict`.
+
+## 7. Shared summaries
+
+- [ ] 7.1 Move the per-lease balance and autopay logic from `payment/+page.server.ts` into `src/lib/server/tenantSummary.ts` and call it from Payment. Verify that the payment handler and e2e specs still pass unchanged.
+- [ ] 7.2 Add the dashboard's open-request count and insurance status (On file, Ending soon, Expired, Missing) to `tenantSummary.ts`. Verify with unit tests for each insurance status boundary (31, 30 and 0 days, past, none) and a handler test that another tenant's leases and requests never count.
+- [ ] 7.3 Add `adminAttention()` to `src/lib/server/leases.ts`. Verify with handler tests: open requests counted, a settled deposit not counted, a `failed` and a `gave-up` charge counted, a paid one not, and a tenant gets 403 from `/admin`.
+
+## 8. Tenant pages from the design pass
+
+- [ ] 8.1 Rebuild the dashboard: summary tiles, "Your lease" cards, the "Renters insurance" card and the "Past leases" card. Verify with e2e: tile values for the seeded tenant, insurance states, and the no-lease notice.
+- [ ] 8.2 Maintenance: "New request" form card beside a "Your requests" card with Open/Closed tabs; button "Send request". Verify by updating `maintenance.spec.ts` and adding an e2e test that switches tabs by keyboard.
+- [ ] 8.3 Payment (Balance, Autopay, Payment history cards; "Open the Stripe portal"), Profile (Contact info, Profile picture, Password with "Send reset link") and Insurance (policy and "Why we ask" cards), with subtitles. Verify by updating the specs that click "Reset" and "View Portal" and running the profile, payment, autopay and app-platform e2e specs.
+
+## 9. Admin pages from the design pass
+
+- [ ] 9.1 Admin home with the "Needs attention" card and the section tiles. Verify with an e2e test on seeded data (rows shown, a zero row hidden, the all-clear message).
+- [ ] 9.2 Users, Properties and Admin maintenance: search and table inside one card, page action in the header; Admin maintenance gets Open/Closed tabs. Verify that the list-browsing, maintenance and data-integrity e2e specs pass.
+- [ ] 9.3 New and Edit lease: Terms, Deposit and late fees, Tenants and Lease document cards, Delete in its own card. Verify that the leases and lease-billing e2e specs pass.
+
+## 10. Layout check and full run
+
+- [ ] 10.1 Add the no-loose-content check to `page-layout.spec.ts` for every signed-in page, for admin and tenant. Verify that it passes, and that it fails on a probe heading placed on the page background.
+- [ ] 10.2 Extend the contrast scan to the new dashboard and admin home in both modes. Verify that it passes.
+- [ ] 10.3 Run `npm run lint`, `npm run check`, `npm test`, `npm run test:e2e`, `npm run build` and `openspec validate make-ui-consistent --strict`. Verify that all pass.
+

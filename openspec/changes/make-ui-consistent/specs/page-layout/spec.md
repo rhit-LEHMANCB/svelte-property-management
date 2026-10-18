@@ -107,6 +107,17 @@ The system SHALL show, after a form or dialog is submitted with invalid values, 
 - **WHEN** Sign in is submitted with an unknown email or a wrong password
 - **THEN** the message is shown in the error notice, not under either field, so it does not reveal which one was wrong
 
+### Requirement: Page content sits in cards
+The system SHALL place everything below a signed-in page's header (breadcrumbs, title, an optional one-line subtitle and header actions) inside cards or notices. No heading, paragraph, list or table SHALL sit directly on the page background.
+
+#### Scenario: Maintenance lists
+- **WHEN** a tenant opens `/maintenance`
+- **THEN** the request lists are inside a titled card, not under a heading on the page background
+
+#### Scenario: Every signed-in page
+- **WHEN** each signed-in page is checked for headings, paragraphs, lists and tables outside cards and notices, below the page header
+- **THEN** none is found
+
 ### Requirement: Svelte 4 event directives are rejected
 The project's lint check SHALL fail when a component uses a Svelte 4 event directive (`on:click`, `on:submit` and so on), so handlers use the Svelte 5 attribute form only.
 
