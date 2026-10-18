@@ -1,7 +1,7 @@
 # Lifecycle: make-ui-consistent
 
 - Branch: `claude/make-ui-consistent`
-- Stage: 3 Implement (scope change 2)
+- Stage: 4 Review (scope change 2)
 - Review round: 2 of 5
 - QA cycle: 1 of 3 (cycle 2 follows scope change 2)
 - Started: 2026-10-18
@@ -148,6 +148,12 @@ Found while implementing and folded into the change:
 - 2026-10-18: opened PR #175 into `develop`. Waiting on the required checks `tests` and `build_and_preview`, with a PR activity subscription. Next: merge with a merge commit once both are green, then stage 6.
 - Before merging, `develop` had gained the archive of the three payment changes (#171). `develop` was merged into the branch with a merge commit, and the `rent-payments` delta was rebuilt on the archived "Client-side amount limits" text, which keeps the new "Method choice with fees" scenario.
 - 2026-10-18 18:25: checks green on `d25d649`. Merged PR #175 into `develop` as merge commit `324e354`. Dev deploy run 107 (firebase-hosting-merge.yml) is queued.
+
+## Scope change 2: implementation
+Done 2026-10-18. Groups 7 to 10 are checked. Lint, check, 768 unit tests and the build pass. The full e2e run had 5 failures, all fixed, and the affected specs (77) then passed. The failures:
+- section-card `aria-label`s collided with field labels;
+- an empty-state assumption in the new tabs test;
+- a real dark-mode finding: admin maintenance address links on the card measured 4.48:1. Dark links now use primary-300.
 
 ## Out-of-scope observations
 - `/api/signin` returns 500 "Internal Error" for a malformed ID token. It should be 400 or 401. No cookie is set, so it is not a security problem.

@@ -170,7 +170,7 @@
 	{#if $message?.type !== 'emailFailures'}
 		<input type="hidden" name="confirmOverlap" value={$form.confirmOverlap ? 'true' : ''} />
 
-		<Card as="section" title="Terms" aria-label="Terms">
+		<Card as="section" title="Terms">
 			<div class="grid gap-4 md:grid-cols-3">
 				<Field label="Monthly rent" errors={$shown.rent}>
 					{#snippet children({ attrs, invalid })}
@@ -190,7 +190,7 @@
 			</div>
 		</Card>
 
-		<Card as="section" title="Deposit and late fees" aria-label="Deposit and late fees">
+		<Card as="section" title="Deposit and late fees">
 			<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 				<Field label="Security deposit" hint="(optional)" errors={$shown.deposit}>
 					{#snippet children({ attrs, invalid })}
@@ -234,7 +234,7 @@
 			</p>
 		</Card>
 
-		<Card as="section" title="Tenants" aria-label="Tenants">
+		<Card as="section" title="Tenants">
 			<p class="text-sm opacity-80">
 				Someone who already has an account is added to the lease. A new email gets an account and a
 				welcome email.
@@ -276,7 +276,7 @@
 			>
 		</Card>
 
-		<Card as="section" title="Lease document" aria-label="Lease document">
+		<Card as="section" title="Lease document">
 			<Field
 				label="Lease document"
 				hint="(PDF, up to 10 MB)"

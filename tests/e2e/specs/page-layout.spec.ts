@@ -469,7 +469,9 @@ test.describe('maintenance-requests: Open and Closed tabs', () => {
 		await open(page, '/maintenance');
 		const openTab = page.getByRole('tab', { name: /^Open/ });
 		await expect(openTab).toHaveAttribute('aria-selected', 'true');
-		await expect(page.getByRole('table', { name: 'open maintenance requests' })).toBeVisible();
+		// The open panel shows the list, or its empty state when nothing is open.
+		const panel = page.getByRole('tabpanel');
+		await expect(panel).toContainText(/No open maintenance requests|Subject/);
 		await openTab.focus();
 		await page.keyboard.press('ArrowRight');
 		await page.keyboard.press('Enter');
@@ -477,8 +479,9 @@ test.describe('maintenance-requests: Open and Closed tabs', () => {
 			'aria-selected',
 			'true'
 		);
-		await expect(page.getByRole('table', { name: 'closed maintenance requests' })).toBeVisible();
+		await expect(panel).toContainText(/No closed maintenance requests|Work done/);
 		await expect(page.getByRole('table', { name: 'open maintenance requests' })).toHaveCount(0);
+		await expect(panel).not.toContainText('No open maintenance requests');
 	});
 });
 
