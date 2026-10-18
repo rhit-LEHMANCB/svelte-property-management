@@ -96,9 +96,9 @@
 {/snippet}
 
 <PageBody>
-	<PageHeader title="Profile" />
+	<PageHeader title="Profile" subtitle="Your contact details, photo and password." />
 	<div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-		<Card title="Contact Info">
+		<Card title="Contact info">
 			<form method="POST" action="?/contact" use:enhanceContact class="space-y-4" novalidate>
 				{@render textField('First Name', 'firstName', 'text', 'given-name')}
 				{@render textField('Last Name', 'lastName', 'text', 'family-name')}
@@ -147,7 +147,7 @@
 			</form>
 		</Card>
 		<div class="flex flex-col gap-4">
-			<Card title="Profile Picture">
+			<Card title="Profile picture">
 				<form
 					class="space-y-4"
 					use:enhance
@@ -181,9 +181,10 @@
 				</form>
 			</Card>
 			<Card title="Password">
+				<p class="opacity-80">We email you a link to choose a new password.</p>
 				<FormActions>
-					<button onclick={handleResetPasswordClicked} class="btn preset-filled-primary-500"
-						>Reset</button
+					<button onclick={handleResetPasswordClicked} class="btn preset-tonal"
+						>Send reset link</button
 					>
 				</FormActions>
 			</Card>

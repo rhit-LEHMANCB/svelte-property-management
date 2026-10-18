@@ -15,7 +15,7 @@ import { createTenantAccount, type CreatedAccount } from './users';
 import { depositRef, loadLeaseLedger } from './balance';
 import { toCents, type DepositLedger, type Ledger } from './billing';
 import { methodLabel } from './autopay';
-import { latestOpenCharge, loadCharges, loadEnrollments } from './autopayStore';
+import { latestCharge, latestOpenCharge, loadCharges, loadEnrollments } from './autopayStore';
 import type {
 	EmailProblem,
 	LeaseBilling,
@@ -147,6 +147,48 @@ export async function listPropertyLeases(
 		})
 	);
 }
+
+/**
+ * What needs an admin's attention across all properties: open maintenance requests, ended leases
+ * whose deposit is still to settle, and leases whose latest autopay charge failed or gave up while
+ * money is still owed. Reads every lease, which is fine at a family landlord's scale; a lease that
+ * cannot be read is logged and left out of the counts.
+ */
+export async function adminAttention(now = new Date()) {
+	const [openRequests, leaseDocs] = await Promise.all([
+		adminDB.collection('maintenance').where('status', '==', 'Open').get(),
+		leases().get()
+	]);
+	const settled = await Promise.allSettled(
+		leaseDocs.docs.map(async (doc) => {
+			const lease = doc.data() as LeaseDoc;
+			const [ledger, charges] = await Promise.all([
+				loadLeaseLedger(doc.id, lease, now),
+				loadCharges(doc.ref)
+			]);
+			// Only the latest charge counts: a failure followed by a successful charge is resolved.
+			const latest = latestCharge(charges);
+			return {
+				depositToSettle: ledger.deposit.toSettle,
+				autopayFailed:
+					ledger.totalCents > 0 && (latest?.state === 'failed' || latest?.state === 'gave-up')
+			};
+		})
+	);
+	// One lease that cannot be read must not take admin home down with it.
+	const perLease = settled.flatMap((result, index) => {
+		if (result.status === 'fulfilled') return [result.value];
+		console.error(`adminAttention: lease ${leaseDocs.docs[index].id} skipped`, result.reason);
+		return [];
+	});
+	return {
+		openRequests: openRequests.docs.length,
+		depositsToSettle: perLease.filter((l) => l.depositToSettle).length,
+		failedAutopay: perLease.filter((l) => l.autopayFailed).length
+	};
+}
+
+export type AdminAttention = Awaited<ReturnType<typeof adminAttention>>;
 
 /** Every lease a user is on, as `[id, lease]` pairs. */
 export async function leasesOfTenant(uid: string): Promise<[string, LeaseDoc][]> {

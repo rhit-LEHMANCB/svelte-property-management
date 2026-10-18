@@ -125,8 +125,8 @@ test.describe('page-layout: cards share one padding and hold their section headi
 		await page.setViewportSize({ width: 1280, height: 900 });
 		await signIn(page, TENANT);
 		for (const [path, heading] of [
-			['/profile', 'Contact Info'],
-			['/maintenance', 'Add Maintenance Request']
+			['/profile', 'Contact info'],
+			['/maintenance', 'New request']
 		]) {
 			await open(page, path);
 			const card = page.locator('[data-card]').filter({
@@ -408,5 +408,126 @@ test.describe('page-layout: field errors show under each field', () => {
 		await page.getByRole('button', { name: 'Send reset link' }).click();
 		await expectFieldError(page.getByLabel('Email'), 'Please enter a valid email.');
 		await context.close();
+	});
+});
+
+/**
+ * Headings, paragraphs, lists and tables that sit on the page background: below the page header,
+ * every one must be inside a card or a notice.
+ */
+const looseContent = (page: Page) =>
+	page.evaluate(() => {
+		const body = document.querySelector('[data-page-body]');
+		if (!body) return ['no [data-page-body]'];
+		return [...body.querySelectorAll('h2, h3, h4, h5, h6, p, ul, ol, table')]
+			.filter((el) => !el.closest('[data-card], [data-notice], [data-page-header]'))
+			.map((el) => `${el.tagName.toLowerCase()}: ${(el.textContent ?? '').trim().slice(0, 60)}`);
+	});
+
+test.describe('page-layout: page content sits in cards', () => {
+	test.describe.configure({ timeout: 120_000 });
+
+	test('Scenario: Every signed-in page', async ({ page }) => {
+		await signIn(page, ADMIN);
+		for (const path of ADMIN_PAGES) {
+			await open(page, path);
+			expect(await looseContent(page), path).toEqual([]);
+		}
+		await page.context().clearCookies();
+		await signIn(page, TENANT);
+		for (const path of TENANT_PAGES) {
+			await open(page, path);
+			expect(await looseContent(page), path).toEqual([]);
+		}
+	});
+
+	test('the check catches a heading on the page background', async ({ page }) => {
+		await signIn(page, TENANT);
+		await open(page, '/maintenance');
+		await page.evaluate(() => {
+			const probe = document.createElement('h2');
+			probe.textContent = 'loose probe';
+			document.querySelector('[data-page-body]')!.append(probe);
+		});
+		expect(await looseContent(page)).toEqual(['h2: loose probe']);
+	});
+
+	test('Scenario: Maintenance lists', async ({ page }) => {
+		await signIn(page, TENANT);
+		await open(page, '/maintenance');
+		const requests = page.locator('[data-card]').filter({
+			has: page.getByRole('heading', { name: 'Your requests' })
+		});
+		await expect(requests.getByRole('tab', { name: /^Open \(\d+\)$/ })).toBeVisible();
+		await expect(requests.getByRole('tab', { name: /^Closed \(\d+\)$/ })).toBeVisible();
+	});
+});
+
+test.describe('maintenance-requests: Open and Closed tabs', () => {
+	test('Scenario: Switch tabs by keyboard', async ({ page }) => {
+		await signIn(page, TENANT);
+		await open(page, '/maintenance');
+		const openTab = page.getByRole('tab', { name: /^Open/ });
+		await expect(openTab).toHaveAttribute('aria-selected', 'true');
+		// The open panel shows the list, or its empty state when nothing is open.
+		const panel = page.getByRole('tabpanel');
+		await expect(panel).toContainText(/No open maintenance requests|Subject/);
+		await openTab.focus();
+		await page.keyboard.press('ArrowRight');
+		await page.keyboard.press('Enter');
+		await expect(page.getByRole('tab', { name: /^Closed/ })).toHaveAttribute(
+			'aria-selected',
+			'true'
+		);
+		await expect(panel).toContainText(/No closed maintenance requests|Work done/);
+		await expect(page.getByRole('table', { name: 'open maintenance requests' })).toHaveCount(0);
+		await expect(panel).not.toContainText('No open maintenance requests');
+	});
+});
+
+test.describe('home-dashboards', () => {
+	test('Scenario: Tenant summary tiles', async ({ page }) => {
+		await signIn(page, TENANT);
+		await open(page, '/');
+		const balance = page.getByRole('region', { name: 'Balance' });
+		await expect(balance).toContainText('Balance due');
+		await expect(balance).toContainText(/\$[\d,]+\.\d{2}/);
+		await expect(page.getByRole('region', { name: 'Autopay' })).toContainText(/\b(On|Off)\b/);
+		const maintenance = page.getByRole('region', { name: 'Maintenance' });
+		await expect(maintenance).toContainText(/Open maintenance requests\s*\d+/);
+		await expect(maintenance.getByRole('link', { name: 'View requests' })).toHaveAttribute(
+			'href',
+			'/maintenance'
+		);
+		await expect(page.getByRole('region', { name: 'Renters insurance' })).toContainText(
+			/On file|Ending soon|Expired|Missing/
+		);
+	});
+
+	test('Scenario: Admin needs-attention counts', async ({ page }) => {
+		await adminDb()
+			.doc('maintenance/e2e-attention-open')
+			.set({
+				subject: 'Attention check',
+				description: 'Seeded so admin home counts an open request',
+				status: 'Open',
+				propertyId: PROPERTY.id,
+				propertyAddress: `${PROPERTY.streetAddress}, ${PROPERTY.city}, ${PROPERTY.state}`,
+				submitter: `${TENANT.firstName} ${TENANT.lastName}`,
+				dateAdded: new Date('2026-01-01T12:00:00Z')
+			});
+		try {
+			await signIn(page, ADMIN);
+			await open(page, '/admin');
+			const card = page.getByRole('region', { name: 'Needs attention' });
+			const row = card.getByRole('listitem').filter({ hasText: /open maintenance requests?/ });
+			await expect(row).toContainText(/\d+ open maintenance requests?/);
+			await expect(row.getByRole('link', { name: 'Review' })).toHaveAttribute(
+				'href',
+				'/admin/maintenance'
+			);
+		} finally {
+			await adminDb().doc('maintenance/e2e-attention-open').delete();
+		}
 	});
 });

@@ -338,7 +338,7 @@ test.describe('access-control: a tenant without a property', () => {
 		const notice = page.locator('[data-notice="warning"]');
 		await expect(notice).toHaveAttribute('role', 'status');
 		expect(await notice.evaluate((el) => getComputedStyle(el).paddingTop)).toBe('16px');
-		await expect(page.getByRole('button', { name: 'Add' })).toHaveCount(0);
+		await expect(page.getByRole('button', { name: 'Send request' })).toHaveCount(0);
 
 		for (const path of ['/profile', '/insurance']) {
 			const response = await page.goto(path);

@@ -1,9 +1,9 @@
 # Lifecycle: make-ui-consistent
 
 - Branch: `claude/make-ui-consistent`
-- Stage: 7 Production PR (Gate B: waiting on the human)
-- Review round: 2 of 5
-- QA cycle: 1 of 3
+- Stage: 5 Ship to develop (scope change 2)
+- Review round: 4 of 5
+- QA cycle: 1 of 3 (cycle 2 follows scope change 2)
 - Started: 2026-10-18
 - Issue: #154
 
@@ -74,6 +74,23 @@
 - "Form errors underneath inputs" uses the server validation already in each superforms schema.
 - Dialogs that are not superforms (Payment, autopay, Add user) show their existing checks per field.
 
+## Scope change 2 (2026-10-18, option B)
+After QA cycle 1 the owner found loose text on tenant pages. A design pass was published as a canvas: https://claude.ai/artifact/17RZQ1iMPo16m3Dgb8F8LT. The owner then chose to build its direction in this release and hold production PR #177, which is now a draft.
+
+Decisions:
+- Build the dashboard tiles and the insurance card.
+- Build admin "Needs attention" with real counts.
+- Adopt the mockup wording.
+- Maintenance gets Open/Closed tabs.
+- Add a no-loose-content rule with an e2e check.
+
+Assumptions:
+- With several leases, the balance tile shows the total payable now and the earliest due date.
+- Insurance counts as "Ending soon" within 30 days.
+- Rows at 0 are hidden in "Needs attention".
+
+The revised proposal was approved as a new Gate A on 2026-10-18 ("approve"). Stages 3 to 6 run again for task groups 7 to 10.
+
 ## Gate A
 Approved: yes, 2026-10-18 ("approve")
 Accepted preflight gaps:
@@ -127,10 +144,35 @@ Found while implementing and folded into the change:
 
   Checks: lint, check, 759 unit tests, build, and the affected e2e specs (55) pass.
 
+- Round 3 (2026-10-18, scope change 2): 0 blockers, 1 major, 3 minors, 1 nit. All fixed:
+  - Rendering tests for every dashboard and admin home scenario (the major).
+  - The autopay tile counts current or upcoming leases, and the spec now says so.
+  - Only the latest autopay charge counts as failed.
+  - `adminAttention` skips and logs an unreadable lease (allSettled).
+  - The dashboard loads each ledger once.
+  - The spec scenario says "owed".
+
+  Checks: lint, check (after typing the test helpers for happy-dom) and 782 unit tests pass.
+
+- Round 4 (2026-10-18, scope change 2): 0 blockers, 0 majors, 3 minors, 1 nit. The review stage exits after this round. Fixed:
+  - The balance tile shows whenever money is owed, including on an ended lease only. There is a new spec scenario and a rendering test.
+  - The handler tests pin the clock.
+  - The latest-charge sort is one shared `latestCharge` helper.
+
+  Rejected, with reason: using Firestore `count()` for the open-request counts. The handler tests' fake Firestore has no aggregation queries, the counts are small at this scale, and design decision 15 records the choice.
+
+  Checks: lint, check, 783 unit tests, the build, and the affected e2e specs (68) pass.
+
 ## Ship to develop
 - 2026-10-18: opened PR #175 into `develop`. Waiting on the required checks `tests` and `build_and_preview`, with a PR activity subscription. Next: merge with a merge commit once both are green, then stage 6.
 - Before merging, `develop` had gained the archive of the three payment changes (#171). `develop` was merged into the branch with a merge commit, and the `rent-payments` delta was rebuilt on the archived "Client-side amount limits" text, which keeps the new "Method choice with fees" scenario.
 - 2026-10-18 18:25: checks green on `d25d649`. Merged PR #175 into `develop` as merge commit `324e354`. Dev deploy run 107 (firebase-hosting-merge.yml) is queued.
+
+## Scope change 2: implementation
+Done 2026-10-18. Groups 7 to 10 are checked. Lint, check, 768 unit tests and the build pass. The full e2e run had 5 failures, all fixed, and the affected specs (77) then passed. The failures:
+- section-card `aria-label`s collided with field labels;
+- an empty-state assumption in the new tabs test;
+- a real dark-mode finding: admin maintenance address links on the card measured 4.48:1. Dark links now use primary-300.
 
 ## Out-of-scope observations
 - `/api/signin` returns 500 "Internal Error" for a malformed ID token. It should be 400 or 401. No cookie is set, so it is not a security problem.

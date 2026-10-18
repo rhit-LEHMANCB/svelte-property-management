@@ -36,65 +36,73 @@
 </script>
 
 <PageBody>
-	<PageHeader title="Insurance" />
-	<Card title="Renters insurance">
-		<form method="POST" use:enhance class="space-y-4" novalidate>
-			<div class="grid gap-4 sm:grid-cols-2">
-				<Field label="Insurance Company Name" errors={$shown.companyName}>
-					{#snippet children({ attrs, invalid })}
-						<input
-							{...attrs}
-							name="companyName"
-							bind:value={$form.companyName}
-							class="input"
-							class:input-error={invalid}
-							title="Insurance Company Name"
-							type="text"
-						/>
-					{/snippet}
-				</Field>
-				<Field label="Policy Number" errors={$shown.policyNumber}>
-					{#snippet children({ attrs, invalid })}
-						<input
-							{...attrs}
-							name="policyNumber"
-							bind:value={$form.policyNumber}
-							class="input"
-							class:input-error={invalid}
-							title="Policy Number"
-							type="text"
-						/>
-					{/snippet}
-				</Field>
-				<Field label="Start Date" errors={$shown.startDate}>
-					{#snippet children({ attrs, invalid })}
-						<DateInput
-							{...attrs}
-							bind:value={$form.startDate}
-							name="startDate"
-							title="Start Date"
-							{invalid}
-						/>
-					{/snippet}
-				</Field>
-				<Field label="End Date" errors={$shown.endDate}>
-					{#snippet children({ attrs, invalid })}
-						<DateInput
-							{...attrs}
-							bind:value={$form.endDate}
-							name="endDate"
-							title="End Date"
-							{invalid}
-						/>
-					{/snippet}
-				</Field>
-			</div>
-			{#if problem}
-				<Notice tone="error"><p>{problem}</p></Notice>
-			{/if}
-			<FormActions>
-				<button type="submit" class="btn preset-filled-primary-500">Save</button>
-			</FormActions>
-		</form>
-	</Card>
+	<PageHeader title="Insurance" subtitle="Your renters insurance policy." />
+	<div class="grid items-start gap-4 lg:grid-cols-3">
+		<Card title="Renters insurance policy" class="lg:col-span-2">
+			<form method="POST" use:enhance class="space-y-4" novalidate>
+				<div class="grid gap-4 sm:grid-cols-2">
+					<Field label="Insurance Company Name" errors={$shown.companyName}>
+						{#snippet children({ attrs, invalid })}
+							<input
+								{...attrs}
+								name="companyName"
+								bind:value={$form.companyName}
+								class="input"
+								class:input-error={invalid}
+								title="Insurance Company Name"
+								type="text"
+							/>
+						{/snippet}
+					</Field>
+					<Field label="Policy Number" errors={$shown.policyNumber}>
+						{#snippet children({ attrs, invalid })}
+							<input
+								{...attrs}
+								name="policyNumber"
+								bind:value={$form.policyNumber}
+								class="input"
+								class:input-error={invalid}
+								title="Policy Number"
+								type="text"
+							/>
+						{/snippet}
+					</Field>
+					<Field label="Start Date" errors={$shown.startDate}>
+						{#snippet children({ attrs, invalid })}
+							<DateInput
+								{...attrs}
+								bind:value={$form.startDate}
+								name="startDate"
+								title="Start Date"
+								{invalid}
+							/>
+						{/snippet}
+					</Field>
+					<Field label="End Date" errors={$shown.endDate}>
+						{#snippet children({ attrs, invalid })}
+							<DateInput
+								{...attrs}
+								bind:value={$form.endDate}
+								name="endDate"
+								title="End Date"
+								{invalid}
+							/>
+						{/snippet}
+					</Field>
+				</div>
+				{#if problem}
+					<Notice tone="error"><p>{problem}</p></Notice>
+				{/if}
+				<FormActions>
+					<button type="submit" class="btn preset-filled-primary-500">Save</button>
+				</FormActions>
+			</form>
+		</Card>
+		<Card title="Why we ask">
+			<p class="opacity-80">
+				Renters insurance covers your own belongings. Keep your current policy here so Lehman Family
+				LLC has it on file.
+			</p>
+		</Card>
+	</div>
 </PageBody>

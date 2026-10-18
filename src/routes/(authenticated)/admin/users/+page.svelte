@@ -10,6 +10,7 @@
 	import EmptyState from '$lib/Components/DataList/EmptyState.svelte';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
 	import PageBody from '$lib/Components/Shell/PageBody.svelte';
+	import Card from '$lib/Components/Shell/Card.svelte';
 	import UsersListView from '$lib/Components/Users/UsersListView.svelte';
 	import { viewUserInfoModal } from '$lib/Hooks/modals';
 
@@ -73,34 +74,35 @@
 </script>
 
 <PageBody>
-	<PageHeader title="Users" />
-	<UsersListView users={data.users}>
-		{#snippet toolbar()}
-			<button
-				data-needs-hydration
-				type="button"
-				onclick={() => modalStore.trigger(emailModal)}
-				class="btn preset-filled-primary-500"
-				><IconUserPlus class="size-5" aria-hidden="true" />Add User</button
-			>
-		{/snippet}
-		{#snippet actions(user)}
-			<RowMenu
-				label="Actions for {user.data.firstName} {user.data.lastName}"
-				actions={[
-					{
-						label: 'View More',
-						icon: IconUserShare,
-						run: () => viewUserInfoModal(user, modalStore)
-					},
-					{ label: 'Delete', icon: IconUserMinus, danger: true, run: () => confirmModal(user) }
-				]}
-			/>
-		{/snippet}
-		{#snippet empty()}
-			<EmptyState icon={IconUsers} title="No users yet">
-				Add a user to send them a welcome email with a link to set their password.
-			</EmptyState>
-		{/snippet}
-	</UsersListView>
+	<PageHeader title="Users" subtitle="Tenants and admins with an account.">
+		<button
+			data-needs-hydration
+			type="button"
+			onclick={() => modalStore.trigger(emailModal)}
+			class="btn preset-filled-primary-500"
+			><IconUserPlus class="size-5" aria-hidden="true" />Add User</button
+		>
+	</PageHeader>
+	<Card>
+		<UsersListView users={data.users}>
+			{#snippet actions(user)}
+				<RowMenu
+					label="Actions for {user.data.firstName} {user.data.lastName}"
+					actions={[
+						{
+							label: 'View More',
+							icon: IconUserShare,
+							run: () => viewUserInfoModal(user, modalStore)
+						},
+						{ label: 'Delete', icon: IconUserMinus, danger: true, run: () => confirmModal(user) }
+					]}
+				/>
+			{/snippet}
+			{#snippet empty()}
+				<EmptyState icon={IconUsers} title="No users yet">
+					Add a user to send them a welcome email with a link to set their password.
+				</EmptyState>
+			{/snippet}
+		</UsersListView>
+	</Card>
 </PageBody>

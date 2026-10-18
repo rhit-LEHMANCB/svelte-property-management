@@ -159,90 +159,95 @@
 		</Tabs.Content>
 		<Tabs.Content value="leases" class="space-y-4 pt-4">
 			{#if tab === 'leases'}
-				<div class="flex flex-wrap items-center justify-between gap-3">
-					<h2 class="h4">Leases</h2>
-					<a href="/admin/properties/{propertyId}/leases/new" class="btn preset-filled-primary-500"
-						><IconPlus class="size-4" aria-hidden="true" />New lease</a
-					>
-				</div>
-				{#if data.leases.length === 0}
-					<EmptyState icon={IconFileText} title="No leases">
-						Create a lease to add tenants to this property.
-					</EmptyState>
-				{:else}
-					<ul class="space-y-3" aria-label="Leases">
-						{#each data.leases as lease (lease.id)}
-							<li
-								class="card bg-surface-100-900 flex flex-wrap items-start gap-4 p-4 sm:p-6"
-								data-card
-							>
-								<div class="min-w-0 flex-auto space-y-1">
-									<div class="flex flex-wrap items-center gap-2">
-										<span class="badge capitalize {statusClass[lease.status]}">{lease.status}</span>
-										<span class="font-semibold"
-											>{lease.startDate} to {lease.endDate ?? 'month to month'}</span
-										>
-										<span class="opacity-80">{money(lease.rent)} / month</span>
-									</div>
-									{#if lease.tenants.length > 0}
-										<ul class="text-sm" aria-label="Tenants">
-											{#each lease.tenants as tenant (tenant.id)}
-												<li>{tenant.name} <span class="opacity-70">({tenant.email})</span></li>
-											{/each}
-										</ul>
-									{:else}
-										<p class="text-sm opacity-70">No tenants</p>
-									{/if}
-									{#if lease.autopay?.length}
-										<ul class="text-sm" aria-label="Autopay">
-											{#each lease.autopay as enrolled (enrolled.tenantId)}
-												<li>
-													Autopay: {enrolled.name}, {enrolled.method},
-													{enrolled.amountCents === null
-														? 'full balance'
-														: `up to ${money(enrolled.amountCents / 100)}`}
-												</li>
-											{/each}
-										</ul>
-									{/if}
-									{#if lease.autopayStatus}
-										{@const s = lease.autopayStatus}
-										<p
-											class="text-sm {s.state === 'failed' || s.state === 'gave-up'
-												? 'text-error-700-300'
-												: ''}"
-										>
-											{#if s.state === 'failed'}
-												Autopay failed for {s.name} on {s.day} ({money(s.amountCents / 100)},
-												attempt {s.attempts}
-												of 4); retrying.
-											{:else if s.state === 'gave-up'}
-												Autopay gave up for {s.name} on {s.day} ({money(s.amountCents / 100)}) after {s.attempts}
-												attempts.
-											{:else}
-												Autopay payment from {s.name} processing since {s.day} ({money(
-													s.amountCents / 100
-												)}).
-											{/if}
-										</p>
-									{/if}
-									{#if lease.billing}
-										<LeaseBilling
-											leaseId={lease.id}
-											billing={lease.billing}
-											ended={lease.status === 'ended'}
-										/>
-									{/if}
-								</div>
-								<a
-									href="/admin/properties/{propertyId}/leases/{lease.id}"
-									class="btn btn-sm preset-tonal"
-									aria-label="Edit lease from {lease.startDate}">Edit</a
+				<Card title="Leases">
+					{#snippet actions()}
+						<a
+							href="/admin/properties/{propertyId}/leases/new"
+							class="btn btn-sm preset-filled-primary-500"
+							><IconPlus class="size-4" aria-hidden="true" />New lease</a
+						>
+					{/snippet}
+					{#if data.leases.length === 0}
+						<EmptyState icon={IconFileText} title="No leases">
+							Create a lease to add tenants to this property.
+						</EmptyState>
+					{:else}
+						<ul class="space-y-3" aria-label="Leases">
+							{#each data.leases as lease (lease.id)}
+								<li
+									class="bg-surface-50-950 rounded-container flex flex-wrap items-start gap-4 p-4"
 								>
-							</li>
-						{/each}
-					</ul>
-				{/if}
+									<div class="min-w-0 flex-auto space-y-1">
+										<div class="flex flex-wrap items-center gap-2">
+											<span class="badge capitalize {statusClass[lease.status]}"
+												>{lease.status}</span
+											>
+											<span class="font-semibold"
+												>{lease.startDate} to {lease.endDate ?? 'month to month'}</span
+											>
+											<span class="opacity-80">{money(lease.rent)} / month</span>
+										</div>
+										{#if lease.tenants.length > 0}
+											<ul class="text-sm" aria-label="Tenants">
+												{#each lease.tenants as tenant (tenant.id)}
+													<li>{tenant.name} <span class="opacity-70">({tenant.email})</span></li>
+												{/each}
+											</ul>
+										{:else}
+											<p class="text-sm opacity-70">No tenants</p>
+										{/if}
+										{#if lease.autopay?.length}
+											<ul class="text-sm" aria-label="Autopay">
+												{#each lease.autopay as enrolled (enrolled.tenantId)}
+													<li>
+														Autopay: {enrolled.name}, {enrolled.method},
+														{enrolled.amountCents === null
+															? 'full balance'
+															: `up to ${money(enrolled.amountCents / 100)}`}
+													</li>
+												{/each}
+											</ul>
+										{/if}
+										{#if lease.autopayStatus}
+											{@const s = lease.autopayStatus}
+											<p
+												class="text-sm {s.state === 'failed' || s.state === 'gave-up'
+													? 'text-error-700-300'
+													: ''}"
+											>
+												{#if s.state === 'failed'}
+													Autopay failed for {s.name} on {s.day} ({money(s.amountCents / 100)},
+													attempt {s.attempts}
+													of 4); retrying.
+												{:else if s.state === 'gave-up'}
+													Autopay gave up for {s.name} on {s.day} ({money(s.amountCents / 100)})
+													after {s.attempts}
+													attempts.
+												{:else}
+													Autopay payment from {s.name} processing since {s.day} ({money(
+														s.amountCents / 100
+													)}).
+												{/if}
+											</p>
+										{/if}
+										{#if lease.billing}
+											<LeaseBilling
+												leaseId={lease.id}
+												billing={lease.billing}
+												ended={lease.status === 'ended'}
+											/>
+										{/if}
+									</div>
+									<a
+										href="/admin/properties/{propertyId}/leases/{lease.id}"
+										class="btn btn-sm preset-tonal"
+										aria-label="Edit lease from {lease.startDate}">Edit</a
+									>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</Card>
 			{/if}
 		</Tabs.Content>
 	</Tabs>

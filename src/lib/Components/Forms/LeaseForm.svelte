@@ -8,6 +8,7 @@
 	import { defaultLateFee } from '$lib/lateFee';
 	import FormActions from '$lib/Components/Shell/FormActions.svelte';
 	import Notice from '$lib/Components/Shell/Notice.svelte';
+	import Card from '$lib/Components/Shell/Card.svelte';
 	import Field, { type FieldAttrs } from './Field.svelte';
 	import { errorsAfterSubmit } from '$lib/forms/errorsAfterSubmit';
 
@@ -169,26 +170,27 @@
 	{#if $message?.type !== 'emailFailures'}
 		<input type="hidden" name="confirmOverlap" value={$form.confirmOverlap ? 'true' : ''} />
 
-		<div class="grid gap-4 md:grid-cols-3">
-			<Field label="Monthly rent" errors={$shown.rent}>
-				{#snippet children({ attrs, invalid })}
-					{@render moneyInput(attrs, invalid, 'rent', rentChanged)}
-				{/snippet}
-			</Field>
-			<Field label="Start date" errors={$shown.startDate}>
-				{#snippet children({ attrs, invalid })}
-					{@render dateInput(attrs, invalid, 'startDate')}
-				{/snippet}
-			</Field>
-			<Field label="End date" hint="(leave empty for month to month)" errors={$shown.endDate}>
-				{#snippet children({ attrs, invalid })}
-					{@render dateInput(attrs, invalid, 'endDate')}
-				{/snippet}
-			</Field>
-		</div>
+		<Card as="section" title="Terms">
+			<div class="grid gap-4 md:grid-cols-3">
+				<Field label="Monthly rent" errors={$shown.rent}>
+					{#snippet children({ attrs, invalid })}
+						{@render moneyInput(attrs, invalid, 'rent', rentChanged)}
+					{/snippet}
+				</Field>
+				<Field label="Start date" errors={$shown.startDate}>
+					{#snippet children({ attrs, invalid })}
+						{@render dateInput(attrs, invalid, 'startDate')}
+					{/snippet}
+				</Field>
+				<Field label="End date" hint="(leave empty for month to month)" errors={$shown.endDate}>
+					{#snippet children({ attrs, invalid })}
+						{@render dateInput(attrs, invalid, 'endDate')}
+					{/snippet}
+				</Field>
+			</div>
+		</Card>
 
-		<fieldset class="space-y-2">
-			<legend class="label-text">Deposit and late fees</legend>
+		<Card as="section" title="Deposit and late fees">
 			<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 				<Field label="Security deposit" hint="(optional)" errors={$shown.deposit}>
 					{#snippet children({ attrs, invalid })}
@@ -230,10 +232,9 @@
 				grace days after it is due. Use 0 for no late fee. Partial first and last months are
 				prorated by day.
 			</p>
-		</fieldset>
+		</Card>
 
-		<fieldset class="space-y-2">
-			<legend class="label-text">Tenant emails</legend>
+		<Card as="section" title="Tenants">
 			<p class="text-sm opacity-80">
 				Someone who already has an account is added to the lease. A new email gets an account and a
 				welcome email.
@@ -273,30 +274,32 @@
 			<button type="button" class="btn btn-sm preset-tonal" onclick={addEmail}
 				><IconPlus size={16} aria-hidden="true" />Add tenant</button
 			>
-		</fieldset>
+		</Card>
 
-		<Field
-			label="Lease document"
-			hint="(PDF, up to 10 MB)"
-			errors={documentError ? [documentError] : undefined}
-		>
-			{#snippet children({ attrs, invalid })}
-				{#if documentName}
-					<span class="block text-sm opacity-80"
-						>Current: {documentName}. Choose a file to replace it.</span
-					>
-				{/if}
-				<input
-					{...attrs}
-					name="document"
-					class="input"
-					class:input-error={invalid}
-					type="file"
-					accept="application/pdf,.pdf"
-					onchange={checkDocument}
-				/>
-			{/snippet}
-		</Field>
+		<Card as="section" title="Lease document">
+			<Field
+				label="Lease document"
+				hint="(PDF, up to 10 MB)"
+				errors={documentError ? [documentError] : undefined}
+			>
+				{#snippet children({ attrs, invalid })}
+					{#if documentName}
+						<span class="block text-sm opacity-80"
+							>Current: {documentName}. Choose a file to replace it.</span
+						>
+					{/if}
+					<input
+						{...attrs}
+						name="document"
+						class="input"
+						class:input-error={invalid}
+						type="file"
+						accept="application/pdf,.pdf"
+						onchange={checkDocument}
+					/>
+				{/snippet}
+			</Field>
+		</Card>
 
 		<FormActions>
 			<button type="submit" class="btn preset-filled-primary-500" disabled={$submitting}

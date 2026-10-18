@@ -70,6 +70,11 @@
 13. **Component tests render on the server.** Vitest gains the plain Svelte plugin (still not the SvelteKit one). Tests render components with `svelte/server` and parse the HTML with `happy-dom`, a new dev dependency used only by the tests.
 14. **A lint rule enforces Svelte 5 events.** `eslint.config.js` adds `'no-restricted-syntax': ['error', { selector: 'SvelteDirective[kind="EventHandler"]', message: 'Use Svelte 5 event attributes (onclick), not on:click.' }]` for `.svelte` files. A unit test lints a fixture string with `ESLint.lintText` and checks that the rule fires, so a config edit cannot silently drop it.
 
+15. **Tenant summary shared with Payment.** The per-lease balance, payable-now, due-date and autopay logic in `payment/+page.server.ts` moves into `src/lib/server/tenantSummary.ts` (`tenantLeaseSummaries(uid, leases)`), which Payment and the dashboard both call. The dashboard adds the open-request count (a query on `maintenance` for the tenant's `propertyId` and `status == "Open"`, counted by its documents; the handler tests' fake Firestore has no `count()`, and the counts are small) and the insurance status from the user document's `insurance.endDate` (On file > 30 days, Ending soon ≤ 30, Expired < today, Missing). Every read is keyed by the caller's uid or their own lease and property, as Payment already is.
+16. **Admin attention counts.** `adminAttention()` in `src/lib/server/leases.ts` queries open requests and walks every lease once: `loadLeaseLedger` for `deposit.toSettle`, and `loadCharges` + `latestOpenCharge` for a charge in `failed` or `gave-up` that is still owed. Leases are loaded in parallel. Admin home calls it after the existing admin check.
+17. **Maintenance tabs** reuse Skeleton `Tabs` (already used on the property page, covered by the tabs a11y spec). Each tab panel holds the existing `DataList`, so sorting, search and empty states stay.
+18. **No loose content check.** An e2e helper walks each signed-in page's `[data-page-body]` and fails on any `h2`–`h6`, `p`, `ul`, `ol` or `table` that is not inside `[data-card]`, `[data-notice]` or the page header block.
+
 ## Risks / Trade-offs
 
 - **Many page diffs at once** → e2e tests catch any lost behaviour. The work is split into one task group per page family, and each group runs its e2e specs before the next starts.
@@ -77,6 +82,8 @@
 - **Wider forms (672px to 1024px) can look stretched** → inside a form, two-column field grids (`grid sm:grid-cols-2`) already exist on Profile, Insurance and Property; reuse them where a single field would span 1024px.
 - **`oninput` validation runs zod on every keystroke after the first submit** → the schemas are small; no measurable cost.
 - **Contrast** → the contrast e2e check runs on every changed page in light and dark mode, including a page with a visible field error.
+- **Admin home reads every lease** → fine at a family landlord's scale (tens of leases, a few reads each). If the portfolio grows, store the counts or compute them in the daily job.
+- **Renamed buttons break e2e selectors** → the specs that click "Add", "Reset" and "View Portal" are updated with the change; the spec scenarios that name them are updated too.
 
 ## Migration Plan
 
