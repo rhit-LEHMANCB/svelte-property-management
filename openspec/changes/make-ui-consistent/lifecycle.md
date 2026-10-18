@@ -1,9 +1,9 @@
 # Lifecycle: make-ui-consistent
 
 - Branch: `claude/make-ui-consistent`
-- Stage: 6 QA (waiting on dev deploy run 107)
+- Stage: 6 QA (cycle 1 running)
 - Review round: 2 of 5
-- QA cycle: 0 of 3
+- QA cycle: 1 of 3
 - Started: 2026-10-18
 - Issue: #154
 
@@ -136,7 +136,8 @@ Found while implementing and folded into the change:
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)
 
 ## QA report
-(filled in stage 6; link to the QA evidence branch)
+- 2026-10-18 18:31: dev deploy run 107 succeeded on `324e354`.
+- 2026-10-18 18:33: QA cycle 1 started. It is a fresh agent and was given only the dev URL, the proposal, the delta specs, the QA guide and the report template.
 
 ## Verification checklist for the human
 (filled in stage 7)
