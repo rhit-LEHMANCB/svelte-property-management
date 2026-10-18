@@ -40,11 +40,15 @@ The system SHALL render Sign in, Forgot password and Reset password in the same 
 - **THEN** the three cards have the same width, padding, field spacing and submit button placement
 
 ### Requirement: Notices share one style
-The system SHALL render tonal warning, error and info boxes (for example the maintenance "no property" notice, lease warnings and form-level errors) with the same padding. Warning and info notices SHALL be announced politely (status); error notices SHALL be announced assertively (alert).
+The system SHALL render tonal warning, error and info boxes (for example the maintenance "no property" notice, lease warnings and form-level errors) with the same padding. Warning and info notices SHALL be announced politely (status), except a warning that stopped the user's action, which is announced assertively (alert); error notices SHALL be announced assertively (alert).
 
 #### Scenario: Warning notice
 - **WHEN** a tenant with no property opens Maintenance
 - **THEN** the notice has the shared notice padding and a role of status
+
+#### Scenario: Warning that stops a save
+- **WHEN** an admin saves a lease whose dates overlap another lease
+- **THEN** the overlap warning has the shared notice padding and a role of alert
 
 #### Scenario: Form error notice
 - **WHEN** Sign in is submitted with a wrong password

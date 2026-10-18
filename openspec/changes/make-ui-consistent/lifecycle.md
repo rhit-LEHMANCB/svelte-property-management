@@ -1,7 +1,7 @@
 # Lifecycle: make-ui-consistent
 
 - Branch: `claude/make-ui-consistent`
-- Stage: 2 Propose + preflight
+- Stage: 3 Implement
 - Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-18
@@ -75,8 +75,10 @@
 - Dialogs that are not superforms (Payment, autopay, Add user) show their existing checks per field.
 
 ## Gate A
-Approved: no
-Accepted preflight gaps: none
+Approved: yes, 2026-10-18 ("approve")
+Accepted preflight gaps:
+- 1Password `.env` item lacks the `JOBS_SECRET` line (local copy patched; owner to add it to the item).
+- Playwright/Chromium build mismatch in this container (scratchpad `PLAYWRIGHT_BROWSERS_PATH` workaround).
 
 ## Preflight
 Run 2026-10-18. GitHub backend: **GitHub MCP**. `gh` fails because `GH_TOKEN` is invalid; this is a cloud session, and `get_me` returns `rhit-LEHMANCB`.

@@ -34,17 +34,21 @@
 4. **`Notice` takes `tone: 'warning' | 'error' | 'info'`.**
    - It renders `card preset-tonal-<tone> p-4 space-y-2`, with `role="alert"` for errors and `role="status"` otherwise.
    - The `preset-tonal-primary` dashboard alert becomes `info`. `info` uses `preset-tonal-primary`, so its look does not change.
+   - `urgent` makes a warning an alert, for warnings that stopped a save (the lease overlap and failed welcome emails), which were alerts before.
 5. **`Field` wraps one control.**
-   - It takes `label`, `name`, `errors` (a string array or undefined) and a `children` snippet. The snippet receives `{ id, invalid, describedBy }` so the page can spread `aria-invalid`, `aria-describedby` and `class:input-error` onto its own input, select or `DateInput`.
+   - It takes `label`, an optional `hint`, `errors` (a string array or undefined) and a `children` snippet. The snippet receives `{ attrs, invalid }`: `attrs` (`id`, `aria-invalid`, `aria-describedby`) is spread onto the page's own input, textarea or `DateInput`, and `invalid` sets `input-error`.
+   - The label is a `<label for>` and the error sits outside it, so the message is the control's description, not part of its name.
+   - `describedBy` adds help text that always describes the control (the Reset page's password rules).
    - The error line is `<p id="{id}-error" class="text-error-700-300 text-sm">`. The `-700-300` shade passes the contrast check on card backgrounds; `text-error-600-400` (used today in `LeaseForm`) is replaced.
    - *Alternative:* `Field` renders the `<input>` itself. This was rejected because forms mix inputs, selects, textareas, `DateInput` and money inputs with prefixes.
 6. **Errors stay hidden until the first submit, then update live.**
-   - Superforms' default `validationMethod: 'auto'` validates on blur once a field is touched. That would show errors before a submit.
-   - Each superform instead uses `validationMethod: 'oninput'` and a `submitted` flag, set in `onSubmit` and also when the server returns errors. Errors are passed to `Field` only while `submitted` is true.
-   - A small helper, `src/lib/forms/submitted.svelte.ts`, returns `{ submitted, onSubmit }`, so each form has a one-line setup.
-   - The flag clears on a successful result that resets the form (Maintenance).
+   - `errorsAfterSubmit(posted)` in `src/lib/forms/errorsAfterSubmit.ts` is created before the superform. Its `markSubmitted` is the form's `onSubmit`, and `shown(errors)` returns a store that is empty until the first submit, then follows `$errors`.
+   - It starts as submitted when the server already answered a post (`posted`), so a page reloaded without scripts shows the server's errors.
+   - Superforms' default `validationMethod: 'auto'` stays. It validates fields on blur and input, but its errors are not shown before the submit, and after it a fixed field clears as it is typed.
+   - `customValidity: true` is removed from every form, because it routes errors into the browser's own bubbles instead of the page.
+   - Maintenance calls `reset()` after a successful save, since the form is cleared for the next request.
 7. **Form-level errors go to an error `Notice` above the action row.**
-   - Sign in: every error stays form-level. It never says which field was wrong.
+   - Sign in: every error stays form-level. It never says which field was wrong. The browser-side failure, which was a toast, now goes to the same notice as the no-scripts server error (`authentication` delta).
    - Forgot: maps its "Please enter a valid email." to the email `Field`, rendered from the action's returned `form`, so it works without scripts.
    - Superforms forms: `$message` or `$errors._errors` go in the notice.
    - Success messages stay toasts.
@@ -62,7 +66,9 @@
     - Each crumb truncates at `max-w-[16rem]`, with the full text in `title`.
     - `PageHeader` gains an optional `breadcrumbs` prop and renders the trail above the `h1`.
     - The nested pages pass their trail from data they already load (the property title). Their back buttons are removed.
-12. **A lint rule enforces Svelte 5 events.** `eslint.config.js` adds `'no-restricted-syntax': ['error', { selector: 'SvelteDirective[kind="EventHandler"]', message: 'Use Svelte 5 event attributes (onclick), not on:click.' }]` for `.svelte` files. A unit test lints a fixture string with `ESLint.lintText` and checks that the rule fires, so a config edit cannot silently drop it.
+12. **`SortablePhotos` moves to Svelte 5 too.** Its drag handlers used `on:` with modifiers, which the issue's count missed. It takes an `onsort` callback and a `children(item, index)` snippet in place of `on:sort` and `let:` slot props.
+13. **Component tests render on the server.** Vitest gains the plain Svelte plugin (still not the SvelteKit one). Tests render components with `svelte/server` and parse the HTML with `happy-dom`, a new dev dependency used only by the tests.
+14. **A lint rule enforces Svelte 5 events.** `eslint.config.js` adds `'no-restricted-syntax': ['error', { selector: 'SvelteDirective[kind="EventHandler"]', message: 'Use Svelte 5 event attributes (onclick), not on:click.' }]` for `.svelte` files. A unit test lints a fixture string with `ESLint.lintText` and checks that the rule fires, so a config edit cannot silently drop it.
 
 ## Risks / Trade-offs
 

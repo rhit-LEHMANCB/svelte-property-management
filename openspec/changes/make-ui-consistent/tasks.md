@@ -5,11 +5,11 @@
 - [ ] 1.1 Add `PageBody`, `Card`, `AuthCard`, `Notice` and `FormActions` to `src/lib/Components/Shell` (design decisions 1–4 and 10). Verify with component unit tests that `Notice` sets `role="alert"` for errors and `role="status"` otherwise, and that `Card` renders its title as the first child.
 - [ ] 1.2 Add `Breadcrumbs` and an optional `breadcrumbs` prop on `PageHeader` (decision 11). Verify with a unit test: the landmark is named "Breadcrumb", the items are in an `ol`, every crumb but the last is a link, and the last has `aria-current="page"`.
 - [ ] 1.3 Add `Field` and the `submitted` helper in `src/lib/forms/submitted.svelte.ts` (decisions 5–6). Verify with unit tests that `Field` sets `aria-invalid` and `aria-describedby` only when errors are given, and that the helper's flag starts false and turns true on submit.
-- [ ] 1.4 Add the optional `validate` to prompt modals in `src/lib/ui` (decision 9). Verify with a unit test that a failing `validate` keeps the modal open and shows its message under the input, and that a passing one calls `response`.
+- [ ] 1.4 Add the optional `validate` to prompt modals in `src/lib/ui` (decision 9). Verify with a unit test of the prompt check (`promptProblem`) and, in 5.2, an e2e check that a failing `validate` keeps the dialog open with the message under the input.
 
 ## 2. Lint rule for Svelte 4 events
 
-- [ ] 2.1 Replace the 10 `on:` handlers in `DateInput`, Sign in, Reset, Profile and Payment with Svelte 5 attributes, and move Sign in and Forgot from `export let` to `$props()`. Verify with `grep -rnE 'on:[a-z]+=' src` (no matches) and the existing e2e tests for those pages.
+- [ ] 2.1 Replace the remaining `on:` handlers in `DateInput`, Sign in, Reset, Profile, Payment and `SortablePhotos` (with its `on:sort` event and slot props) with Svelte 5 forms, and move Sign in, Forgot, Profile, Insurance, Payment, Payment success and `PropertyForm` from `export let` to `$props()`. Verify with `grep -rnE 'on:[a-z]+' src --include=*.svelte` (no directives) and the existing e2e tests for those pages.
 - [ ] 2.2 Add the `no-restricted-syntax` rule for `SvelteDirective[kind="EventHandler"]` to `eslint.config.js`, with a unit test that lints an `on:click` fixture and expects the error (decision 12). Verify that `npm run lint` passes on the repo.
 
 ## 3. Auth pages
