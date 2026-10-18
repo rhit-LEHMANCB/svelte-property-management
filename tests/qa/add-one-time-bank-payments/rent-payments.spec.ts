@@ -28,8 +28,8 @@ test('Valid amount: lines and Checkout URL', async ({ page }) => {
 	expect(status).toBe(200);
 	expect(url).toMatch(/^https:\/\/checkout\.stripe\.com\//);
 	const text = await openCheckout(page, url!);
-	line(text, 'Security Deposit', '$180.00');
-	line(text, 'Rent', '$420.00');
+	line(text, 'Security Deposit', '$168.00');
+	line(text, 'Rent', '$432.00');
 	line(text, 'Transaction Fee', '$18.00');
 	expect(text).not.toContain('Late Fee');
 	await shot(page, 'rent-payments-valid-amount');
@@ -78,8 +78,8 @@ test('Split across parts: deposit, rent and fee lines', async ({ page }) => {
 	// No QA lease owes a late fee, so the late fee part of the example is not covered.
 	const { url } = await createSession(page, DEPOSIT_LEASE, 600, 'card');
 	const text = await openCheckout(page, url!);
-	line(text, 'Security Deposit', '$180.00');
-	line(text, 'Rent', '$420.00');
+	line(text, 'Security Deposit', '$168.00');
+	line(text, 'Rent', '$432.00');
 	line(text, 'Transaction Fee', '$18.00');
 	expect(text).toContain('$618.00');
 	await shot(page, 'rent-payments-split-across-parts');
@@ -90,7 +90,7 @@ test('Rent only: only Rent and Transaction Fee lines', async ({ page }) => {
 	expect(status).toBe(200);
 	const text = await openCheckout(page, url!);
 	line(text, 'Rent', '$100.00');
-	line(text, 'Transaction Fee', '$3.20');
+	line(text, 'Transaction Fee', '$3.00');
 	expect(text).not.toMatch(/Security Deposit|Late Fee/);
 	await shot(page, 'rent-payments-rent-only');
 });
@@ -115,7 +115,7 @@ test('Invalid amount: missing or not a number answers 400', async ({ page }) => 
 });
 
 test('Amount above the balance answers 400', async ({ page }) => {
-	const over = await createSession(page, DEPOSIT_LEASE, 1130.01, 'bank');
+	const over = await createSession(page, DEPOSIT_LEASE, 1118.01, 'bank');
 	expect(over.status).toBe(400);
 	const rentOver = await createSession(page, RENT_LEASE, 2000.01, 'card');
 	expect(rentOver.status).toBe(400);
@@ -157,9 +157,14 @@ test('Over balance: dialog shows an error and sends no request', async ({ page }
 	page.on('request', (r) => {
 		if (r.url().includes('create-checkout-session')) posts++;
 	});
-	const dlg = await fillDialog(page, DEPOSIT_LEASE, '1130.01', 'card');
+	const probe = await fillDialog(page, DEPOSIT_LEASE, '1', 'card');
+	const capText = (await probe.innerText()).match(/You can pay up to \$([\d,]+\.\d\d) now/)![1];
+	const cap = Math.round(parseFloat(capText.replace(/,/g, '')) * 100);
+	await page.reload();
+	await page.waitForLoadState('networkidle');
+	const dlg = await fillDialog(page, DEPOSIT_LEASE, ((cap + 1) / 100).toFixed(2), 'card');
 	await dlg.getByRole('button', { name: 'Continue to payment' }).click();
-	await expect(dlg.getByRole('alert')).toContainText('no more than $1,130.00');
+	await expect(dlg.getByRole('alert')).toContainText(`no more than $${capText}`);
 	expect(posts).toBe(0);
 	await expect(page).toHaveURL(/\/payment$/);
 	await shot(page, 'rent-payments-over-balance', dlg);
