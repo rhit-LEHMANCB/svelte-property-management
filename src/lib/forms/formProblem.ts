@@ -7,7 +7,8 @@ const NOT_PROBLEMS = new Set(['Form submitted', 'Invalid form']);
  */
 export function formProblem(message: unknown): string | undefined {
 	if (typeof message !== 'string' || NOT_PROBLEMS.has(message)) return undefined;
-	// PropertyForm's create action answers `id<new id>` to send the admin to the new property.
-	if (/^id\S+$/.test(message)) return undefined;
+	// PropertyForm's create action answers `id<new id>` to send the admin to the new property; the id
+	// is a Firestore auto id (20 letters and digits), so a real message starting with "id" still shows.
+	if (/^id[A-Za-z0-9]{20}$/.test(message)) return undefined;
 	return message;
 }

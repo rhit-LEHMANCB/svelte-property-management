@@ -8,7 +8,14 @@ describe('formProblem', () => {
 		);
 	});
 
-	it.each([undefined, 'Form submitted', 'Invalid form', 'idAbc123'])('leaves out %j', (message) => {
-		expect(formProblem(message)).toBeUndefined();
+	it.each([undefined, 'Form submitted', 'Invalid form', 'idAbCdEfGhIjKlMnOpQrSt'])(
+		'leaves out %j',
+		(message) => {
+			expect(formProblem(message)).toBeUndefined();
+		}
+	);
+
+	it('keeps a real message that happens to start with "id"', () => {
+		expect(formProblem('identical')).toBe('identical');
 	});
 });

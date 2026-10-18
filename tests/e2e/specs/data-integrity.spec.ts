@@ -334,6 +334,10 @@ test.describe('access-control: a tenant without a property', () => {
 		await expect(page.getByRole('status')).toContainText(
 			'No property is assigned to your account yet.'
 		);
+		// page-layout "Warning notice": a status with the shared notice padding.
+		const notice = page.locator('[data-notice="warning"]');
+		await expect(notice).toHaveAttribute('role', 'status');
+		expect(await notice.evaluate((el) => getComputedStyle(el).paddingTop)).toBe('16px');
 		await expect(page.getByRole('button', { name: 'Add' })).toHaveCount(0);
 
 		for (const path of ['/profile', '/insurance']) {

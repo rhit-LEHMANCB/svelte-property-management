@@ -157,6 +157,9 @@ test.describe.serial('leases', () => {
 			.getByRole('alert')
 			.filter({ hasText: 'These dates overlap another lease at this property' });
 		await expect(warning).toContainText(`${monthStart()} to month to month`);
+		// page-layout "Warning that stops a save": an alert with the shared notice padding.
+		await expect(warning).toHaveAttribute('data-notice', 'warning');
+		expect(await warning.evaluate((el) => getComputedStyle(el).paddingTop)).toBe('16px');
 		expect(await leasesAt(LP)).toHaveLength(1);
 
 		await warning.getByRole('button', { name: 'Save anyway' }).click();

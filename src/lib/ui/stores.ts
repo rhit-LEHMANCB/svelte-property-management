@@ -110,5 +110,8 @@ export const getDrawerStore = () => stores().drawer;
 /** The message a prompt shows for `value`, or `undefined` when it may be submitted. */
 export function promptProblem(settings: ModalSettings, value: string): string | undefined {
 	if (settings.type !== 'prompt') return undefined;
-	return settings.validate?.(value);
+	if (settings.validate) return settings.validate(value);
+	// The dialog's form skips the browser's checks, so a required prompt is checked here.
+	if (settings.valueAttr?.required && value.trim() === '') return 'Please enter a value.';
+	return undefined;
 }

@@ -1,8 +1,8 @@
 # Lifecycle: make-ui-consistent
 
 - Branch: `claude/make-ui-consistent`
-- Stage: 4 Review
-- Review round: 1 of 5
+- Stage: 5 Ship to develop
+- Review round: 2 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-18
 - Issue: #154
@@ -117,6 +117,15 @@ Found while implementing and folded into the change:
   - `Notice` `urgent` has a unit test.
 
   Checks after the fixes: lint, check, 757 unit tests, and the affected e2e specs (53) pass.
+- Round 2 (2026-10-18): 0 blockers, 0 majors, 4 minors, 1 nit. The review stage exits after this round. Fixed:
+  - e2e asserts the overlap warning is an alert and the no-property notice is a status, both with the shared padding.
+  - `formProblem` hides only a real Firestore auto id after `id`.
+  - A `required` prompt without `validate` refuses an empty value, since the dialog form is `novalidate`.
+
+  Not changed:
+  - The lockfile nit. npm 10.9 only cleared `"dev": true` on `@esbuild/*` platform packages. `esbuild` is already a production dependency on `develop` through `vite` and `tsx`, so production installs do not change.
+
+  Checks: lint, check, 759 unit tests, build, and the affected e2e specs (55) pass.
 
 ## Out-of-scope observations
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)

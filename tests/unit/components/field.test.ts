@@ -65,6 +65,12 @@ describe('promptProblem', () => {
 		expect(promptProblem({ type: 'prompt', validate }, 'a@b.co')).toBeUndefined();
 	});
 
+	it('refuses an empty value for a required prompt without validate', () => {
+		const settings = { type: 'prompt' as const, valueAttr: { required: true } };
+		expect(promptProblem(settings, '  ')).toBe('Please enter a value.');
+		expect(promptProblem(settings, 'x')).toBeUndefined();
+	});
+
 	it('lets prompts without validate and other modal types through', () => {
 		expect(promptProblem({ type: 'prompt' }, '')).toBeUndefined();
 		expect(promptProblem({ type: 'confirm', validate }, '')).toBeUndefined();
