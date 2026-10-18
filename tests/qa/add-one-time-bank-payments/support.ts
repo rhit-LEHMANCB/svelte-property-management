@@ -5,10 +5,10 @@ export const SHOTS = 'openspec/changes/add-one-time-bank-payments/qa/screenshots
 export const json = { 'Content-Type': 'application/json' };
 
 // Existing ended QA leases of the QA tenant (not created by this run; only paid by test payments).
-export const DEPOSIT_LEASE = 'IopO2Aqo5Glp3aY5CVqX'; // $500 deposit + $1,000 rent, never paid by this run
-export const RENT_LEASE = 'cMbStS2LIUsbkinqemgt'; // $800 rent, API validation only (no payment completed)
-export const BANK_LEASE = 'x38pJw0O3L9cWdWiKphW'; // $800 rent, bank payments are completed here
-export const CARD_LEASE = 'k28Qa0V7H8Vl9QJLyqm0'; // $500 deposit + $1,000 rent, one $1 card payment here
+export const DEPOSIT_LEASE = 'IopO2Aqo5Glp3aY5CVqX'; // $180 deposit + $1,000 rent left, $50 old bank payment stuck processing (left alone)
+// Lease of the QA tenant that was not created by QA: only used for API validation and unpaid Checkout sessions.
+export const RENT_LEASE = 'migrated-wrIhk0hPRVK1hDCaId8y'; // $2,000 rent
+export const CARD_LEASE = DEPOSIT_LEASE;
 
 export async function shot(page: Page, slug: string, target?: Locator) {
 	const path = `${SHOTS}/${slug}.png`;

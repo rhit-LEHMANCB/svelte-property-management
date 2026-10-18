@@ -28,8 +28,8 @@ test('Valid amount: lines and Checkout URL', async ({ page }) => {
 	expect(status).toBe(200);
 	expect(url).toMatch(/^https:\/\/checkout\.stripe\.com\//);
 	const text = await openCheckout(page, url!);
-	line(text, 'Security Deposit', '$500.00');
-	line(text, 'Rent', '$100.00');
+	line(text, 'Security Deposit', '$180.00');
+	line(text, 'Rent', '$420.00');
 	line(text, 'Transaction Fee', '$17.70');
 	expect(text).not.toContain('Late Fee');
 	await shot(page, 'rent-payments-valid-amount');
@@ -78,8 +78,8 @@ test('Split across parts: deposit, rent and fee lines', async ({ page }) => {
 	// No QA lease owes a late fee, so the late fee part of the example is not covered.
 	const { url } = await createSession(page, DEPOSIT_LEASE, 600, 'card');
 	const text = await openCheckout(page, url!);
-	line(text, 'Security Deposit', '$500.00');
-	line(text, 'Rent', '$100.00');
+	line(text, 'Security Deposit', '$180.00');
+	line(text, 'Rent', '$420.00');
 	line(text, 'Transaction Fee', '$17.70');
 	expect(text).toContain('$617.70');
 	await shot(page, 'rent-payments-split-across-parts');
@@ -115,11 +115,11 @@ test('Invalid amount: missing or not a number answers 400', async ({ page }) => 
 });
 
 test('Amount above the balance answers 400', async ({ page }) => {
-	const over = await createSession(page, DEPOSIT_LEASE, 1500.01, 'bank');
+	const over = await createSession(page, DEPOSIT_LEASE, 1130.01, 'bank');
 	expect(over.status).toBe(400);
-	const rentOver = await createSession(page, RENT_LEASE, 800.01, 'card');
+	const rentOver = await createSession(page, RENT_LEASE, 2000.01, 'card');
 	expect(rentOver.status).toBe(400);
-	const exact = await createSession(page, RENT_LEASE, 800, 'card');
+	const exact = await createSession(page, RENT_LEASE, 2000, 'card');
 	expect(exact.status).toBe(200); // the full balance is allowed
 	await openPayment(page);
 	await shot(page, 'rent-payments-amount-above-the-balance');
@@ -157,9 +157,9 @@ test('Over balance: dialog shows an error and sends no request', async ({ page }
 	page.on('request', (r) => {
 		if (r.url().includes('create-checkout-session')) posts++;
 	});
-	const dlg = await fillDialog(page, DEPOSIT_LEASE, '1500.01', 'card');
+	const dlg = await fillDialog(page, DEPOSIT_LEASE, '1130.01', 'card');
 	await dlg.getByRole('button', { name: 'Continue to payment' }).click();
-	await expect(dlg.getByRole('alert')).toContainText('no more than $1,500.00');
+	await expect(dlg.getByRole('alert')).toContainText('no more than $1,130.00');
 	expect(posts).toBe(0);
 	await expect(page).toHaveURL(/\/payment$/);
 	await shot(page, 'rent-payments-over-balance', dlg);
