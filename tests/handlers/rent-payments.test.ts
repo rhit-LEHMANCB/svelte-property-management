@@ -919,7 +919,7 @@ describe('rent-payments: rent, deposit and late fees', () => {
 		lateFeeCents: '7500',
 		depositCents: '50000',
 		rentCents: '2500',
-		feeCents: '1770'
+		feeCents: '1800'
 	};
 
 	it('Scenario: Late fee and deposit parts are recorded separately from rent', async () => {
@@ -930,7 +930,7 @@ describe('rent-payments: rent, deposit and late fees', () => {
 		expect(db.peek('leases/lease-1/late_fees/2026-11')).toMatchObject({
 			amount: 75,
 			paid: 75,
-			transactions: [expect.objectContaining({ amount: 75, fee: 17.7, invoiceId: 'in_split' })]
+			transactions: [expect.objectContaining({ amount: 75, fee: 18, invoiceId: 'in_split' })]
 		});
 		expect(db.peek('leases/lease-1/deposit/ledger')).toMatchObject({
 			paid: 1000,
@@ -974,7 +974,7 @@ describe('rent-payments: rent, deposit and late fees', () => {
 	it('Scenario: Invoice from before this change: the whole amount goes to rent', async () => {
 		seedOwing();
 
-		await send(invoice({ rentCents: '60000', feeCents: '1770' }));
+		await send(invoice({ rentCents: '60000', feeCents: '1800' }));
 
 		expect(db.peek('leases/lease-1/late_fees/2026-11')).toMatchObject({ paid: 0 });
 		expect(db.peek('leases/lease-1/deposit/ledger')).toMatchObject({ paid: 500 });

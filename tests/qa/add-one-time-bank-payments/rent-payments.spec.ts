@@ -30,17 +30,17 @@ test('Valid amount: lines and Checkout URL', async ({ page }) => {
 	const text = await openCheckout(page, url!);
 	line(text, 'Security Deposit', '$180.00');
 	line(text, 'Rent', '$420.00');
-	line(text, 'Transaction Fee', '$17.70');
+	line(text, 'Transaction Fee', '$18.00');
 	expect(text).not.toContain('Late Fee');
 	await shot(page, 'rent-payments-valid-amount');
 });
 
-test('Card: $964.52 fee is $28.27 and only cards are offered', async ({ page }) => {
+test('Card: $964.52 fee is $28.94 and only cards are offered', async ({ page }) => {
 	const { status, url } = await createSession(page, DEPOSIT_LEASE, 964.52, 'card');
 	expect(status).toBe(200);
 	const text = await openCheckout(page, url!);
-	line(text, 'Transaction Fee', '$28.27');
-	expect(text).toContain('$992.79');
+	line(text, 'Transaction Fee', '$28.94');
+	expect(text).toContain('$993.46');
 	expect(text).toMatch(/Payment method Card/);
 	expect(text).not.toMatch(/US bank account|Cash App/i);
 	await shot(page, 'rent-payments-card');
@@ -80,8 +80,8 @@ test('Split across parts: deposit, rent and fee lines', async ({ page }) => {
 	const text = await openCheckout(page, url!);
 	line(text, 'Security Deposit', '$180.00');
 	line(text, 'Rent', '$420.00');
-	line(text, 'Transaction Fee', '$17.70');
-	expect(text).toContain('$617.70');
+	line(text, 'Transaction Fee', '$18.00');
+	expect(text).toContain('$618.00');
 	await shot(page, 'rent-payments-split-across-parts');
 });
 
@@ -178,9 +178,9 @@ test('Method choice with fees: card and bank fees for the amount, continues with
 	const dlg = await fillDialog(page, DEPOSIT_LEASE, '964.52');
 	await expect(dlg.getByText('Card', { exact: true })).toBeVisible();
 	await expect(dlg.getByText('Bank account', { exact: true })).toBeVisible();
-	await expect(dlg).toContainText('Fee 2.9% + $0.30 ($28.27)');
+	await expect(dlg).toContainText('Fee 3% ($28.94)');
 	await expect(dlg).toContainText('Fee $5.00');
-	await expect(dlg.locator('[data-payment-total]')).toContainText('$992.79');
+	await expect(dlg.locator('[data-payment-total]')).toContainText('$993.46');
 	await dlg.locator('input[value="bank"]').check();
 	await expect(dlg.locator('[data-payment-total]')).toContainText('$969.52');
 	await shot(page, 'rent-payments-method-choice-with-fees', dlg);

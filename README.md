@@ -143,8 +143,9 @@ what has been recorded against it; nothing is written by a scheduled job.
 - **Paying**: one amount is applied to late fees, then the deposit, then the oldest rent. Checkout
   shows a line per part and the invoice metadata carries `lateFeeCents`, `depositCents`,
   `rentCents` and `feeCents`; the webhook recomputes the split when it records the payment.
-- **Fees**: card payments (Checkout and autopay) add 2.9% + $0.30 (`cardFeeCents` in
-  `src/lib/server/autopay.ts`); autopay from a bank account (ACH) has no fee.
+- **Fees**: card payments (Checkout and autopay) add a flat 3% (`cardFeeCents` in
+  `src/lib/fees.ts`); a one-time bank (ACH) payment adds a flat $5.00, and autopay from a bank
+  account has no fee.
 - **Autopay**: each tenant on a lease can save a card or bank account and enroll with an optional
   amount cap (`leases/{id}/autopay/{uid}`). The daily job charges enrolled tenants in enrollment
   order when money is due, never more than is owed, and keeps one record per due date and tenant in

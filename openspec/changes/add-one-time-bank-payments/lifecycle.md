@@ -3,7 +3,7 @@
 - Branch: `claude/add-one-time-bank-payments`
 - Stage: 4/5 for the 3% card fee (PR #168): QA cycle 2 passed on 07cf890; review round 3, then merge, then QA cycle 3.
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
-- Review round: 2 of 5
+- Review round: 3 of 5
 - QA cycle: 2 of 3
 - Started: 2026-10-16
 
@@ -81,6 +81,7 @@ All 22 tasks done. Local checks: `npm run lint` OK; `npm run check` OK (placehol
 ## Review rounds
 - Round 1 (2026-10-17): 0 blockers, 1 major, 5 minors, 1 nit; all 7 fixed, none rejected. Major: no test for autopay notices subtracting pending bank payments (added daily-job test). Minors: warn when a pending payment succeeded at Stripe but was never recorded; date by the record's creation when no start time was captured; dialog error replaces the unreachable page toast (spec scenario updated); delete the record when Stripe refuses the session and drop the unused `sessionId`; failure-email errors are returned, unclaim failures no longer mask them. Nit: e2e test for the bank confirmation page (fake Stripe now returns payment sessions). Checks after fixes: lint, check, 730 unit/handler tests, payment/app-platform/autopay/leases e2e, build all OK.
 - Round 2 (2026-10-17): 0 blockers, 0 majors, 4 minors, 2 nits; exit round. Fixed 5: no-recipient failure emails stay unsent and warn instead of being stamped sent; a pending record without a payment intent warns at the 7-day check; abandoned `started` records are deleted after 2 days; fallback start day uses the business time zone (`startDayOf`); rules e2e asserts clients are denied `bank_payments`. Not fixed, with reason: minor 4 (two concurrent Checkouts can together pass the cap) is the existing rent-payments Known Gap "Two checkouts started before the first webhook lands can together exceed the balance"; an overpayment becomes credit on the lease. Checks after fixes: lint, check, 733 unit/handler tests, rules + payment e2e (24), build all OK.
+- Round 3 (2026-10-18, the 3% card fee on PR #168): 0 blockers, 1 major, 4 minors, 2 nits; all fixed. Major: the QA specs still asserted the old fees. Minors: the README fee line; a design line; the add-autopay design, tasks and proposal now note the change to 3%; the add-lease-proration-and-deposits rent-payments delta and proposal updated to 3%, so no archive order can restore the old fee. Nits: webhook fixtures and the email template fixture use 3% amounts. Checks after fixes: lint, check, 733 unit/handler tests; payment + autopay e2e (23) before the doc fixes; the build passed.
 
 ## Out-of-scope observations
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)
