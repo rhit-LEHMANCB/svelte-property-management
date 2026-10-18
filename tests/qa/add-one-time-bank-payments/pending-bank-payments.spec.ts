@@ -53,7 +53,7 @@ test('Phase 1: $5 Insufficient Funds payment is pending; cap reduced; note shown
 	await openPayment(page);
 	await expect(notes(page)).toHaveCount(2); // the old $50.00 one stays, plus this one
 	await expect(notes(page).filter({ hasText: 'A bank payment of $5.00 started on' })).toContainText(
-		/A bank payment of \$5\.00 started on\s+\d+\/\d+\/\d+ is processing\./
+		/A bank payment of \$5\.00 started\s+on\s+\d+\/\d+\/\d+ is processing\./
 	);
 	await expect(leaseCard(page, L)).toContainText(`You have a balance of ${fmt(balance)}`);
 	await shot(page, 'pending-bank-payments-checkout-completed-not-settled', leaseCard(page, L));
@@ -161,7 +161,7 @@ test('Failed bank payment: failure note, amount payable again', async ({ page })
 	await shot(page, 'pending-bank-payments-failed-bank-payment', leaseCard(page, L));
 	expect(failed, 'failure note shown within ~20 minutes').toBe(true);
 	const card = leaseCard(page, L);
-	await expect(card.locator('[data-bank-failed]')).toContainText(/bank payment of \$5\.00 started on\s+\d+\/\d+\/\d+ did not go through\. The amount is still owed\./);
+	await expect(card.locator('[data-bank-failed]')).toContainText(/bank payment of \$5\.00 started\s+on\s+\d+\/\d+\/\d+ did not go through\. The amount is still owed\./);
 	await expect(notes(page).filter({ hasText: 'bank payment of $5.00' })).toHaveCount(0);
 	await expect(card.getByRole('button', { name: /Make a Payment/ })).toBeEnabled();
 	await expect(card).toContainText(`You have a balance of ${fmt(balance)}`); // no fee, nothing recorded
