@@ -13,6 +13,10 @@ The system SHALL show a tenant three tiles on `/`: the balance owed across their
 - **WHEN** a tenant who owes $1,000.00 with rent due October 1 opens `/`
 - **THEN** the balance tile shows $1,000.00, "Due October 1, 2026" and a "Make a payment" link to `/payment`
 
+#### Scenario: Only an ended lease, still owing
+- **WHEN** a tenant whose only lease has ended still owes $500.00
+- **THEN** the balance tile shows $500.00 with a "Make a payment" link, and no autopay or maintenance tiles are shown
+
 #### Scenario: Nothing owed
 - **WHEN** a tenant owes nothing
 - **THEN** the balance tile shows $0.00 and says nothing is due, with no payment link

@@ -46,20 +46,28 @@ export type ChargeStatus = {
 	attempts: number;
 };
 
-export function latestOpenCharge(
-	charges: ChargeRecord[],
-	options: { uid?: string; owedCents: number }
-): ChargeStatus | null {
-	const { uid, owedCents } = options;
-	const open = charges
-		.filter((c) => c.state !== 'succeeded' && (uid === undefined || c.uid === uid))
-		// A failure stops mattering once the lease owes nothing (paid by hand since).
-		.filter((c) => owedCents > 0 || c.state === 'pending' || c.state === 'claimed')
+/** The most recent charge by attempt day (then claim time), whatever its state. */
+export function latestCharge(charges: ChargeRecord[]): ChargeRecord | undefined {
+	return charges
+		.slice()
 		.sort(
 			(a, b) =>
 				a.lastAttemptDay.localeCompare(b.lastAttemptDay) || a.claimedAt.localeCompare(b.claimedAt)
 		)
 		.at(-1);
+}
+
+export function latestOpenCharge(
+	charges: ChargeRecord[],
+	options: { uid?: string; owedCents: number }
+): ChargeStatus | null {
+	const { uid, owedCents } = options;
+	const open = latestCharge(
+		charges
+			.filter((c) => c.state !== 'succeeded' && (uid === undefined || c.uid === uid))
+			// A failure stops mattering once the lease owes nothing (paid by hand since).
+			.filter((c) => owedCents > 0 || c.state === 'pending' || c.state === 'claimed')
+	);
 	if (!open || open.state === 'succeeded') return null;
 	return {
 		state: open.state,

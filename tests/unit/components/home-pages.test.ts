@@ -59,6 +59,18 @@ describe('home-dashboards: Tenant summary tiles', () => {
 		expect(text(balance.querySelector('a'))).toBe('Make a payment');
 	});
 
+	it('Scenario: Only an ended lease, still owing', () => {
+		const doc = dashboard(
+			{ leaseCards: [{ ...lease, status: 'ended' }] },
+			{ balanceCents: 50000, dueDate: '2026-09-01', hasProperty: false }
+		);
+		const balance = region(doc, 'Balance')!;
+		expect(text(balance)).toContain('$500.00');
+		expect(text(balance.querySelector('a'))).toBe('Make a payment');
+		expect(region(doc, 'Autopay')).toBeNull();
+		expect(region(doc, 'Maintenance')).toBeNull();
+	});
+
 	it('Scenario: Nothing owed', () => {
 		const balance = region(dashboard({}, { balanceCents: 0, dueDate: null }), 'Balance')!;
 		expect(text(balance)).toContain('$0.00');

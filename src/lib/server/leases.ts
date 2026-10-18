@@ -15,7 +15,7 @@ import { createTenantAccount, type CreatedAccount } from './users';
 import { depositRef, loadLeaseLedger } from './balance';
 import { toCents, type DepositLedger, type Ledger } from './billing';
 import { methodLabel } from './autopay';
-import { latestOpenCharge, loadCharges, loadEnrollments } from './autopayStore';
+import { latestCharge, latestOpenCharge, loadCharges, loadEnrollments } from './autopayStore';
 import type {
 	EmailProblem,
 	LeaseBilling,
@@ -167,14 +167,7 @@ export async function adminAttention(now = new Date()) {
 				loadCharges(doc.ref)
 			]);
 			// Only the latest charge counts: a failure followed by a successful charge is resolved.
-			const latest = charges
-				.slice()
-				.sort(
-					(a, b) =>
-						a.lastAttemptDay.localeCompare(b.lastAttemptDay) ||
-						a.claimedAt.localeCompare(b.claimedAt)
-				)
-				.at(-1);
+			const latest = latestCharge(charges);
 			return {
 				depositToSettle: ledger.deposit.toSettle,
 				autopayFailed:

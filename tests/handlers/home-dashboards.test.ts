@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { load as adminPageLoad } from '../../src/routes/(authenticated)/admin/+page.server';
 import { load as layoutLoad } from '../../src/routes/(authenticated)/+layout.server';
 import { load as homeLoad } from '../../src/routes/(authenticated)/+page.server';
@@ -6,6 +6,16 @@ import { call } from '../helpers/callHandler';
 import { db, seedAdmin, seedLease, seedProperty, seedTenant } from '../helpers/seed';
 
 // home-dashboards: the tenant summary tiles and the admin needs-attention list.
+
+// The seeded dates (rent from 2026-01-01, charges in September and October 2026) are read against
+// a fixed day, not the real clock.
+beforeEach(() => {
+	vi.useFakeTimers({ toFake: ['Date'] });
+	vi.setSystemTime(new Date('2026-10-18T16:00:00Z'));
+});
+afterEach(() => {
+	vi.useRealTimers();
+});
 
 /** The dashboard load as the app runs it: with the layout's tenant leases as its parent. */
 async function dashboardOf(uid: string) {

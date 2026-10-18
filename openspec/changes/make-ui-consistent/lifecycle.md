@@ -1,8 +1,8 @@
 # Lifecycle: make-ui-consistent
 
 - Branch: `claude/make-ui-consistent`
-- Stage: 4 Review (scope change 2)
-- Review round: 3 of 5
+- Stage: 5 Ship to develop (scope change 2)
+- Review round: 4 of 5
 - QA cycle: 1 of 3 (cycle 2 follows scope change 2)
 - Started: 2026-10-18
 - Issue: #154
@@ -153,6 +153,15 @@ Found while implementing and folded into the change:
   - The spec scenario says "owed".
 
   Checks: lint, check (after typing the test helpers for happy-dom) and 782 unit tests pass.
+
+- Round 4 (2026-10-18, scope change 2): 0 blockers, 0 majors, 3 minors, 1 nit. The review stage exits after this round. Fixed:
+  - The balance tile shows whenever money is owed, including on an ended lease only. There is a new spec scenario and a rendering test.
+  - The handler tests pin the clock.
+  - The latest-charge sort is one shared `latestCharge` helper.
+
+  Rejected, with reason: using Firestore `count()` for the open-request counts. The handler tests' fake Firestore has no aggregation queries, the counts are small at this scale, and design decision 15 records the choice.
+
+  Checks: lint, check, 783 unit tests, the build, and the affected e2e specs (68) pass.
 
 ## Ship to develop
 - 2026-10-18: opened PR #175 into `develop`. Waiting on the required checks `tests` and `build_and_preview`, with a PR activity subscription. Next: merge with a merge commit once both are green, then stage 6.

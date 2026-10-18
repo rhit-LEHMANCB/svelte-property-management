@@ -61,7 +61,7 @@
 			<p>Please contact your property manager. You can still update your profile.</p>
 		</Notice>
 	{/if}
-	{#if isTenant && leases.length > 0}
+	{#if isTenant && (leases.length > 0 || summary.balanceCents > 0)}
 		<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			<Card as="section" aria-label="Balance">
 				{@render tile(
@@ -73,26 +73,28 @@
 					<a class="btn preset-filled-primary-500" href="/payment">Make a payment</a>
 				{/if}
 			</Card>
-			<Card as="section" aria-label="Autopay">
-				{@render tile(
-					'Autopay',
-					summary.autopayOn ? 'On' : 'Off',
-					summary.autopayOn
-						? 'Rent is paid for you on each due date.'
-						: 'Have rent paid for you on each due date.'
-				)}
-				<a class="btn preset-tonal" href="/payment"
-					>{summary.autopayOn ? 'Manage autopay' : 'Set up autopay'}</a
-				>
-			</Card>
-			<Card as="section" aria-label="Maintenance">
-				{@render tile(
-					'Open maintenance requests',
-					String(summary.openRequests),
-					summary.hasProperty ? 'For the home you rent.' : 'Requests open when your lease starts.'
-				)}
-				<a class="btn preset-tonal" href="/maintenance">View requests</a>
-			</Card>
+			{#if leases.length > 0}
+				<Card as="section" aria-label="Autopay">
+					{@render tile(
+						'Autopay',
+						summary.autopayOn ? 'On' : 'Off',
+						summary.autopayOn
+							? 'Rent is paid for you on each due date.'
+							: 'Have rent paid for you on each due date.'
+					)}
+					<a class="btn preset-tonal" href="/payment"
+						>{summary.autopayOn ? 'Manage autopay' : 'Set up autopay'}</a
+					>
+				</Card>
+				<Card as="section" aria-label="Maintenance">
+					{@render tile(
+						'Open maintenance requests',
+						String(summary.openRequests),
+						summary.hasProperty ? 'For the home you rent.' : 'Requests open when your lease starts.'
+					)}
+					<a class="btn preset-tonal" href="/maintenance">View requests</a>
+				</Card>
+			{/if}
 		</div>
 	{/if}
 	{#if isTenant}
