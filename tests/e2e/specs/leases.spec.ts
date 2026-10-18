@@ -427,9 +427,8 @@ test.describe.serial('leases: form checks, statuses, edits and documents', () =>
 			});
 			await page.getByRole('button', { name: 'Save lease' }).click();
 
-			// The message is inside the field's label, next to its input.
-			const label = page.locator('label').filter({ has: page.getByLabel(c.field) });
-			await expect(label.getByText(c.error)).toBeVisible();
+			// The message is under the field and is its accessible description.
+			await expect(page.getByLabel(c.field)).toHaveAccessibleDescription(c.error);
 			await expect(page.getByLabel(c.field)).toHaveAttribute('aria-invalid', 'true');
 		}
 		expect(await leasesAt(LQ)).toHaveLength(0);

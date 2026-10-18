@@ -207,7 +207,7 @@
 							onclick={() => (deductions = deductions.filter((_, i) => i !== index))}
 							><IconTrash size={18} aria-hidden="true" /></button
 						>
-						{#if problem}<p id={problemId} class="text-error-700-300 w-full" data-field-error>
+						{#if problem}<p id={problemId} class="text-error-800-200 w-full" data-field-error>
 								{problem}
 							</p>{/if}
 					</div>

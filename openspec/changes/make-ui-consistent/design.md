@@ -39,7 +39,7 @@
    - It takes `label`, an optional `hint`, `errors` (a string array or undefined) and a `children` snippet. The snippet receives `{ attrs, invalid }`: `attrs` (`id`, `aria-invalid`, `aria-describedby`) is spread onto the page's own input, textarea or `DateInput`, and `invalid` sets `input-error`.
    - The label is a `<label for>` and the error sits outside it, so the message is the control's description, not part of its name.
    - `describedBy` adds help text that always describes the control (the Reset page's password rules).
-   - The error line is `<p id="{id}-error" class="text-error-700-300 text-sm">`. The `-700-300` shade passes the contrast check on card backgrounds; `text-error-600-400` (used today in `LeaseForm`) is replaced.
+   - The error line is `<p id="{id}-error" class="text-error-800-200 text-sm">`. The `-800-200` shade passes the contrast check on card backgrounds in both modes (`-700-300` measured 4.11:1 in light mode); `text-error-600-400` (used today in `LeaseForm`) is replaced.
    - *Alternative:* `Field` renders the `<input>` itself. This was rejected because forms mix inputs, selects, textareas, `DateInput` and money inputs with prefixes.
 6. **Errors stay hidden until the first submit, then update live.**
    - `errorsAfterSubmit(posted)` in `src/lib/forms/errorsAfterSubmit.ts` is created before the superform. Its `markSubmitted` is the form's `onSubmit`, and `shown(errors)` returns a store that is empty until the first submit, then follows `$errors`.

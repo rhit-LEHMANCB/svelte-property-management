@@ -52,6 +52,6 @@
 	</label>
 	{@render children({ attrs, invalid: !!message })}
 	{#if message}
-		<p id="{fieldId}-error" class="text-error-700-300 text-sm" data-field-error>{message}</p>
+		<p id="{fieldId}-error" class="text-error-800-200 text-sm" data-field-error>{message}</p>
 	{/if}
 </div>

@@ -267,7 +267,7 @@
 					>
 				</div>
 			{/each}
-			{#if $shown.emails?._errors}<p class="text-error-700-300 text-sm" data-field-error>
+			{#if $shown.emails?._errors}<p class="text-error-800-200 text-sm" data-field-error>
 					{$shown.emails._errors[0]}
 				</p>{/if}
 			<button type="button" class="btn btn-sm preset-tonal" onclick={addEmail}
