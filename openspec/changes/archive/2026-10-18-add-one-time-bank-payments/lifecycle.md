@@ -1,7 +1,7 @@
 # Lifecycle: add-one-time-bank-payments
 
 - Branch: `claude/add-one-time-bank-payments`
-- Stage: 7 Production PR (Gate B: waiting on the human). Release PR #157 (develop → production) carries this change; its section and checklist were added on 2026-10-18.
+- Stage: **complete (archived automatically on 2026-10-18 after the production release `82681f9`)**
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
 - QA cycle: 3 of 3
@@ -224,3 +224,6 @@ HALTED at stage 6 (QA), 2026-10-17.
 1. In the Stripe dashboard (test mode), go to Developers > Webhooks and open the dev endpoint (`https://lehman-realty-dev.web.app/api/stripe/webhook`). Add the three `checkout.session.*` events.
 2. In Stripe test mode, check the pending $50 payment on "deposits QA Way". If it failed, use "Resend" on its `checkout.session.async_payment_failed` event, once the endpoint has the event, to clear it on dev.
 3. Resume the lifecycle in a session: "continue the dev-lifecycle run for add-one-time-bank-payments". It runs a fresh QA cycle (2 of 3), then opens the production PR.
+
+## Archive
+Archived automatically on 2026-10-18 after the production release `82681f9` ([workflow run](https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/39145552594)). That marks this lifecycle complete.
