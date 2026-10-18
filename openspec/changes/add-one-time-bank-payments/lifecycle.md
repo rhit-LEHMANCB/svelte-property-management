@@ -1,10 +1,10 @@
 # Lifecycle: add-one-time-bank-payments
 
 - Branch: `claude/add-one-time-bank-payments`
-- Stage: 4/5 for the 3% card fee (PR #168): QA cycle 2 passed on 07cf890; review round 3, then merge, then QA cycle 3.
+- Stage: 7 Production PR (Gate B: waiting on the human). Release PR #157 (develop → production) carries this change; its section and checklist were added on 2026-10-18.
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
-- QA cycle: 2 of 3
+- QA cycle: 3 of 3
 - Started: 2026-10-16
 
 ## Interview summary
@@ -87,11 +87,64 @@ All 22 tasks done. Local checks: `npm run lint` OK; `npm run check` OK (placehol
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)
 
 ## QA report
-Evidence branch (not for merging): `qa-evidence/add-one-time-bank-payments` (screenshots and the full report under `openspec/changes/add-one-time-bank-payments/qa/`). QA specs: `tests/qa/add-one-time-bank-payments/`.
+Evidence branch (not for merging): [`qa-evidence/add-one-time-bank-payments`](https://github.com/rhit-LEHMANCB/svelte-property-management/tree/qa-evidence/add-one-time-bank-payments). Screenshots and one report per cycle are under `openspec/changes/add-one-time-bank-payments/qa/`. QA specs: `tests/qa/add-one-time-bank-payments/`.
 
-- Deployed commit: `07cf890` on `develop` (dev site: https://lehman-realty-dev.web.app)
-- Run at: 2026-10-17, about 05:30 to 06:30 UTC
-- Result: FAIL, 1 failing scenario group classified `environment`, no `app bug`
+| Cycle | Commit | Result | Notes |
+|---|---|---|---|
+| 1 | 07cf890 | FAIL (`environment`) | Failed bank payment never marked failed: the dev webhook was not sending the `checkout.session.*` events. Run halted, and the user enabled the events. |
+| 2 | 07cf890 | PASS | Failure path works end to end; every observable scenario passed. |
+| 3 | 1573bf1 | PASS | Adds the 3% card fee (dialog, Checkout, autopay copy); every scenario re-run. |
+
+### Final report (cycle 3)
+
+- Deployed commit: `1573bf1` on `develop` (dev site: https://lehman-realty-dev.web.app). It includes the 3% card fee.
+- Run at: 2026-10-18
+- Result: **PASS**, 0 failing scenarios. Three test bugs (stale expected amounts in QA's own specs) were fixed and re-run green.
+
+## The 3% card fee and the $5.00 bank fee
+- The dialog shows "Fee 3% ($X.XX)" and the total for $333.33, $964.52, $600 and $20.
+- Checkout's "Transaction Fee" line:
+
+| Amount by card | Fee |
+|---|---|
+| $333.33 | $10.00 (rounded) |
+| $964.52 | $28.94 |
+| $600.00 | $18.00 |
+| $20.00 | $0.60 |
+| $1.50 | $0.05 (half cent rounds up) |
+| $0.50 | $0.02 |
+| $100.00, rent only | $3.00 |
+
+- The `/payment` autopay copy says "cards include a transaction fee of 3%", and "2.9%" appears nowhere on the page.
+- The bank fee is $5.00 at every amount, in the dialog and on Checkout.
+
+Screenshots: `screenshots/rent-payments-card-fee-*.png`, `screenshots/rent-payments-dialog-fee-333_33.png`, `screenshots/rent-payments-autopay-copy-3-percent.png`, `screenshots/rent-payments-bank-account.png`.
+
+## Every other changed scenario passed
+- **rent-payments:** Valid amount, Card (cards and Apple Pay only), Bank account (US bank only), Missing or unknown method, Split across parts (late-fee line not covered), Rent only, Not the tenant's lease, Invalid amount, Amount above the balance, Fractional cents, Return pages, Over balance, Method choice with fees, Return from card and bank Checkout.
+- **pending-bank-payments:** Checkout completed not settled, Processing note, Returned before the event, Not the tenant's session, Server only, Payable amount reduced, Failed bank payment ($5 Insufficient Funds), Settles ($10 Success account, about 50 seconds).
+- **Regression:** tenant and admin pages load, signed-out redirects work, admin `/payment` shows no tenant data.
+
+## Not covered by automation
+- Failure emails.
+- The late-fee hold, and fees resuming after a failure.
+- Autopay with a pending bank payment, and the 3% on a real autopay card charge.
+- Payment dated when started, and Recorded once.
+- The lost-event check after 7 days.
+- Late events.
+- "Everything on its way" (no spare balance this cycle; passed in cycle 1).
+- Co-tenant view.
+- Microdeposits, real wallets, phones.
+
+## Observations
+- (info) `/payment` shows only the newest failure note per lease, so the earlier $5 failure and the new one appear as one note. This is intended.
+- (low) Stripe test Checkout shows the merchant as "Sandbox". Check that the live business name reads "Lehman Family LLC".
+
+## Payments made (test mode, lease `IopO2Aqo5Glp3aY5CVqX`)
+- $1.00 by card, plus a $0.03 fee.
+- $5.00 by bank (Insufficient Funds account): failed, nothing charged.
+- $10.00 by bank (Success account): settled.
+- Lease balance now $1,157.00. The old $50 cycle 1 payment is still processing and clears on the daily job's 7-day check.
 
 ## Passed (with screenshots in `screenshots/`)
 - rent-payments, every changed scenario:
@@ -145,7 +198,16 @@ Evidence branch (not for merging): `qa-evidence/add-one-time-bank-payments` (scr
 
 
 ## Verification checklist for the human
-(filled in stage 7)
+Ranked by risk. The same list is in the add-one-time-bank-payments section of release PR #157.
+1. (high) **Live Stripe:** turn ACH Direct Debit on. The live webhook endpoint already sends `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `checkout.session.async_payment_failed` (enabled by the user on 2026-10-18). Check that the live business name reads "Lehman Family LLC" on Checkout.
+2. (high) **Failure emails on dev:** pay $5 by bank with the Test (Non-OAuth) "Insufficient Funds" account. The tenant and every admin get one email each, from Lehman Family LLC, naming the property, amount, date and reason. The tenant link opens `/payment`.
+3. (high) **Late fees and a pending bank payment:** on a lease past its grace period, a pending bank payment holds off the late fee in the daily run. After it fails, the fee follows on the next run. A payment started inside the grace period and settled later is dated by its start, so there is no fee.
+4. (high) **Autopay with a pending bank payment:** $1,000 owed and $600 pending means autopay charges at most $400. A card autopay charge has a 3% fee.
+5. (medium) **First real card and bank payments in production:** a card payment shows a 3% fee. A bank payment shows $5.00, stays "processing" for a few business days, then settles on the start date.
+6. (medium) **Co-tenant:** a second tenant sees the processing note and the lower "pay up to" amount, but not the payer's failure note.
+7. (medium) **"Everything on its way":** pay a small balance fully by bank. `/payment` says "Your balance is being paid." and the button is disabled.
+8. (low) **Phone layout** of the payment dialog and the success page. Half-cent rounding ($1.50 by card gives $0.05).
+9. (low) **Dev data:** the old $50 cycle 1 payment on `IopO2Aqo5Glp3aY5CVqX` clears on the daily job's 7-day check from 2026-10-24. Check that it then shows as failed and emails go out.
 
 ## Halted
 HALTED at stage 6 (QA), 2026-10-17.
