@@ -165,14 +165,14 @@ describe('autopay: email templates', () => {
 		const email = renderAutopayNoticeEmail({
 			address: '1 Main St',
 			what: 'Rent for November 2026',
-			amountCents: 102930,
-			feeCents: 2930,
+			amountCents: 103000,
+			feeCents: 3000,
 			dueDate: '2026-11-01',
 			method: 'Visa ending 4242',
 			link: 'https://example.test/payment'
 		});
-		expect(email.subject).toBe('Autopay will charge $1,029.30 on November 1, 2026');
-		expect(email.text).toContain('Visa ending 4242, including a $29.30 card transaction fee');
+		expect(email.subject).toBe('Autopay will charge $1,030.00 on November 1, 2026');
+		expect(email.text).toContain('Visa ending 4242, including a $30.00 card transaction fee');
 		expect(email.text).toContain('Lehman Family LLC');
 		const bank = renderAutopayNoticeEmail({
 			address: '1 Main St',

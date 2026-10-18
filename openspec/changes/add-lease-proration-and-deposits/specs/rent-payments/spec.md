@@ -7,13 +7,13 @@ The system SHALL create a Stripe Checkout session for a tenant-specified amount 
 
 #### Scenario: Valid amount
 - **WHEN** a signed-in tenant supplies a `leaseId` for a lease they are on and a numeric amount within that lease's total owed
-- **THEN** a session is created for their Stripe customer with a "Late Fee", "Security Deposit" and "Rent" line for each part of the split that is greater than 0, and a "Transaction Fee" line of 2.9% of the whole amount plus $0.30
+- **THEN** a session is created for their Stripe customer with a "Late Fee", "Security Deposit" and "Rent" line for each part of the split that is greater than 0, and a "Transaction Fee" line of 3% of the whole amount
 - **AND** the invoice metadata carries the `leaseID`, the `propertyID`, and the rent, deposit, late fee and transaction fee amounts in cents
 - **AND** the response contains the Checkout URL
 
 #### Scenario: Split across parts
 - **WHEN** a lease owes a $75.00 late fee, $500.00 of deposit and $1,500.00 of rent and the tenant pays $600.00
-- **THEN** the session has a $75.00 "Late Fee" line, a $500.00 "Security Deposit" line, a $25.00 "Rent" line and a $17.70 "Transaction Fee" line
+- **THEN** the session has a $75.00 "Late Fee" line, a $500.00 "Security Deposit" line, a $25.00 "Rent" line and an $18.00 "Transaction Fee" line
 
 #### Scenario: Rent only
 - **WHEN** a lease owes only rent

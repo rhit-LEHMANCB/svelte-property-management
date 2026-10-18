@@ -1,6 +1,6 @@
 ## 1. Fee and charge planning (pure logic)
 
-- [x] 1.1 Add `src/lib/server/autopay.ts` with `autopayFeeCents(type, amountCents)` (card 2.9% + $0.30, bank 0), and make the Checkout route use it for its fee. Verify: unit tests for card, bank, rounding and the Checkout amount unchanged.
+- [x] 1.1 Add `src/lib/server/autopay.ts` with `autopayFeeCents(type, amountCents)` (card 2.9% + $0.30 (changed to a flat 3% on 2026-10-18 by the owner, in `add-one-time-bank-payments`), bank 0), and make the Checkout route use it for its fee. Verify: unit tests for card, bank, rounding and the Checkout amount unchanged.
 - [x] 1.2 Add the pure planner `planAutopay({ledger, enrollments, charges, today})` returning the attempts to make (enrollment order, caps, never above the balance, pending subtracted, skip succeeded/pending/gave-up/already-tried-today, max 4 attempts, $0.50 minimum, cycle key = `ledger.dueDate`, nothing when the due date is in the future). Verify: unit tests for each scenario in the autopay spec ("Charge on the due date", "Amount cap and next tenant", "Never above the balance", "Nothing due", "Ended lease", "Minimum charge", "Retries", "Giving up", "Paid by hand meanwhile").
 - [x] 1.3 Remove "Set up auto-pay to waive this fee" from the Checkout fee line text. Verify: Checkout handler test asserts the description.
 

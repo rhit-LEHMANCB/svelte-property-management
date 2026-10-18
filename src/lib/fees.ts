@@ -5,8 +5,8 @@
 
 export type OneTimeMethod = 'card' | 'bank';
 
-/** The card fee: 2.9% + $0.30, the same for one-time Checkout payments and autopay. */
-export const cardFeeCents = (amountCents: number) => Math.round(amountCents * 0.029 + 30);
+/** The card fee: a flat 3%, rounded to the cent, the same for one-time Checkout payments and autopay. */
+export const cardFeeCents = (amountCents: number) => Math.round(amountCents * 0.03);
 
 /** The flat fee for a one-time bank (ACH) payment. */
 export const BANK_FEE_CENTS = 500;

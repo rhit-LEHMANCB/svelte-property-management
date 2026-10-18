@@ -75,9 +75,9 @@ const plan = (
 	});
 
 describe('autopay: Transaction fee by payment method', () => {
-	it('Scenario: Card: 2.9% plus $0.30, rounded to whole cents', () => {
-		expect(autopayFeeCents('card', 100000)).toBe(2930);
-		expect(autopayFeeCents('card', 33300)).toBe(996);
+	it('Scenario: Card: 3%, rounded to whole cents', () => {
+		expect(autopayFeeCents('card', 100000)).toBe(3000);
+		expect(autopayFeeCents('card', 33350)).toBe(1001);
 	});
 
 	it('Scenario: Bank account: no fee', () => {

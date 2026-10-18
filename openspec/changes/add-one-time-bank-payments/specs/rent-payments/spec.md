@@ -13,7 +13,7 @@ The system SHALL create a Stripe Checkout session for a tenant-specified amount 
 
 #### Scenario: Card
 - **WHEN** the method is `card` and the amount is $964.52
-- **THEN** the "Transaction Fee" line is 2.9% of the amount plus $0.30, rounded to the cent ($28.27)
+- **THEN** the "Transaction Fee" line is 3% of the amount, rounded to the cent ($28.94)
 - **AND** the session accepts only cards, including Apple Pay and Google Pay, and does not offer a bank account, Cash App Pay or any other method
 
 #### Scenario: Bank account
@@ -27,7 +27,7 @@ The system SHALL create a Stripe Checkout session for a tenant-specified amount 
 
 #### Scenario: Split across parts
 - **WHEN** a lease owes a $75.00 late fee, $500.00 of deposit and $1,500.00 of rent and the tenant pays $600.00 by card
-- **THEN** the session has a $75.00 "Late Fee" line, a $500.00 "Security Deposit" line, a $25.00 "Rent" line and a $17.70 "Transaction Fee" line
+- **THEN** the session has a $75.00 "Late Fee" line, a $500.00 "Security Deposit" line, a $25.00 "Rent" line and an $18.00 "Transaction Fee" line
 
 #### Scenario: Rent only
 - **WHEN** a lease owes only rent
@@ -62,7 +62,7 @@ The system SHALL reject amounts that are not greater than 0, exceed the amount t
 
 #### Scenario: Method choice with fees
 - **WHEN** the tenant opens "Make a Payment" and enters an amount
-- **THEN** the dialog offers "Card" with its fee (2.9% + $0.30 of that amount) and "Bank account" with its $5.00 fee, and continues to Stripe with the chosen method
+- **THEN** the dialog offers "Card" with its fee (3% of that amount) and "Bank account" with its $5.00 fee, and continues to Stripe with the chosen method
 
 ### Requirement: Payment confirmation page
 The system SHALL show tenants a confirmation page at `/payment/success` after Stripe Checkout completes.

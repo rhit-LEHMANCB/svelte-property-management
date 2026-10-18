@@ -94,7 +94,7 @@ The system SHALL add a transaction fee to an autopay charge by payment method ty
 
 #### Scenario: Card
 - **WHEN** the saved method is a card
-- **THEN** a "Transaction Fee" line of 2.9% of the amount plus $0.30 is added, and `feeCents` is in the invoice metadata
+- **THEN** a "Transaction Fee" line of 3% of the amount, rounded to the cent, is added, and `feeCents` is in the invoice metadata
 
 #### Scenario: Bank account
 - **WHEN** the saved method is an ACH bank account

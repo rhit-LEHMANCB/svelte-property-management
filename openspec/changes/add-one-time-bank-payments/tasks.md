@@ -45,3 +45,7 @@
 
 - [x] 8.1 Update the Known Gaps of `rent-payments` if any remain, run lint, check, unit, handler and e2e tests and build
 - [x] 8.2 Add the rollout notes (three `checkout.session.*` webhook events on dev and live endpoints; live ACH enabled) to the change's lifecycle and the production PR checklist
+
+## 9. Card fee 3% (owner's decision, 2026-10-18, issue #169)
+
+- [x] 9.1 Change `cardFeeCents` to a flat 3% (rounded to the cent) for one-time card payments and autopay card charges; update the copy ("Fee 3%", "transaction fee of 3%"), the rent-payments and autopay spec scenarios, and the unit, handler and e2e expectations

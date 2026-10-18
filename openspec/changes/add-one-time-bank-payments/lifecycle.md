@@ -1,10 +1,10 @@
 # Lifecycle: add-one-time-bank-payments
 
 - Branch: `claude/add-one-time-bank-payments`
-- Stage: 5 Ship to develop: PR #167 open, waiting on its required checks (`tests`, `build_and_preview`); subscribed to PR activity. PR check fix attempts: 0 of 2.
+- Stage: 4/5 for the 3% card fee (PR #168): QA cycle 2 passed on 07cf890; review round 3, then merge, then QA cycle 3.
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
-- Review round: 2 of 5
-- QA cycle: 0 of 3
+- Review round: 3 of 5
+- QA cycle: 2 of 3
 - Started: 2026-10-16
 
 ## Interview summary
@@ -44,6 +44,9 @@
 - No new env vars expected.
 - Release PR #157 still carries the interim behavior (bank offered at card fee) if it merges before this change.
 
+## Scope change after Gate A
+2026-10-18: the owner asked to show and charge a flat **3%** card fee instead of 2.9% + $0.30, inside this change before the production merge (issue #169; "that's fine" to the shortfall on card payments under about $30). It applies to one-time card payments and autopay card charges (one shared fee). The bank fee stays $5.00. Shipped through PR #168 with one review round, then QA cycle 3.
+
 ## Gate A
 Approved: yes, by the user on 2026-10-17 ("approve"), as proposed, including decision 1 (autopay charges in flight also lower the payable amount).
 Accepted preflight gaps: none (local `npm run check` needs a placeholder `JOBS_SECRET`; CI provides the real one)
@@ -78,15 +81,84 @@ All 22 tasks done. Local checks: `npm run lint` OK; `npm run check` OK (placehol
 ## Review rounds
 - Round 1 (2026-10-17): 0 blockers, 1 major, 5 minors, 1 nit; all 7 fixed, none rejected. Major: no test for autopay notices subtracting pending bank payments (added daily-job test). Minors: warn when a pending payment succeeded at Stripe but was never recorded; date by the record's creation when no start time was captured; dialog error replaces the unreachable page toast (spec scenario updated); delete the record when Stripe refuses the session and drop the unused `sessionId`; failure-email errors are returned, unclaim failures no longer mask them. Nit: e2e test for the bank confirmation page (fake Stripe now returns payment sessions). Checks after fixes: lint, check, 730 unit/handler tests, payment/app-platform/autopay/leases e2e, build all OK.
 - Round 2 (2026-10-17): 0 blockers, 0 majors, 4 minors, 2 nits; exit round. Fixed 5: no-recipient failure emails stay unsent and warn instead of being stamped sent; a pending record without a payment intent warns at the 7-day check; abandoned `started` records are deleted after 2 days; fallback start day uses the business time zone (`startDayOf`); rules e2e asserts clients are denied `bank_payments`. Not fixed, with reason: minor 4 (two concurrent Checkouts can together pass the cap) is the existing rent-payments Known Gap "Two checkouts started before the first webhook lands can together exceed the balance"; an overpayment becomes credit on the lease. Checks after fixes: lint, check, 733 unit/handler tests, rules + payment e2e (24), build all OK.
+- Round 3 (2026-10-18, the 3% card fee on PR #168): 0 blockers, 1 major, 4 minors, 2 nits; all fixed. Major: the QA specs still asserted the old fees. Minors: the README fee line; a design line; the add-autopay design, tasks and proposal now note the change to 3%; the add-lease-proration-and-deposits rent-payments delta and proposal updated to 3%, so no archive order can restore the old fee. Nits: webhook fixtures and the email template fixture use 3% amounts. Checks after fixes: lint, check, 733 unit/handler tests; payment + autopay e2e (23) before the doc fixes; the build passed.
 
 ## Out-of-scope observations
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)
 
 ## QA report
-(filled in stage 6; link to the QA evidence branch)
+Evidence branch (not for merging): `qa-evidence/add-one-time-bank-payments` (screenshots and the full report under `openspec/changes/add-one-time-bank-payments/qa/`). QA specs: `tests/qa/add-one-time-bank-payments/`.
+
+- Deployed commit: `07cf890` on `develop` (dev site: https://lehman-realty-dev.web.app)
+- Run at: 2026-10-17, about 05:30 to 06:30 UTC
+- Result: FAIL, 1 failing scenario group classified `environment`, no `app bug`
+
+## Passed (with screenshots in `screenshots/`)
+- rent-payments, every changed scenario:
+  - Valid amount, Card ($964.52, fee $28.27, card only), Bank account (fee $5.00, US bank account only, no Cash App), Missing or unknown method (400), Split across parts (late-fee line not covered), Rent only.
+  - Not the tenant's lease (403), Invalid amount, Amount above the balance, Fractional cents, Return pages.
+  - Over balance (inline dialog error, no request sent), Method choice with fees, Return from a card Checkout, Return from a bank payment.
+- pending-bank-payments:
+  - Checkout completed, not settled (real test-mode bank payment shows "is processing", balance unchanged), Returned before the event, Not the tenant's session, Server only (Firestore REST 403).
+  - Processing note (one tenant), Payable amount reduced (dialog and server), Everything on its way ("Your balance is being paid.", button disabled, server 400), Settles (note clears, balance drops; settlement took 1 to 3 minutes in test mode).
+- Regression: tenant and admin pages load with no 5xx or page errors; signed-out redirects; admin `/payment`.
+
+## Failure F1 (`environment`): failed bank payment never marked failed
+- Steps:
+  1. As the QA tenant, pay $50 by bank on "deposits QA Way" (`IopO2Aqo5Glp3aY5CVqX`).
+  2. Use Stripe's "Test (Non-OAuth)" institution with its "Insufficient Funds" account.
+  3. Return to `/payment` and keep reloading.
+- Expected: the processing note becomes "Your bank payment of $50.00 started on 10/17/26 did not go through. The amount is still owed." and the full balance is payable again.
+- Actual: still "is processing" after more than 15 minutes; the payable amount is still reduced by $50.
+- Why `environment`: the success path worked on the same site. The failure path depends on `checkout.session.async_payment_failed`, and the dev webhook endpoint may not send it yet. QA could not read the Stripe dashboard to confirm. Screenshot: `screenshots/pending-bank-payments-failed-bank-payment.png`.
+
+## Not covered by automation
+- Late-fee hold while pending, and fees resuming after a failure: needs the daily job and a lease past its grace period.
+- Autopay with a pending bank payment.
+- Payment dated when started, and Recorded once: stored data that QA cannot read.
+- Settled at once, Late events, and Lost event (7 days).
+- Failure emails: no mailbox access, and the failure never happened (F1).
+- Co-tenant view: only one QA tenant account exists.
+- Microdeposit verification.
+- Live mode, Apple Pay and Google Pay, and phones.
+
+## Observations outside the specs
+- Low: Stripe Checkout shows the merchant as "Sandbox", the test account's business name. Check that the live account shows "Lehman Family LLC".
+- Low: no wallet button appeared on the card Checkout in headless Chromium, so "Apple Pay and Google Pay work too" was not verified.
+- Info: test-mode ACH settles in 1 to 3 minutes, so the pending window on dev is short.
+
+## Data
+- QA completed real test-mode payments on dev: $1.00 by card, and bank payments of $1,499, $800, $300, $20, $600, $150 and $50 on the QA tenant's QA leases. All of them settled.
+- Still pending: $50.00 (Insufficient Funds account) on `IopO2Aqo5Glp3aY5CVqX`.
+
+## Recommended human tests
+1. (high) Bank payment failure end to end:
+   - Check the dev webhook endpoint subscribes to the three `checkout.session.*` events.
+   - Repeat the Insufficient Funds payment, and check the pending $50 one in Stripe.
+   - Expect the failure note, the full balance payable again, and one email to the tenant and one to each admin.
+2. (high) Late fee and autopay with a pending bank payment, using the daily job.
+3. (high) Payment dated the day it was started (stored transaction date, no late fee).
+4. (medium) Co-tenant sees the same processing note and payable cap.
+5. (medium) Microdeposit verification flow.
+6. (low) Dialog layout on a phone, and wallets on the card Checkout.
+7. (low) Live Stripe business name reads "Lehman Family LLC".
+
 
 ## Verification checklist for the human
 (filled in stage 7)
 
 ## Halted
-(only if the run halted: stage, reason, evidence, next step for a human)
+HALTED at stage 6 (QA), 2026-10-17.
+
+- **Reason:** QA cycle 1 has one failure, classified `environment`. The lifecycle halts on environment failures.
+- **What failed:** a one-time bank payment that Stripe should fail (test "Insufficient Funds" account, $50 on QA lease `IopO2Aqo5Glp3aY5CVqX`) stayed "processing" on the dev site for more than 15 minutes. It was never marked failed. The success path settled correctly on the same site.
+- **Likely cause:** the dev Stripe webhook endpoint does not send `checkout.session.async_payment_failed`. This was a rollout item (add `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `checkout.session.async_payment_failed` to the dev and live endpoints). Neither the QA agent nor this run could read the Stripe dashboard to confirm: the Stripe connector is not authorized, and `.env` credentials are off limits.
+- **Evidence:** the F1 entry in the QA report above, and `openspec/changes/add-one-time-bank-payments/qa/screenshots/pending-bank-payments-failed-bank-payment.png` on the evidence branch.
+- **No app bug found.** All rent-payments scenarios and all observable pending-bank-payments scenarios passed.
+
+**Resolved 2026-10-18:** the user enabled the events on the dev endpoint. Stripe cannot resend the old `async_payment_failed` event to an endpoint that was not subscribed when the event was created. The stuck $50 record on `IopO2Aqo5Glp3aY5CVqX` will be failed by the daily job's 7-day check, from 2026-10-24. The run resumed with QA cycle 2 (QA cycle 1 classification: `environment`, cycle +1).
+
+**Next steps for a human (done):**
+1. In the Stripe dashboard (test mode), go to Developers > Webhooks and open the dev endpoint (`https://lehman-realty-dev.web.app/api/stripe/webhook`). Add the three `checkout.session.*` events.
+2. In Stripe test mode, check the pending $50 payment on "deposits QA Way". If it failed, use "Resend" on its `checkout.session.async_payment_failed` event, once the endpoint has the event, to clear it on dev.
+3. Resume the lifecycle in a session: "continue the dev-lifecycle run for add-one-time-bank-payments". It runs a fresh QA cycle (2 of 3), then opens the production PR.

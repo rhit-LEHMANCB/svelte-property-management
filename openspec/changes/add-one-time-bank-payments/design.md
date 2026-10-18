@@ -16,7 +16,7 @@ Autopay (`add-autopay`) already models ACH settlement for its own charges: `leas
 
 ### 1. Method and fee
 - The request body gains `method: 'card' | 'bank'`; anything else is 400.
-- `src/lib/fees.ts` (client-safe, no server imports) holds `cardFeeCents`, `BANK_FEE_CENTS = 500` and `oneTimeFeeCents(method, amountCents)`. The server and the dialog both use it, so the fees always match; `src/lib/server/autopay.ts` re-exports `cardFeeCents`.
+- `src/lib/fees.ts` (client-safe, no server imports) holds `cardFeeCents` (a flat 3%, rounded to the cent; it was 2.9% + $0.30 until the owner's decision on 2026-10-18, issue #169), `BANK_FEE_CENTS = 500` and `oneTimeFeeCents(method, amountCents)`. The server and the dialog both use it, so the fees always match; `src/lib/server/autopay.ts` re-exports `cardFeeCents`.
 - Card: `payment_method_types: ['card']`. Stripe shows Apple Pay and Google Pay under the card type; Cash App Pay and bank are excluded.
 - Bank: `payment_method_types: ['us_bank_account']`, with no `verification_method` set (Stripe's default allows instant or microdeposits).
 - Both keep `setup_future_usage: 'on_session'`. The fee line is named "Transaction Fee" with the description "Transaction fee for one-time card payment." or "Transaction fee for one-time bank payment.".
@@ -69,7 +69,7 @@ A one-time card payment gets no record: it settles at once, as today.
 - **Autopay**: `planAutopay` gains an `otherInFlightCents` input (the bank in-flight sum), subtracted from `remaining`. `noticesFor` subtracts it in its `projectedSplit` too.
 
 ### 8. UI
-- The "Make a Payment" prompt modal is replaced by a component modal (`src/lib/Components/Payments/PaymentDialog.svelte`, through the modal store's `component` type): an amount input plus a two-option radio group, "Card: Fee 2.9% + $0.30 ($X.XX)" and "Bank account: Fee $5.00". The fees update as the amount changes, and the total for the chosen method is shown. The dialog validates against `payableCents` and shows problems inline; the page checks again with the zod schema before calling the server.
+- The "Make a Payment" prompt modal is replaced by a component modal (`src/lib/Components/Payments/PaymentDialog.svelte`, through the modal store's `component` type): an amount input plus a two-option radio group, "Card: Fee 3% ($X.XX)" and "Bank account: Fee $5.00". The fees update as the amount changes, and the total for the chosen method is shown. The dialog validates against `payableCents` and shows problems inline; the page checks again with the zod schema before calling the server.
 - Lease card: for each `pending` record, "A bank payment of $X started on <date> is processing." (`role="status"`). For the caller's own `failed` record with `failedDay` within 7 days: "Your bank payment of $X started on <date> did not go through. The amount is still owed." When `payableCents` is 0 while the balance is above 0: "Your balance is being paid." and the button is disabled.
 - The page load returns only what each tenant may see: amounts, days and states. It never returns another tenant's uid, error text or emails.
 
