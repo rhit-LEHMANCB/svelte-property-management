@@ -348,7 +348,7 @@
 								</Field>
 								<button
 									data-needs-hydration
-									class="btn preset-tonal mt-7"
+									class="btn preset-tonal mt-6"
 									disabled={busy}
 									aria-label={data.leases.length > 1
 										? `Set up autopay for ${lease.address}`

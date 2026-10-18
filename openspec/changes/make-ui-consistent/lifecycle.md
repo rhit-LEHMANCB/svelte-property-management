@@ -1,7 +1,7 @@
 # Lifecycle: make-ui-consistent
 
 - Branch: `claude/make-ui-consistent`
-- Stage: 3 Implement
+- Stage: 4 Review
 - Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-18
@@ -96,6 +96,15 @@ Run 2026-10-18. GitHub backend: **GitHub MCP**. `gh` fails because `GH_TOKEN` is
 | `npm test` | OK: 733 passed |
 | Playwright + Java + emulators | OK with a workaround. The installed Playwright expects Chromium build 1243, but the container has 1194. A scratchpad `PLAYWRIGHT_BROWSERS_PATH` symlinks the installed Chromium; the `appearance` e2e spec passed with it. No repo change. |
 | `develop` environment secrets for this change | None needed |
+
+## Implementation
+Stage 3 done 2026-10-18. All 16 tasks are checked. `npm run lint`, `npm run check`, `npm test` (750), `npm run build` and `npm run check:server` pass. The full `npm run test:e2e` run passed (183) before the last two fixes; after them, the affected specs (page-layout, profile, appearance, autopay) passed again (42).
+
+Found while implementing and folded into the change:
+- `input-error` does not exist in Skeleton 5, so invalid fields never had a red outline. `src/app.css` now defines it.
+- `text-error-700-300` is 4.11:1 on light cards. Error text uses `-800-200`.
+- Sign in's browser-side error toast conflicted with the field-error spec. The `authentication` and `rent-payments` deltas were added.
+- `SortablePhotos` still used `on:` with modifiers and was moved to Svelte 5.
 
 ## Review rounds
 (none yet; one line per round: blockers, majors, minors, nits, fixed, rejected with reason)

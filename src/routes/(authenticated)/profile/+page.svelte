@@ -7,6 +7,7 @@
 	import PageBody from '$lib/Components/Shell/PageBody.svelte';
 	import Card from '$lib/Components/Shell/Card.svelte';
 	import FormActions from '$lib/Components/Shell/FormActions.svelte';
+	import Notice from '$lib/Components/Shell/Notice.svelte';
 	import Field from '$lib/Components/Forms/Field.svelte';
 	import { errorsAfterSubmit } from '$lib/forms/errorsAfterSubmit';
 	import type { PageData } from './$types';
@@ -33,6 +34,7 @@
 	const {
 		form,
 		errors,
+		message,
 		enhance: enhanceContact
 	} = superForm(data.form, {
 		// The default reset puts back the values the page first loaded with, which are stale after a save.
@@ -44,12 +46,14 @@
 				// Display the message using a toast library
 				successToast('Successfully updated user info.', toastStore);
 				$form.currentPassword = '';
-			} else if (updated.message) {
-				errorToast(updated.message, toastStore);
 			}
 		}
 	});
 	const shown = gate(errors);
+	// A problem that belongs to no single field. "Invalid form" only repeats the field errors.
+	const formProblem = $derived(
+		$message && $message !== 'Form submitted' && $message !== 'Invalid form' ? $message : undefined
+	);
 
 	const photoUrl = $derived(data.user.photoUrl);
 	// Changing the email asks for the current password.
@@ -131,6 +135,9 @@
 						/>
 					{/snippet}
 				</Field>
+				{#if formProblem}
+					<Notice tone="error"><p>{formProblem}</p></Notice>
+				{/if}
 				<FormActions>
 					<button type="submit" class="btn preset-filled-primary-500">Save</button>
 				</FormActions>

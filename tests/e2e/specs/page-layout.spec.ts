@@ -341,6 +341,15 @@ test.describe('page-layout: field errors show under each field', () => {
 		await firstName.fill('');
 		await page.getByRole('button', { name: 'Save', exact: true }).click();
 		await expectFieldError(firstName, 'Please provide a first name');
+		// The field errors say it all: no generic "Invalid form" message as well.
+		await expect(page.getByText('Invalid form')).toHaveCount(0);
+		// The error outline is a different ring color, also while the field has focus.
+		const ring = () => firstName.evaluate((el) => getComputedStyle(el).boxShadow);
+		await firstName.focus();
+		const invalidRing = await ring();
+		const lastName = page.getByLabel('Last Name');
+		await lastName.focus();
+		expect(invalidRing).not.toBe(await lastName.evaluate((el) => getComputedStyle(el).boxShadow));
 
 		await firstName.fill(TENANT.firstName);
 		await expect(firstName).not.toHaveAttribute('aria-invalid', 'true');
