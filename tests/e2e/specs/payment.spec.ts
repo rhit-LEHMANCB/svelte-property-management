@@ -23,8 +23,8 @@ test.describe('rent-payments', () => {
 		const dialog = page.getByRole('dialog');
 		await dialog.getByRole('spinbutton').fill('500');
 		// Card is the default, and its fee for the amount is shown.
-		await expect(dialog.getByText('Fee 2.9% + $0.30 ($14.80)')).toBeVisible();
-		await expect(dialog.getByText('Total charged: $514.80')).toBeVisible();
+		await expect(dialog.getByText('Fee 3% ($15.00)')).toBeVisible();
+		await expect(dialog.getByText('Total charged: $515.00')).toBeVisible();
 		await dialog.getByRole('button', { name: 'Continue to payment' }).click();
 
 		// The browser is sent to the (fake) hosted checkout page.
@@ -40,8 +40,8 @@ test.describe('rent-payments', () => {
 		expect(body['line_items[0][price_data][product_data][name]']).toBe('Rent');
 		expect(body['line_items[0][price_data][unit_amount]']).toBe('50000');
 		expect(body['line_items[1][price_data][product_data][name]']).toBe('Transaction Fee');
-		// $500 * 2.9% + $0.30 = $14.80
-		expect(body['line_items[1][price_data][unit_amount]']).toBe('1480');
+		// $500 * 3% = $15.00
+		expect(body['line_items[1][price_data][unit_amount]']).toBe('1500');
 		expect(body['invoice_creation[invoice_data][metadata][propertyID]']).toBe(PROPERTY.id);
 		expect(body['invoice_creation[invoice_data][metadata][leaseID]']).toBe(LEASE_ID);
 		expect(body['invoice_creation[invoice_data][metadata][paymentMethod]']).toBe('card');

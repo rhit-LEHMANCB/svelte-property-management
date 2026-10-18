@@ -119,7 +119,7 @@ describe('autopay: Autopay charge in the daily job', () => {
 				rentCents: '100000',
 				depositCents: '0',
 				lateFeeCents: '0',
-				feeCents: '2930',
+				feeCents: '3000',
 				autopay: 'true',
 				uid: 't1',
 				cycleKey: '2026-11-01'
@@ -127,7 +127,7 @@ describe('autopay: Autopay charge in the daily job', () => {
 		});
 		expect(items().map((i) => [i.description, i.amount, i.invoice])).toEqual([
 			['Rent', 100000, 'in_auto_1'],
-			['Transaction Fee', 2930, 'in_auto_1']
+			['Transaction Fee', 3000, 'in_auto_1']
 		]);
 		const [payId, payArgs, payKey] = services.stripe.invoices.pay.mock.calls[0];
 		expect(payId).toBe('in_auto_1');
@@ -137,7 +137,7 @@ describe('autopay: Autopay charge in the daily job', () => {
 			state: 'succeeded',
 			attempts: 1,
 			amountCents: 100000,
-			feeCents: 2930,
+			feeCents: 3000,
 			invoiceId: 'in_auto_1'
 		});
 		const summary = (
@@ -150,7 +150,7 @@ describe('autopay: Autopay charge in the daily job', () => {
 				cycleKey: '2026-11-01',
 				attempt: 1,
 				amountCents: 100000,
-				feeCents: 2930,
+				feeCents: 3000,
 				outcome: 'succeeded'
 			}
 		]);
@@ -161,7 +161,7 @@ describe('autopay: Autopay charge in the daily job', () => {
 			db.peek('leases/lease-1/payment_history/2026') as Record<string, HistoryMonth>
 		).November;
 		expect(november.transactions).toHaveLength(1);
-		expect(november.transactions[0]).toMatchObject({ amount: 1000, fee: 29.3 });
+		expect(november.transactions[0]).toMatchObject({ amount: 1000, fee: 30 });
 		expect(charge('2026-11-01_t1')).toMatchObject({
 			state: 'succeeded',
 			recordedAt: expect.any(String)
@@ -190,7 +190,7 @@ describe('autopay: Autopay charge in the daily job', () => {
 			invoices().map((i) => [i.metadata.uid, i.metadata.rentCents, i.metadata.feeCents])
 		).toEqual([
 			['t1', '30000', '900'],
-			['t2', '70000', '2060']
+			['t2', '70000', '2100']
 		]);
 	});
 
@@ -221,7 +221,7 @@ describe('autopay: Autopay charge in the daily job', () => {
 			claimedAt: '2026-11-01T10:58:00.000Z',
 			claimToken: 'other-run',
 			amountCents: 100000,
-			feeCents: 2930
+			feeCents: 3000
 		});
 		await runOn('2026-11-01');
 		expect(invoices()).toHaveLength(0);
@@ -239,7 +239,7 @@ describe('autopay: Autopay charge in the daily job', () => {
 			claimedAt: '2026-11-01T10:00:00.000Z',
 			claimToken: 'dead-run',
 			amountCents: 100000,
-			feeCents: 2930,
+			feeCents: 3000,
 			invoiceId: null
 		});
 		await runOn('2026-11-01');
@@ -260,7 +260,7 @@ describe('autopay: Autopay charge in the daily job', () => {
 			lastAttemptDay: '2026-11-01',
 			claimedAt: '2026-11-01T10:00:00.000Z',
 			amountCents: 100000,
-			feeCents: 2930,
+			feeCents: 3000,
 			invoiceId: 'in_left'
 		});
 		services.stripe.invoices.retrieve.mockResolvedValue({ id: 'in_left', status: 'draft' });
@@ -283,7 +283,7 @@ describe('autopay: Autopay charge in the daily job', () => {
 			lastAttemptDay: '2026-11-01',
 			claimedAt: '2026-11-01T10:00:00.000Z',
 			amountCents: 100000,
-			feeCents: 2930,
+			feeCents: 3000,
 			invoiceId: 'in_left'
 		});
 		services.stripe.invoices.retrieve.mockResolvedValue({ id: 'in_left', status: 'paid' });
@@ -509,12 +509,12 @@ describe('autopay: Reminders for autopay tenants', () => {
 		await runOn('2026-10-25');
 
 		expect(emails()).toEqual([
-			['t1@example.com', 'Autopay will charge $1,029.30 on November 1, 2026'],
+			['t1@example.com', 'Autopay will charge $1,030.00 on November 1, 2026'],
 			['t2@example.com', 'Rent for November 2026 is due on November 1, 2026']
 		]);
 		const text = services.sendEmail.mock.calls[0][0].text as string;
 		expect(text).toContain('Visa ending 4242');
-		expect(text).toContain('$29.30 card transaction fee');
+		expect(text).toContain('$30.00 card transaction fee');
 		expect(text).toContain('Lehman Family LLC');
 
 		// Scenario: Sent once.
@@ -533,7 +533,7 @@ describe('autopay: Reminders for autopay tenants', () => {
 		enroll('t2', null, 'card', '2026-10-02T00:00:00.000Z');
 		await runOn('2026-10-25');
 		expect(emails()).toEqual([
-			['t1@example.com', 'Autopay will charge $1,029.30 on November 1, 2026'],
+			['t1@example.com', 'Autopay will charge $1,030.00 on November 1, 2026'],
 			['t2@example.com', 'Rent for November 2026 is due on November 1, 2026']
 		]);
 	});
@@ -649,7 +649,7 @@ describe('autopay: review fixes', () => {
 		expect(charge('2026-11-01_t1')).toMatchObject({
 			state: 'succeeded',
 			amountCents: 100000,
-			feeCents: 2930
+			feeCents: 3000
 		});
 	});
 

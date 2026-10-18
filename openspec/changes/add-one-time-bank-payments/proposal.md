@@ -6,7 +6,7 @@ ACH Direct Debit and Cash App Pay were turned on in Stripe for autopay, so one-t
 
 ## What Changes
 
-- The "Make a Payment" modal asks for the amount and a payment method: **Card** (fee 2.9% + $0.30, which includes Apple Pay and Google Pay) or **Bank account** (flat $5.00 fee). Each option shows its fee for the amount entered.
+- The "Make a Payment" modal asks for the amount and a payment method: **Card** (fee 3%, which includes Apple Pay and Google Pay) or **Bank account** (flat $5.00 fee). Each option shows its fee for the amount entered.
 - `POST /api/stripe/create-checkout-session/payment` takes a `method` (`card` or `bank`). Each Checkout session is restricted to that method (`card` or `us_bank_account`), so Cash App Pay and any other method are never offered and the fee always matches how the tenant pays. The fee is a "Transaction Fee" line on top of the amount. Bank accounts can be verified by instant login or microdeposits (Stripe's default).
 - A one-time bank payment that completes in Checkout but has not settled is kept as a **pending** record on the lease. While it is pending:
   - `/payment` shows "A bank payment of $X started on <date> is processing" to every tenant on the lease.
@@ -18,13 +18,15 @@ ACH Direct Debit and Cash App Pay were turned on in Stripe for autopay, so one-t
 - The webhook handles `checkout.session.completed`, `checkout.session.async_payment_succeeded` and `checkout.session.async_payment_failed` in addition to `invoice.payment_succeeded`. The daily job checks a pending payment with Stripe after a few days in case an event was lost.
 - `/payment/success` tells a tenant who paid by bank that the payment takes a few business days to complete.
 
+- The card fee changes from 2.9% + $0.30 to a flat 3%, for one-time card payments and autopay card charges alike (owner's decision, 2026-10-18, issue #169). On card payments under about $30, 3% is less than Stripe's fee, and the business absorbs the difference.
+
 ## Capabilities
 
 ### New Capabilities
 - `pending-bank-payments`: the lifecycle of a one-time bank payment from Checkout to settlement or failure, covering the pending record, what it holds off (double payment, late fees, autopay), how it is dated when it settles, and the failure emails.
 
 ### Modified Capabilities
-- `rent-payments`: "Start a payment" takes a payment method, charges that method's fee (card 2.9% + $0.30, bank $5.00), restricts Checkout to it, and caps the amount at the balance minus payments on their way. "Client-side amount limits" adds the method choice and the same cap. "Payment confirmation page" adds the bank wording. Dating, late fees and the other pending behavior live in `pending-bank-payments`, which leaves the "Record payments" and "Real balance" requirements, also modified by `add-lease-proration-and-deposits`, untouched.
+- `rent-payments`: "Start a payment" takes a payment method, charges that method's fee (card 3%, bank $5.00), restricts Checkout to it, and caps the amount at the balance minus payments on their way. "Client-side amount limits" adds the method choice and the same cap. "Payment confirmation page" adds the bank wording. Dating, late fees and the other pending behavior live in `pending-bank-payments`, which leaves the "Record payments" and "Real balance" requirements, also modified by `add-lease-proration-and-deposits`, untouched.
 
 ## Impact
 

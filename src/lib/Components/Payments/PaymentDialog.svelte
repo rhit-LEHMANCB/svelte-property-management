@@ -91,8 +91,8 @@
 			<span>
 				<span class="block font-semibold">Card</span>
 				<span class="block text-sm opacity-80">
-					Fee 2.9% + $0.30{cardFee === null ? '' : ` (${format(cardFee)})`}. Apple Pay and Google
-					Pay work too.
+					Fee 3%{cardFee === null ? '' : ` (${format(cardFee)})`}. Apple Pay and Google Pay work
+					too.
 				</span>
 			</span>
 		</label>

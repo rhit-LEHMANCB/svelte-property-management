@@ -76,7 +76,7 @@ export const MAX_ATTEMPTS = 4;
 /** Stripe does not charge less than this. */
 export const MIN_CHARGE_CENTS = 50;
 
-/** The transaction fee for a payment of `amountCents`: card 2.9% + $0.30; a bank account is free. */
+/** The transaction fee for a payment of `amountCents`: card 3%; a bank account is free. */
 export function autopayFeeCents(type: PaymentMethodType, amountCents: number) {
 	return type === 'card' ? cardFeeCents(amountCents) : 0;
 }

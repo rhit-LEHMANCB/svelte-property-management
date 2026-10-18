@@ -144,7 +144,7 @@ describe('pending-bank-payments: starting a bank payment', () => {
 
 		const params = services.stripe.checkout.sessions.create.mock.calls[0][0];
 		expect(params.payment_method_types).toEqual(['card']);
-		expect(params.line_items.at(-1).price_data.unit_amount).toBe(2827);
+		expect(params.line_items.at(-1).price_data.unit_amount).toBe(2894);
 		expect(params.metadata.bankPaymentId).toBeUndefined();
 		expect(await bankPayments()).toHaveLength(0);
 	});

@@ -16,7 +16,7 @@ Autopay (`add-autopay`) already models ACH settlement for its own charges: `leas
 
 ### 1. Method and fee
 - The request body gains `method: 'card' | 'bank'`; anything else is 400.
-- `src/lib/fees.ts` (client-safe, no server imports) holds `cardFeeCents`, `BANK_FEE_CENTS = 500` and `oneTimeFeeCents(method, amountCents)`. The server and the dialog both use it, so the fees always match; `src/lib/server/autopay.ts` re-exports `cardFeeCents`.
+- `src/lib/fees.ts` (client-safe, no server imports) holds `cardFeeCents` (a flat 3%, rounded to the cent; it was 2.9% + $0.30 until the owner's decision on 2026-10-18, issue #169), `BANK_FEE_CENTS = 500` and `oneTimeFeeCents(method, amountCents)`. The server and the dialog both use it, so the fees always match; `src/lib/server/autopay.ts` re-exports `cardFeeCents`.
 - Card: `payment_method_types: ['card']`. Stripe shows Apple Pay and Google Pay under the card type; Cash App Pay and bank are excluded.
 - Bank: `payment_method_types: ['us_bank_account']`, with no `verification_method` set (Stripe's default allows instant or microdeposits).
 - Both keep `setup_future_usage: 'on_session'`. The fee line is named "Transaction Fee" with the description "Transaction fee for one-time card payment." or "Transaction fee for one-time bank payment.".

@@ -1,7 +1,7 @@
 # Lifecycle: add-one-time-bank-payments
 
 - Branch: `claude/add-one-time-bank-payments`
-- Stage: 6 QA: resumed 2026-10-18 after the user enabled the `checkout.session.*` events on the dev webhook endpoint; QA cycle 2 agent running.
+- Stage: 4/5 for the 3% card fee (PR #168): QA cycle 2 passed on 07cf890; review round 3, then merge, then QA cycle 3.
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 2 of 5
 - QA cycle: 2 of 3
@@ -43,6 +43,9 @@
 - ACH Direct Debit enabled in live (the user is doing this).
 - No new env vars expected.
 - Release PR #157 still carries the interim behavior (bank offered at card fee) if it merges before this change.
+
+## Scope change after Gate A
+2026-10-18: the owner asked to show and charge a flat **3%** card fee instead of 2.9% + $0.30, inside this change before the production merge (issue #169; "that's fine" to the shortfall on card payments under about $30). It applies to one-time card payments and autopay card charges (one shared fee). The bank fee stays $5.00. Shipped through PR #168 with one review round, then QA cycle 3.
 
 ## Gate A
 Approved: yes, by the user on 2026-10-17 ("approve"), as proposed, including decision 1 (autopay charges in flight also lower the payable amount).

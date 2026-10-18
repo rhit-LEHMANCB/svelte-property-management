@@ -294,9 +294,7 @@
 								> on each due date.
 							</p>
 							{#if autopay.enrollment.type === 'card'}
-								<p class="text-sm opacity-80">
-									Card payments include a transaction fee of 2.9% + $0.30.
-								</p>
+								<p class="text-sm opacity-80">Card payments include a transaction fee of 3%.</p>
 							{/if}
 							<div class="flex flex-wrap items-center gap-2">
 								<button
@@ -313,7 +311,7 @@
 						{:else}
 							<p class="text-sm opacity-80">
 								Save a card or bank account and we charge it on each due date. Bank accounts have no
-								fee; cards include a transaction fee of 2.9% + $0.30.
+								fee; cards include a transaction fee of 3%.
 							</p>
 							<div class="flex flex-wrap items-end gap-2">
 								<label class="label w-48">

@@ -211,7 +211,7 @@ test.describe.serial('autopay', () => {
 		const [y, m, d] = businessDay().split('-').map(Number);
 		const days = new Date(Date.UTC(y, m, 0)).getUTCDate();
 		const rentCents = Math.round((100000 * (days - d + 1)) / days);
-		const feeCents = Math.round(rentCents * 0.029 + 30);
+		const feeCents = Math.round(rentCents * 0.03);
 		expect(invoice.metadata).toMatchObject({
 			autopay: 'true',
 			uid: ANN.uid,

@@ -36,20 +36,34 @@ async function bankPayment(page: Page, amount: string, account?: RegExp, slug?: 
 	sessionId = new URL(page.url()).searchParams.get('bank') ?? '';
 	expect(new URL(page.url()).pathname).toBe('/payment/success');
 	expect(sessionId).toMatch(/^cs_test_/);
-	await expect(page.locator('p').first()).toContainText('Bank payments take a few business days to complete');
-	await expect(page.locator('p').first()).toContainText('it shows as processing on your payment page');
-	await expect(page.getByRole('link', { name: 'Back to payments' })).toHaveAttribute('href', '/payment');
+	await expect(page.locator('p').first()).toContainText(
+		'Bank payments take a few business days to complete'
+	);
+	await expect(page.locator('p').first()).toContainText(
+		'it shows as processing on your payment page'
+	);
+	await expect(page.getByRole('link', { name: 'Back to payments' })).toHaveAttribute(
+		'href',
+		'/payment'
+	);
 	if (slug) await shot(page, slug);
 	return sessionId;
 }
 
 // Phase 1: a $5 bank payment on the Insufficient Funds account. While it is pending the cap checks run.
-test('Phase 1: $5 Insufficient Funds payment is pending; cap reduced; note shown', async ({ page }) => {
+test('Phase 1: $5 Insufficient Funds payment is pending; cap reduced; note shown', async ({
+	page
+}) => {
 	await signInAs(page, 'tenant');
 	await openPayment(page);
 	balance = await readBalance(page);
 	console.log('BALANCE_BEFORE', balance);
-	await bankPayment(page, '5', /Insufficient Funds/, 'pending-bank-payments-return-from-bank-checkout');
+	await bankPayment(
+		page,
+		'5',
+		/Insufficient Funds/,
+		'pending-bank-payments-return-from-bank-checkout'
+	);
 	await openPayment(page);
 	await expect(notes(page)).toHaveCount(2); // the old $50.00 one stays, plus this one
 	await expect(notes(page).filter({ hasText: 'A bank payment of $5.00 started on' })).toContainText(
@@ -73,7 +87,9 @@ test('Phase 1: $5 Insufficient Funds payment is pending; cap reduced; note shown
 	expect((await createSession(page, L, cap / 100, 'bank')).status).toBe(200);
 });
 
-test('Returned before the event: revisiting the success URL leaves one record', async ({ page }) => {
+test('Returned before the event: revisiting the success URL leaves one record', async ({
+	page
+}) => {
 	await signInAs(page, 'tenant');
 	for (let i = 0; i < 2; i++) {
 		await page.goto(`/payment/success?bank=${sessionId}`);
@@ -82,7 +98,9 @@ test('Returned before the event: revisiting the success URL leaves one record', 
 	await openPayment(page);
 	const n = await notes(page).count();
 	console.log('NOTES_AFTER_REVISIT', n);
-	await expect(notes(page).filter({ hasText: 'bank payment of $5.00' })).toHaveCount(n === 1 ? 1 : 1);
+	await expect(notes(page).filter({ hasText: 'bank payment of $5.00' })).toHaveCount(
+		n === 1 ? 1 : 1
+	);
 	await shot(page, 'pending-bank-payments-returned-before-the-event', leaseCard(page, L));
 });
 
@@ -125,7 +143,13 @@ test('Server only: a tenant cannot read or write bank_payments in Firestore', as
 	expect(key).not.toBe('');
 	const auth = await page.request.post(
 		`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${key}`,
-		{ data: { email: process.env.QA_TENANT_EMAIL, password: process.env.QA_TENANT_PASSWORD, returnSecureToken: true } }
+		{
+			data: {
+				email: process.env.QA_TENANT_EMAIL,
+				password: process.env.QA_TENANT_PASSWORD,
+				returnSecureToken: true
+			}
+		}
 	);
 	expect(auth.status()).toBe(200);
 	const { idToken } = await auth.json();
@@ -161,7 +185,9 @@ test('Failed bank payment: failure note, amount payable again', async ({ page })
 	await shot(page, 'pending-bank-payments-failed-bank-payment', leaseCard(page, L));
 	expect(failed, 'failure note shown within ~20 minutes').toBe(true);
 	const card = leaseCard(page, L);
-	await expect(card.locator('[data-bank-failed]')).toContainText(/bank payment of \$5\.00 started\s+on\s+\d+\/\d+\/\d+ did not go through\. The amount is still owed\./);
+	await expect(card.locator('[data-bank-failed]')).toContainText(
+		/bank payment of \$5\.00 started\s+on\s+\d+\/\d+\/\d+ did not go through\. The amount is still owed\./
+	);
 	await expect(notes(page).filter({ hasText: 'bank payment of $5.00' })).toHaveCount(0);
 	await expect(card.getByRole('button', { name: /Make a Payment/ })).toBeEnabled();
 	await expect(card).toContainText(`You have a balance of ${fmt(balance)}`); // no fee, nothing recorded
@@ -172,7 +198,10 @@ test('Failed bank payment: failure note, amount payable again', async ({ page })
 });
 
 // Phase 2: a $10 payment on the Success account settles.
-test('Settles: processing note goes away, balance drops by the amount only', async ({ browser, page }) => {
+test('Settles: processing note goes away, balance drops by the amount only', async ({
+	browser,
+	page
+}) => {
 	await signInAs(page, 'tenant');
 	if (!balance) {
 		await openPayment(page);

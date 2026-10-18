@@ -78,7 +78,7 @@ const parentFor = (
 });
 
 describe('rent-payments: start a payment (POST /api/stripe/create-checkout-session/payment)', () => {
-	it('Scenario: Valid amount creates a session with a Rent line, a 2.9% + $0.30 fee line and the lease metadata', async () => {
+	it('Scenario: Valid amount creates a session with a Rent line, a 3% fee line and the lease metadata', async () => {
 		setupTenant();
 
 		const result = await pay(1000);
@@ -100,15 +100,15 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 		expect(fee.price_data.product_data.description).toBe(
 			'Transaction fee for one-time card payment.'
 		);
-		// $1000 * 2.9% + $0.30 = $29.30
-		expect(fee.price_data.unit_amount).toBe(2930);
+		// $1000 * 3% = $30.00
+		expect(fee.price_data.unit_amount).toBe(3000);
 		expect(session.invoice_creation.invoice_data.metadata).toEqual({
 			leaseID: 'lease-1',
 			propertyID: 'prop-1',
 			rentCents: '100000',
 			depositCents: '0',
 			lateFeeCents: '0',
-			feeCents: '2930',
+			feeCents: '3000',
 			paymentMethod: 'card'
 		});
 		expect(session.payment_method_types).toEqual(['card']);
@@ -119,11 +119,11 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 	it('Scenario: the fee is rounded to whole cents', async () => {
 		setupTenant();
 
-		await pay(333);
+		await pay(333.33);
 
 		const [, fee] = services.stripe.checkout.sessions.create.mock.calls[0][0].line_items;
-		// 33300 * 0.029 + 30 = 995.7 cents -> 996
-		expect(fee.price_data.unit_amount).toBe(996);
+		// 33333 * 0.03 = 999.99 cents -> 1000
+		expect(fee.price_data.unit_amount).toBe(1000);
 	});
 
 	it('Scenario: an amount above the balance responds 400 and creates no session', async () => {
@@ -857,13 +857,13 @@ describe('rent-payments: rent, deposit and late fees', () => {
 			['Late Fee', 7500],
 			['Security Deposit', 50000],
 			['Rent', 2500],
-			['Transaction Fee', 1770]
+			['Transaction Fee', 1800]
 		]);
 		expect(session.invoice_creation.invoice_data.metadata).toMatchObject({
 			lateFeeCents: '7500',
 			depositCents: '50000',
 			rentCents: '2500',
-			feeCents: '1770'
+			feeCents: '1800'
 		});
 		expect((await pay(1075.01)).status).toBe(400);
 	});
