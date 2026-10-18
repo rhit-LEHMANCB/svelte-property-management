@@ -321,17 +321,16 @@
 								Save a card or bank account and we charge it on each due date. Bank accounts have no
 								fee; cards include a transaction fee of 3%.
 							</p>
-							<div class="flex flex-wrap items-start gap-2">
-								<Field
-									label="Amount"
-									hint="(optional)"
-									class="w-48"
-									errors={autopayProblems[lease.id] ? [autopayProblems[lease.id]!] : undefined}
-								>
-									{#snippet children({ attrs, invalid })}
+							<Field
+								label="Amount"
+								hint="(optional)"
+								errors={autopayProblems[lease.id] ? [autopayProblems[lease.id]!] : undefined}
+							>
+								{#snippet children({ attrs, invalid })}
+									<div class="flex flex-wrap items-center gap-2">
 										<input
 											{...attrs}
-											class="input"
+											class="input w-48"
 											class:input-error={invalid}
 											type="number"
 											min="0.01"
@@ -344,18 +343,18 @@
 													autopayProblems[lease.id] = amountProblem(autopayAmounts[lease.id]);
 											}}
 										/>
-									{/snippet}
-								</Field>
-								<button
-									data-needs-hydration
-									class="btn preset-tonal mt-6"
-									disabled={busy}
-									aria-label={data.leases.length > 1
-										? `Set up autopay for ${lease.address}`
-										: undefined}
-									onclick={() => startAutopay(lease)}>Set up autopay</button
-								>
-							</div>
+										<button
+											data-needs-hydration
+											class="btn preset-tonal"
+											disabled={busy}
+											aria-label={data.leases.length > 1
+												? `Set up autopay for ${lease.address}`
+												: undefined}
+											onclick={() => startAutopay(lease)}>Set up autopay</button
+										>
+									</div>
+								{/snippet}
+							</Field>
 						{/if}
 						{#if autopay.charge?.state === 'pending' || autopay.charge?.state === 'claimed'}
 							<p class="text-sm" role="status">

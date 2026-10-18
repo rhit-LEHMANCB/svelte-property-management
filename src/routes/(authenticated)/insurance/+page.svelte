@@ -10,8 +10,10 @@
 	import PageBody from '$lib/Components/Shell/PageBody.svelte';
 	import Card from '$lib/Components/Shell/Card.svelte';
 	import FormActions from '$lib/Components/Shell/FormActions.svelte';
+	import Notice from '$lib/Components/Shell/Notice.svelte';
 	import Field from '$lib/Components/Forms/Field.svelte';
 	import { errorsAfterSubmit } from '$lib/forms/errorsAfterSubmit';
+	import { formProblem } from '$lib/forms/formProblem';
 
 	let { data }: { data: PageData } = $props();
 	const toastStore = getToastStore();
@@ -19,7 +21,7 @@
 	// svelte-ignore state_referenced_locally
 	const { markSubmitted, shown: gate } = errorsAfterSubmit(data.form.posted);
 	// svelte-ignore state_referenced_locally
-	const { form, errors, enhance } = superForm(data.form, {
+	const { form, errors, message, enhance } = superForm(data.form, {
 		validators: zodClient(insuranceSchema),
 		onSubmit: () => markSubmitted(),
 		onUpdated({ form }) {
@@ -30,6 +32,7 @@
 		}
 	});
 	const shown = gate(errors);
+	const problem = $derived(formProblem($message));
 </script>
 
 <PageBody>
@@ -86,6 +89,9 @@
 					{/snippet}
 				</Field>
 			</div>
+			{#if problem}
+				<Notice tone="error"><p>{problem}</p></Notice>
+			{/if}
 			<FormActions>
 				<button type="submit" class="btn preset-filled-primary-500">Save</button>
 			</FormActions>

@@ -33,6 +33,6 @@ Out of scope: colours, theme and typography, the sidebar and app bar, dialog lay
 - **Code:** new components in `src/lib/Components/Shell` (and a field component next to the forms); all `+page.svelte` files under `src/routes`; `PropertyForm`, `LeaseForm`, `LeaseBilling`, `PaymentDialog`, the autopay dialog, the Add user dialog and `DateInput`. Sign in and Forgot move from `export let` to `$props()`.
 - **Lint:** `eslint.config.js` gains a rule that rejects Svelte 4 event directives.
 - **Tests:** e2e specs that click the removed back buttons or read old markup are updated; new e2e checks cover widths, breadcrumbs and field errors; the contrast check runs on the changed pages.
-- **Server:** the Forgot password action also returns which field its "valid email" error belongs to. No other server code changes.
+- **Server:** the Forgot password action also returns which field its "valid email" error belongs to, and the Profile action reports a missing or wrong current password as an error on that field. No other server code changes.
 - **Dev dependencies:** `happy-dom`, for component unit tests.
 - **No changes** to Firestore, Storage, Stripe, email, environment variables or deployment.

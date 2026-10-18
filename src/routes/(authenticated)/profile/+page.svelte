@@ -10,6 +10,7 @@
 	import Notice from '$lib/Components/Shell/Notice.svelte';
 	import Field from '$lib/Components/Forms/Field.svelte';
 	import { errorsAfterSubmit } from '$lib/forms/errorsAfterSubmit';
+	import { formProblem } from '$lib/forms/formProblem';
 	import type { PageData } from './$types';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
@@ -50,10 +51,7 @@
 		}
 	});
 	const shown = gate(errors);
-	// A problem that belongs to no single field. "Invalid form" only repeats the field errors.
-	const formProblem = $derived(
-		$message && $message !== 'Form submitted' && $message !== 'Invalid form' ? $message : undefined
-	);
+	const problem = $derived(formProblem($message));
 
 	const photoUrl = $derived(data.user.photoUrl);
 	// Changing the email asks for the current password.
@@ -106,10 +104,15 @@
 				{@render textField('Last Name', 'lastName', 'text', 'family-name')}
 				{@render textField('Email', 'email', 'email', 'email')}
 				{#if emailChanged}
-					<Field label="Current password" hint="(required to change your email)">
-						{#snippet children({ attrs })}
+					<Field
+						label="Current password"
+						hint="(required to change your email)"
+						errors={$shown.currentPassword}
+					>
+						{#snippet children({ attrs, invalid })}
 							<input
 								{...attrs}
+								class:input-error={invalid}
 								name="currentPassword"
 								bind:value={$form.currentPassword}
 								autocomplete="current-password"
@@ -135,8 +138,8 @@
 						/>
 					{/snippet}
 				</Field>
-				{#if formProblem}
-					<Notice tone="error"><p>{formProblem}</p></Notice>
+				{#if problem}
+					<Notice tone="error"><p>{problem}</p></Notice>
 				{/if}
 				<FormActions>
 					<button type="submit" class="btn preset-filled-primary-500">Save</button>

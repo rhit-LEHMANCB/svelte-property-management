@@ -8,8 +8,10 @@
 	import type { SuperValidated } from 'sveltekit-superforms';
 	import { getToastStore } from '$lib/ui';
 	import FormActions from '$lib/Components/Shell/FormActions.svelte';
+	import Notice from '$lib/Components/Shell/Notice.svelte';
 	import Field from './Field.svelte';
 	import { errorsAfterSubmit } from '$lib/forms/errorsAfterSubmit';
+	import { formProblem } from '$lib/forms/formProblem';
 
 	const toastStore = getToastStore();
 
@@ -18,7 +20,7 @@
 	// svelte-ignore state_referenced_locally
 	const { markSubmitted, shown: gate } = errorsAfterSubmit(data.posted);
 	// svelte-ignore state_referenced_locally
-	const { form, errors, enhance } = superForm(data, {
+	const { form, errors, message, enhance } = superForm(data, {
 		validators: zodClient(propertySchema),
 		onSubmit: () => markSubmitted(),
 		onUpdated({ form }) {
@@ -33,6 +35,7 @@
 		}
 	});
 	const shown = gate(errors);
+	const problem = $derived(formProblem($message));
 
 	type TextName = 'title' | 'streetAddress' | 'apartmentInfo' | 'city' | 'state' | 'zip';
 	type NumberName = 'bedrooms' | 'bathrooms' | 'squareFeet';
@@ -121,6 +124,9 @@
 			{@render textField('Zip Code', 'zip')}
 		</div>
 	</div>
+	{#if problem}
+		<Notice tone="error"><p>{problem}</p></Notice>
+	{/if}
 	<FormActions>
 		<button type="submit" class="btn preset-filled-primary-500">Save</button>
 	</FormActions>

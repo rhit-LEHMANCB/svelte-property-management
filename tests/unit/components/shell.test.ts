@@ -33,6 +33,11 @@ describe('Notice', () => {
 		expect(notice.getAttribute('role')).toBe(role);
 		expect(notice.className).toContain('p-4');
 	});
+
+	it('an urgent warning, one that stopped a save, is an alert', () => {
+		const doc = html(render(NoticeHarness, { props: { tone: 'warning', urgent: true } }).body);
+		expect(doc.querySelector('[data-notice]')!.getAttribute('role')).toBe('alert');
+	});
 });
 
 describe('Breadcrumbs', () => {
@@ -47,6 +52,15 @@ describe('Breadcrumbs', () => {
 		const nav = doc.querySelector('nav')!;
 		expect(nav.getAttribute('aria-label')).toBe('Breadcrumb');
 		expect(nav.querySelectorAll('ol > li')).toHaveLength(3);
+	});
+
+	it('marks only the last crumb as the current page, even when another has no link', () => {
+		const doc = html(
+			render(Breadcrumbs, { props: { items: [{ label: 'Payment' }, { label: 'Success' }] } }).body
+		);
+		const current = doc.querySelectorAll('[aria-current="page"]');
+		expect(current).toHaveLength(1);
+		expect(current[0].textContent).toBe('Success');
 	});
 
 	it('links every crumb but the last, which is the current page', () => {

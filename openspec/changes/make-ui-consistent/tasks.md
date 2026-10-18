@@ -4,7 +4,7 @@
 
 - [x] 1.1 Add `PageBody`, `Card`, `AuthCard`, `Notice` and `FormActions` to `src/lib/Components/Shell` (design decisions 1–4 and 10). Verify with component unit tests that `Notice` sets `role="alert"` for errors and `role="status"` otherwise, and that `Card` renders its title as the first child.
 - [x] 1.2 Add `Breadcrumbs` and an optional `breadcrumbs` prop on `PageHeader` (decision 11). Verify with a unit test: the landmark is named "Breadcrumb", the items are in an `ol`, every crumb but the last is a link, and the last has `aria-current="page"`.
-- [x] 1.3 Add `Field` and the `submitted` helper in `src/lib/forms/submitted.svelte.ts` (decisions 5–6). Verify with unit tests that `Field` sets `aria-invalid` and `aria-describedby` only when errors are given, and that the helper's flag starts false and turns true on submit.
+- [x] 1.3 Add `Field` and the errors-after-submit gate in `src/lib/forms/errorsAfterSubmit.ts` (decisions 5–6), plus `formProblem` for form-level messages. Verify with unit tests that `Field` sets `aria-invalid` and `aria-describedby` only when errors are given, and that the gate shows no errors until `markSubmitted`, then follows them (and starts open for a form the server already answered).
 - [x] 1.4 Add the optional `validate` to prompt modals in `src/lib/ui` (decision 9). Verify with a unit test of the prompt check (`promptProblem`) and, in 5.2, an e2e check that a failing `validate` keeps the dialog open with the message under the input.
 
 ## 2. Lint rule for Svelte 4 events

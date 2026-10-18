@@ -17,14 +17,16 @@
 						class="size-4 shrink-0 opacity-60"
 						aria-hidden="true"
 					/>{/if}
-				{#if index < items.length - 1 && item.href}
+				{#if index === items.length - 1}
+					<span class="block max-w-[16rem] truncate" aria-current="page" title={item.label}
+						>{item.label}</span
+					>
+				{:else if item.href}
 					<a class="anchor block max-w-[16rem] truncate" href={item.href} title={item.label}
 						>{item.label}</a
 					>
 				{:else}
-					<span class="block max-w-[16rem] truncate" aria-current="page" title={item.label}
-						>{item.label}</span
-					>
+					<span class="block max-w-[16rem] truncate" title={item.label}>{item.label}</span>
 				{/if}
 			</li>
 		{/each}

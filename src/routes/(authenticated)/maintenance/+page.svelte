@@ -16,6 +16,7 @@
 	import FormActions from '$lib/Components/Shell/FormActions.svelte';
 	import Field from '$lib/Components/Forms/Field.svelte';
 	import { errorsAfterSubmit } from '$lib/forms/errorsAfterSubmit';
+	import { formProblem } from '$lib/forms/formProblem';
 	import { formatDateTime } from '$lib/Components/DataList/format';
 
 	let { data }: { data: PageData } = $props();
@@ -24,7 +25,7 @@
 	// svelte-ignore state_referenced_locally
 	const { markSubmitted, reset, shown: gate } = errorsAfterSubmit(data.form.posted);
 	// svelte-ignore state_referenced_locally
-	const { form, errors, enhance } = superForm(data.form, {
+	const { form, errors, message, enhance } = superForm(data.form, {
 		validators: zodClient(maintenanceSchema),
 		resetForm: true,
 		onSubmit: () => markSubmitted(),
@@ -37,6 +38,7 @@
 		}
 	});
 	const shown = gate(errors);
+	const problem = $derived(formProblem($message));
 
 	const openColumns: DataColumn<MaintenanceRequest>[] = [
 		{ id: 'subject', label: 'Subject', sort: (r) => r.subject },
@@ -104,6 +106,9 @@
 							rows="6"></textarea>
 					{/snippet}
 				</Field>
+				{#if problem}
+					<Notice tone="error"><p>{problem}</p></Notice>
+				{/if}
 				<FormActions>
 					<button type="submit" class="btn preset-filled-primary-500">Add</button>
 				</FormActions>

@@ -30,7 +30,7 @@
    - With a `title`, the first child is a header row: an `h2.h4` plus an optional actions snippet for header buttons (`btn-sm`).
    - Pages pass extra classes through `class` for layout only (flex or grid), never for padding.
    - The heading level stays `h2`, because pages have one `h1` from `PageHeader`.
-3. **`AuthCard` takes a `title`, the form body and an optional footer snippet.** It renders `card bg-surface-100-900 w-full max-w-sm p-6 shadow-xl sm:p-8`, centered the way the current auth pages are. Reset moves from `max-w-md` to `max-w-sm`.
+3. **`AuthCard` is only the card.** It renders `card bg-surface-100-900 w-full max-w-sm p-6 shadow-xl sm:p-8`, centered the way the current auth pages are, around its children. Each auth page keeps its own heading, form (`space-y-4`, ending in `FormActions` with a full-width button) and footer link, since the three differ in what they show after a submit. Reset moves from `max-w-md` to `max-w-sm`.
 4. **`Notice` takes `tone: 'warning' | 'error' | 'info'`.**
    - It renders `card preset-tonal-<tone> p-4 space-y-2`, with `role="alert"` for errors and `role="status"` otherwise.
    - The `preset-tonal-primary` dashboard alert becomes `info`. `info` uses `preset-tonal-primary`, so its look does not change.
@@ -47,10 +47,10 @@
    - Superforms' default `validationMethod: 'auto'` stays. It validates fields on blur and input, but its errors are not shown before the submit, and after it a fixed field clears as it is typed.
    - `customValidity: true` is removed from every form, because it routes errors into the browser's own bubbles instead of the page.
    - Maintenance calls `reset()` after a successful save, since the form is cleared for the next request.
-7. **Form-level errors go to an error `Notice` above the action row.**
+7. **Form-level errors go to an error `Notice` above the action row.** `formProblem($message)` in `src/lib/forms/formProblem.ts` picks the superform message to show, leaving out "Form submitted", the "Invalid form" summary of field errors and the new-property id; every superform renders it.
    - Sign in: every error stays form-level. It never says which field was wrong. The browser-side failure, which was a toast, now goes to the same notice as the no-scripts server error (`authentication` delta).
    - Forgot: maps its "Please enter a valid email." to the email `Field`, rendered from the action's returned `form`, so it works without scripts.
-   - Superforms forms: `$message` or `$errors._errors` go in the notice.
+   - Superforms forms: `formProblem($message)` goes in the notice. A problem that does belong to a field is set on that field instead: Profile's "Enter your current password to change your email." is now a `currentPassword` error (`setError`), so the password field is marked invalid.
    - Success messages stay toasts.
 8. **Native validation is switched off where the app's messages exist.**
    - Superforms forms add `novalidate`, so the browser's bubble does not pre-empt the app's message. `LeaseForm` and `PaymentDialog` already do this.

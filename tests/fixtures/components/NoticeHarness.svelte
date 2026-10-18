@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Notice from '$lib/Components/Shell/Notice.svelte';
 
-	let { tone }: { tone: 'warning' | 'error' | 'info' } = $props();
+	let { tone, urgent = false }: { tone: 'warning' | 'error' | 'info'; urgent?: boolean } = $props();
 </script>
 
-<Notice {tone}><p>Message</p></Notice>
+<Notice {tone} {urgent}><p>Message</p></Notice>

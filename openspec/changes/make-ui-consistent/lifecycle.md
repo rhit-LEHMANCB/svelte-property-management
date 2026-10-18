@@ -2,7 +2,7 @@
 
 - Branch: `claude/make-ui-consistent`
 - Stage: 4 Review
-- Review round: 0 of 5
+- Review round: 1 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-18
 - Issue: #154
@@ -107,7 +107,16 @@ Found while implementing and folded into the change:
 - `SortablePhotos` still used `on:` with modifiers and was moved to Svelte 5.
 
 ## Review rounds
-(none yet; one line per round: blockers, majors, minors, nits, fixed, rejected with reason)
+- Round 1 (2026-10-18): 0 blockers, 1 major, 3 minors, 3 nits. All fixed, none rejected:
+  - Autopay inline-amount and Change-amount prompt errors are now covered by e2e.
+  - The autopay button sits inside the field row; there is no magic offset.
+  - Profile's current-password problem is a field error (`setError`).
+  - Every superform shows `formProblem($message)` in an error notice.
+  - The artifacts match the code.
+  - Only the last crumb is `aria-current`.
+  - `Notice` `urgent` has a unit test.
+
+  Checks after the fixes: lint, check, 757 unit tests, and the affected e2e specs (53) pass.
 
 ## Out-of-scope observations
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)
