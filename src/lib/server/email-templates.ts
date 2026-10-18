@@ -8,8 +8,18 @@ const escapeHtml = (value: string) =>
 		.replace(/"/g, '&quot;')
 		.replace(/'/g, '&#39;');
 
-const layout = (heading: string, intro: string, buttonLabel: string, link: string) => {
+const layout = (
+	heading: string,
+	intro: string,
+	buttonLabel: string,
+	link: string,
+	lines: string[] = []
+) => {
 	const href = escapeHtml(link);
+	const list = lines.length
+		? `<ul style="margin:0 0 24px;padding-left:20px;font-size:16px;line-height:1.5;">${lines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
+								`
+		: '';
 	return `<!doctype html>
 <html>
 	<body style="margin:0;padding:24px;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#18181b;">
@@ -21,7 +31,7 @@ const layout = (heading: string, intro: string, buttonLabel: string, link: strin
 							<td>
 								<h1 style="margin:0 0 16px;font-size:22px;">${escapeHtml(heading)}</h1>
 								<p style="margin:0 0 24px;font-size:16px;line-height:1.5;">${escapeHtml(intro)}</p>
-								<p style="margin:0 0 24px;"><a href="${href}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#ffffff;text-decoration:none;border-radius:6px;font-size:16px;">${escapeHtml(buttonLabel)}</a></p>
+								${list}<p style="margin:0 0 24px;"><a href="${href}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#ffffff;text-decoration:none;border-radius:6px;font-size:16px;">${escapeHtml(buttonLabel)}</a></p>
 								<p style="margin:0 0 8px;font-size:13px;color:#52525b;">If the button does not work, copy this link into your browser:</p>
 								<p style="margin:0 0 24px;font-size:13px;word-break:break-all;"><a href="${href}">${href}</a></p>
 								<p style="margin:0;font-size:13px;color:#52525b;">Lehman Family LLC</p>
@@ -93,6 +103,196 @@ export const renderWelcomeEmail = (link: string, lease?: WelcomeLease): EmailCon
 An account has been created for you.${leaseLine} Open the link below to set your password and sign in.
 
 ${link}
+
+Lehman Family LLC`
+	};
+};
+
+const money = (cents: number) =>
+	(cents / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+/** A late fee the daily billing job charged. */
+export type LateFeeNotice = {
+	address: string;
+	/** `November 2026` */
+	monthLabel: string;
+	feeCents: number;
+	totalOwedCents: number;
+	link: string;
+};
+
+export const renderLateFeeEmail = (notice: LateFeeNotice): EmailContent => {
+	const intro = `A late fee of ${money(notice.feeCents)} was added to your lease at ${notice.address} because the rent for ${notice.monthLabel} was not paid in full by the end of the grace period. Your balance is now ${money(notice.totalOwedCents)}.`;
+	return {
+		subject: `Late fee added for ${notice.monthLabel}`,
+		html: layout(`Late fee for ${notice.monthLabel}`, intro, 'Make a payment', notice.link),
+		text: `Late fee for ${notice.monthLabel}
+
+${intro}
+
+Pay online: ${notice.link}
+
+Lehman Family LLC`
+	};
+};
+
+/** A rent month or deposit coming due (in 7 days) or due today. */
+export type ReminderItem = {
+	/** `Rent for November 2026` or `Security deposit` */
+	what: string;
+	amountCents: number;
+	dueDate: string;
+	dueToday: boolean;
+};
+
+/** Every reminder a lease has on one day, sent to a tenant as one email. */
+export type DueReminder = { address: string; items: ReminderItem[]; link: string };
+
+const dueWhen = (item: ReminderItem) => (item.dueToday ? 'today' : `on ${longDate(item.dueDate)}`);
+
+export const renderDueReminderEmail = ({ address, items, link }: DueReminder): EmailContent => {
+	let subject: string;
+	let intro: string;
+	let lines: string[] = [];
+	if (items.length === 1) {
+		const [item] = items;
+		subject = `${item.what} is due ${dueWhen(item)}`;
+		intro = `${item.what} for your lease at ${address} is due ${dueWhen(item)}. ${money(item.amountCents)} is still to be paid.`;
+	} else {
+		const sorted = [...items].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+		const totalCents = sorted.reduce((sum, item) => sum + item.amountCents, 0);
+		subject = `Payments due ${dueWhen(sorted[0])}`;
+		intro = `The payments below for your lease at ${address} are due. ${money(totalCents)} is still to be paid in total.`;
+		lines = sorted.map((item) => `${item.what}: ${money(item.amountCents)}, due ${dueWhen(item)}`);
+	}
+	const listText = lines.length ? `\n\n${lines.map((line) => `- ${line}`).join('\n')}` : '';
+	return {
+		subject,
+		html: layout(subject, intro, 'Make a payment', link, lines),
+		text: `${subject}
+
+${intro}${listText}
+
+Pay online: ${link}
+
+Lehman Family LLC`
+	};
+};
+
+/** An autopay charge coming up on a due date, sent 7 days before instead of the usual reminders. */
+export type AutopayNotice = {
+	address: string;
+	/** What the charge pays for: `Rent for November 2026`, `Security deposit`, or both. */
+	what: string;
+	/** What will be charged, including any transaction fee. */
+	amountCents: number;
+	feeCents: number;
+	dueDate: string;
+	/** `Visa ending 4242` */
+	method: string;
+	link: string;
+};
+
+export const renderAutopayNoticeEmail = (notice: AutopayNotice): EmailContent => {
+	const subject = `Autopay will charge ${money(notice.amountCents)} on ${longDate(notice.dueDate)}`;
+	const fee =
+		notice.feeCents > 0 ? `, including a ${money(notice.feeCents)} card transaction fee` : '';
+	const intro = `${notice.what} for your lease at ${notice.address} is due on ${longDate(notice.dueDate)}. Autopay will charge ${money(notice.amountCents)} to your ${notice.method}${fee} on that day. You do not need to do anything; to change the amount or turn autopay off, visit the payment page.`;
+	return {
+		subject,
+		html: layout(subject, intro, 'Manage autopay', notice.link),
+		text: `${subject}
+
+${intro}
+
+Manage autopay: ${notice.link}
+
+Lehman Family LLC`
+	};
+};
+
+/** An autopay charge that did not go through and will be tried again. */
+export type AutopayFailure = {
+	address: string;
+	amountCents: number;
+	method: string;
+	reason: string;
+	link: string;
+};
+
+export const renderAutopayFailedEmail = (failure: AutopayFailure): EmailContent => {
+	const subject = 'Your autopay payment did not go through';
+	const intro = `Autopay could not charge ${money(failure.amountCents)} to your ${failure.method} for your lease at ${failure.address}: ${failure.reason}. We will try again tomorrow. To avoid a late fee, you can also pay on the payment page or update your payment method there.`;
+	return {
+		subject,
+		html: layout(subject, intro, 'Make a payment', failure.link),
+		text: `${subject}
+
+${intro}
+
+Pay online: ${failure.link}
+
+Lehman Family LLC`
+	};
+};
+
+/** Autopay tried the most times it will for a due date and stopped. */
+export const renderAutopayGaveUpEmail = (failure: AutopayFailure): EmailContent => {
+	const subject = 'Autopay stopped for this payment';
+	const intro = `Autopay tried several times and could not charge ${money(failure.amountCents)} to your ${failure.method} for your lease at ${failure.address} (last error: ${failure.reason}). It will not try again for this payment, so please pay on the payment page. Autopay stays on for your next due date.`;
+	return {
+		subject,
+		html: layout(subject, intro, 'Make a payment', failure.link),
+		text: `${subject}
+
+${intro}
+
+Pay online: ${failure.link}
+
+Lehman Family LLC`
+	};
+};
+
+/** A one-time bank payment that did not go through. */
+export type BankPaymentFailure = {
+	address: string;
+	amountCents: number;
+	/** The day the tenant started it (YYYY-MM-DD). */
+	startedDay: string;
+	reason: string;
+	link: string;
+};
+
+export const renderBankPaymentFailedEmail = (failure: BankPaymentFailure): EmailContent => {
+	const subject = 'Your bank payment did not go through';
+	const intro = `Your bank payment of ${money(failure.amountCents)} for your lease at ${failure.address}, started on ${longDate(failure.startedDay)}, did not go through: ${failure.reason}. The amount is still owed and no transaction fee was charged. Please make a payment on the payment page.`;
+	return {
+		subject,
+		html: layout(subject, intro, 'Make a payment', failure.link),
+		text: `${subject}
+
+${intro}
+
+Pay online: ${failure.link}
+
+Lehman Family LLC`
+	};
+};
+
+/** The admins' copy of a failed one-time bank payment. */
+export const renderBankPaymentFailedAdminEmail = (
+	failure: BankPaymentFailure & { tenant: string }
+): EmailContent => {
+	const subject = `Bank payment failed: ${failure.address}`;
+	const intro = `A one-time bank payment of ${money(failure.amountCents)} by ${failure.tenant} for the lease at ${failure.address}, started on ${longDate(failure.startedDay)}, did not go through: ${failure.reason}. The tenant has been emailed and the amount is owed again.`;
+	return {
+		subject,
+		html: layout(subject, intro, 'View the lease', failure.link),
+		text: `${subject}
+
+${intro}
+
+View the lease: ${failure.link}
 
 Lehman Family LLC`
 	};

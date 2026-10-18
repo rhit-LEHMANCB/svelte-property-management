@@ -53,9 +53,9 @@ test.describe('app-platform: dialog input', () => {
 		await page.getByRole('button', { name: 'Make a Payment' }).click();
 		const dialog = page.getByRole('dialog');
 		await dialog.getByRole('spinbutton').fill('0');
-		await dialog.getByRole('button', { name: 'Submit' }).click();
+		await dialog.getByRole('button', { name: 'Continue to payment' }).click();
 
-		await expect(page.getByText('Number must be greater than 0')).toBeVisible();
+		await expect(dialog.getByText('The amount must be greater than 0.')).toBeVisible();
 	});
 });
 

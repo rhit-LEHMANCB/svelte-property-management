@@ -4,3 +4,4 @@ export const FB_PRIVATE_KEY = JSON.stringify({ privateKey: 'not-a-real-key' });
 export const RESEND_API_KEY = 're_test';
 export const STRIPE_API_KEY = 'sk_test_fixture';
 export const STRIPE_ENDPOINT_SECRET = 'whsec_fixture';
+export const JOBS_SECRET = 'jobs-secret-fixture';

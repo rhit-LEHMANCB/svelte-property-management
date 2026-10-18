@@ -1,41 +1,72 @@
-import type { DocumentReference, DocumentSnapshot } from 'firebase-admin/firestore';
+import type {
+	CollectionReference,
+	DocumentReference,
+	DocumentSnapshot,
+	QuerySnapshot
+} from 'firebase-admin/firestore';
 import { adminDB } from './admin';
-import { monthOf, type LeaseDoc } from './leaseDates';
-import { computeBalance, monthsOwed, type Balance, type YearHistory } from './payments';
+import {
+	computeLedger,
+	type DepositLedger,
+	type HistoryYear,
+	type LateFeeRecord,
+	type Ledger,
+	type LeaseTerms
+} from './billing';
 
-/** The months a lease is billed for: from its start month through its end month (if any). */
-export const leaseMonths = (lease: Pick<LeaseDoc, 'startDate' | 'endDate'>) => ({
-	startMonth: monthOf(lease.startDate),
-	endMonth: lease.endDate ? monthOf(lease.endDate) : null
-});
+/** Where a lease's deposit payments and settlement are kept. */
+export const depositRef = (leaseRef: DocumentReference) =>
+	leaseRef.collection('deposit').doc('ledger');
 
-/** Reads the `payment_history` year documents under `parent` that cover every month owed. */
-export async function loadHistories(
-	parent: DocumentReference,
-	months: { startMonth?: string; endMonth?: string | null },
-	now: Date,
-	// A transaction passes its own `get` so that the reads are part of it.
-	read: (ref: DocumentReference) => Promise<DocumentSnapshot> = (ref) => ref.get()
-): Promise<Record<string, YearHistory>> {
-	const owed = monthsOwed(months.startMonth, now, months.endMonth);
-	const years = [...new Set(owed.map((m) => String(m.year)))];
-	const histories: Record<string, YearHistory> = {};
-	await Promise.all(
-		years.map(async (year) => {
-			const doc = await read(parent.collection('payment_history').doc(year));
-			histories[year] = doc.data() as YearHistory;
-		})
-	);
-	return histories;
+export type LedgerReader = {
+	doc: (ref: DocumentReference) => Promise<DocumentSnapshot>;
+	collection: (ref: CollectionReference) => Promise<QuerySnapshot>;
+};
+
+const directReader: LedgerReader = {
+	doc: (ref) => ref.get(),
+	collection: (ref) => ref.get()
+};
+
+/** The stored records a lease's ledger is computed from. */
+export type LedgerRecords = {
+	histories: Record<string, HistoryYear>;
+	lateFees: Record<string, LateFeeRecord | undefined>;
+	deposit: DepositLedger | undefined;
+};
+
+/**
+ * Reads the `payment_history` years, `late_fees` and the deposit ledger of a lease. A transaction
+ * passes its own reader so that the reads are part of it.
+ */
+export async function loadLedgerRecords(
+	leaseRef: DocumentReference,
+	read: LedgerReader = directReader
+): Promise<LedgerRecords> {
+	// Every year document: money recorded for a month the lease no longer covers (after a date
+	// change) still counts, as credit.
+	const [historyDocs, lateFeeDocs, deposit] = await Promise.all([
+		read.collection(leaseRef.collection('payment_history')),
+		read.collection(leaseRef.collection('late_fees')),
+		read.doc(depositRef(leaseRef))
+	]);
+	return {
+		histories: Object.fromEntries(
+			historyDocs.docs.map((doc) => [doc.id, doc.data() as HistoryYear])
+		),
+		lateFees: Object.fromEntries(
+			lateFeeDocs.docs.map((doc) => [doc.id, doc.data() as LateFeeRecord])
+		),
+		deposit: deposit.data() as DepositLedger | undefined
+	};
 }
 
-/** Reads the payment history a lease's balance depends on and computes it. */
-export async function loadLeaseBalance(
+/** Reads what a lease's ledger depends on and computes it. */
+export async function loadLeaseLedger(
 	leaseId: string,
-	lease: Pick<LeaseDoc, 'rent' | 'startDate' | 'endDate'>,
+	lease: LeaseTerms,
 	now = new Date()
-): Promise<Balance> {
-	const months = leaseMonths(lease);
-	const histories = await loadHistories(adminDB.collection('leases').doc(leaseId), months, now);
-	return computeBalance({ rent: lease.rent, ...months, histories, now });
+): Promise<Ledger> {
+	const records = await loadLedgerRecords(adminDB.collection('leases').doc(leaseId));
+	return computeLedger({ lease, ...records, now });
 }

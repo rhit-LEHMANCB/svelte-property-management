@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PUBLIC_FRONTEND_URL } from '$env/static/public';
 import { POST as startPayment } from '../../src/routes/api/stripe/create-checkout-session/payment/+server';
 import { GET as openPortal } from '../../src/routes/api/stripe/create-customer-portal/+server';
@@ -10,10 +10,24 @@ import { call } from '../helpers/callHandler';
 import { VALID_STRIPE_SIGNATURE, services } from '../helpers/services';
 import { db, seedLease, seedProperty, seedTenant } from '../helpers/seed';
 
+// Next month's rent becomes payable 7 days before it is due, so balances depend on the day of the
+// month. Pin "now" to mid-month so these tests mean the same thing on every day they run.
+beforeEach(() => {
+	vi.useFakeTimers({ toFake: ['Date'] });
+	vi.setSystemTime(new Date('2026-03-12T17:00:00Z'));
+});
+afterEach(() => vi.useRealTimers());
+
 /** The first day of the month `monthsAgo` months before this one, as YYYY-MM-DD. */
 const monthStart = (monthsAgo = 0) => {
 	const current = getMonthKey(new Date());
 	return `${getMonthKey(new Date(Date.UTC(current.year, current.month - 1 - monthsAgo, 15))).key}-01`;
+};
+
+/** The last day of the month `monthsAgo` months before this one, as YYYY-MM-DD. */
+const monthEnd = (monthsAgo = 0) => {
+	const [year, month] = monthStart(monthsAgo).split('-').map(Number);
+	return new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
 };
 
 /** Tenant t1 on lease-1 at prop-1, rent 1000, starting this month (or `monthsAgo` months back). */
@@ -33,8 +47,12 @@ const setupTenant = (monthsAgo = 0) => {
 	});
 };
 
-const pay = (amount: unknown, leaseId: string | undefined = 'lease-1', userID = 't1') =>
-	call(startPayment, { userID, body: { amount, leaseId } });
+const pay = (
+	amount: unknown,
+	leaseId: string | undefined = 'lease-1',
+	userID = 't1',
+	method: unknown = 'card'
+) => call(startPayment, { userID, body: { amount, leaseId, method } });
 
 /** What the authenticated layout hands the payment page for a tenant's leases. */
 const parentFor = (
@@ -60,7 +78,7 @@ const parentFor = (
 });
 
 describe('rent-payments: start a payment (POST /api/stripe/create-checkout-session/payment)', () => {
-	it('Scenario: Valid amount creates a session with a Rent line, a 2.9% + $0.30 fee line and the lease metadata', async () => {
+	it('Scenario: Valid amount creates a session with a Rent line, a 3% fee line and the lease metadata', async () => {
 		setupTenant();
 
 		const result = await pay(1000);
@@ -78,14 +96,22 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 		expect(rent.price_data.unit_amount).toBe(100000);
 		expect(rent.price_data.currency).toBe('usd');
 		expect(fee.price_data.product_data.name).toBe('Transaction Fee');
-		// $1000 * 2.9% + $0.30 = $29.30
-		expect(fee.price_data.unit_amount).toBe(2930);
+		// autopay: the fee line no longer says that auto-pay waives it.
+		expect(fee.price_data.product_data.description).toBe(
+			'Transaction fee for one-time card payment.'
+		);
+		// $1000 * 3% = $30.00
+		expect(fee.price_data.unit_amount).toBe(3000);
 		expect(session.invoice_creation.invoice_data.metadata).toEqual({
 			leaseID: 'lease-1',
 			propertyID: 'prop-1',
 			rentCents: '100000',
-			feeCents: '2930'
+			depositCents: '0',
+			lateFeeCents: '0',
+			feeCents: '3000',
+			paymentMethod: 'card'
 		});
+		expect(session.payment_method_types).toEqual(['card']);
 		expect(session.success_url).toBe(`${PUBLIC_FRONTEND_URL}/payment/success`);
 		expect(session.cancel_url).toBe(`${PUBLIC_FRONTEND_URL}/payment`);
 	});
@@ -93,11 +119,11 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 	it('Scenario: the fee is rounded to whole cents', async () => {
 		setupTenant();
 
-		await pay(333);
+		await pay(333.33);
 
 		const [, fee] = services.stripe.checkout.sessions.create.mock.calls[0][0].line_items;
-		// 33300 * 0.029 + 30 = 995.7 cents -> 996
-		expect(fee.price_data.unit_amount).toBe(996);
+		// 33333 * 0.03 = 999.99 cents -> 1000
+		expect(fee.price_data.unit_amount).toBe(1000);
 	});
 
 	it('Scenario: an amount above the balance responds 400 and creates no session', async () => {
@@ -133,7 +159,10 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 		seedLease('lease-2', { propertyId: 'prop-1', tenantIds: ['t2'], startDate: monthStart() });
 
 		for (const leaseId of [undefined, '', 'nope', 'lease-2']) {
-			const result = await call(startPayment, { userID: 't1', body: { amount: 100, leaseId } });
+			const result = await call(startPayment, {
+				userID: 't1',
+				body: { amount: 100, leaseId, method: 'card' }
+			});
 			expect(result).toMatchObject({
 				status: 403,
 				error: 'You can only pay for a lease you are on.'
@@ -150,7 +179,7 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 			tenantIds: ['t1'],
 			rent: 1000,
 			startDate: monthStart(3),
-			endDate: `${monthStart(2).slice(0, 7)}-28`
+			endDate: monthEnd(2)
 		});
 
 		expect((await pay(2000.01, 'old')).status).toBe(400);
@@ -181,7 +210,7 @@ describe('rent-payments: start a payment (POST /api/stripe/create-checkout-sessi
 		for (const body of [{}, { amount: 0 }, { amount: '50' }, { amount: null }]) {
 			const result = await call(startPayment, {
 				userID: 't1',
-				body: { ...body, leaseId: 'lease-1' }
+				body: { ...body, leaseId: 'lease-1', method: 'card' }
 			});
 			expect(result.status).toBe(400);
 			expect(result.error).toBe('Amount must be a provided number for the amount to charge');
@@ -458,7 +487,7 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 			expect((await send(event)).status).toBe(200);
 			expect(errors).toHaveBeenCalledWith(
 				expect.stringMatching(
-					/^UNRECORDED PAYMENT: no lease matches this invoice\. invoice=in_1 customer=cus_t1 .*rentCents=40000/
+					/^UNRECORDED PAYMENT: no lease matches this invoice\. invoice=in_1 customer=cus_t1 .*totalCents=40000/
 				)
 			);
 		} finally {
@@ -598,7 +627,7 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 			result = await send(invoiceEvent([{ description: 'Rent', amount: 100000 }], 'missing-lease'));
 			expect(errors).toHaveBeenCalledWith(
 				expect.stringMatching(
-					/^UNRECORDED PAYMENT: the lease this invoice names does not exist\. invoice=in_1 customer=cus_t1 lease=missing-lease .*rentCents=100000/
+					/^UNRECORDED PAYMENT: the lease this invoice names does not exist\. invoice=in_1 customer=cus_t1 lease=missing-lease .*totalCents=100000/
 				)
 			);
 		} finally {
@@ -612,12 +641,13 @@ describe('rent-payments: record payments (POST /api/stripe/webhook)', () => {
 });
 
 describe('rent-payments: balance and due date (/payment load)', () => {
-	it('Scenario: a tenant with no lease is sent to the dashboard', async () => {
+	// #165: the page used to bounce to the dashboard without saying why.
+	it('Scenario: a tenant with no lease stays on the page with nothing listed', async () => {
 		setupTenant();
 
 		const result = await call(paymentLoad, { userID: 't1', parent: {} });
 
-		expect(result).toMatchObject({ status: 303, redirect: '/' });
+		expect(result).toMatchObject({ status: 200, data: { leases: [] } });
 	});
 
 	it('Scenario: No payments yet shows the rent due on the 1st of this month', async () => {
@@ -636,7 +666,12 @@ describe('rent-payments: balance and due date (/payment load)', () => {
 				startDate: monthStart(),
 				endDate: null,
 				balanceCents: 100000,
-				dueDate: monthStart()
+				dueDate: monthStart(),
+				owed: { lateFeesCents: 0, depositCents: 0, rentCents: 100000 },
+				creditCents: 0,
+				payableCents: 100000,
+				bankPayments: { pending: [], failed: null },
+				autopay: { enrollment: null, charge: null }
 			}
 		]);
 	});
@@ -668,7 +703,7 @@ describe('rent-payments: balance and due date (/payment load)', () => {
 		const ended = {
 			id: 'old',
 			startDate: monthStart(3),
-			endDate: `${monthStart(2).slice(0, 7)}-28`,
+			endDate: monthEnd(2),
 			status: 'ended'
 		};
 		seedLease('old', {
@@ -711,14 +746,17 @@ describe('rent-payments: balance and due date (/payment load)', () => {
 		expect(result.data.leases.map((l: { id: string }) => l.id)).toEqual(['lease-1']);
 	});
 
-	it('Scenario: Upcoming lease only: nothing to pay, so the tenant is sent to the dashboard', async () => {
+	// #165: an upcoming lease is listed even with nothing owed, so autopay can be set up before
+	// move-in.
+	it('Scenario: Upcoming lease only: listed with nothing to pay', async () => {
 		setupTenant();
 		const result = await call(paymentLoad, {
 			userID: 't1',
 			parent: parentFor({ id: 'soon', startDate: '2099-01-01', status: 'upcoming' })
 		});
 
-		expect(result).toMatchObject({ status: 303, redirect: '/' });
+		expect(result.status).toBe(200);
+		expect(result.data.leases).toMatchObject([{ id: 'soon', status: 'upcoming', balanceCents: 0 }]);
 	});
 
 	it('Scenario: Paid in full shows nothing to pay', async () => {
@@ -736,5 +774,243 @@ describe('rent-payments: balance and due date (/payment load)', () => {
 
 	it('Scenario: an anonymous caller is rejected with 401', async () => {
 		expect((await call(paymentLoad, { userID: null })).status).toBe(401);
+	});
+});
+
+describe('rent-payments: rent, deposit and late fees', () => {
+	// 20 November 2026, noon in Indianapolis.
+	const NOW = new Date('2026-11-20T17:00:00Z');
+	beforeEach(() => {
+		vi.useFakeTimers({ toFake: ['Date'] });
+		vi.setSystemTime(NOW);
+	});
+	afterEach(() => vi.useRealTimers());
+
+	const oct1 = FakeTimestamp.fromMillis(Date.UTC(2026, 9, 1, 17));
+	const nov2 = FakeTimestamp.fromMillis(Date.UTC(2026, 10, 2, 17));
+	/** lease-1: rent 1500 from 2026-10-01, $1,000 deposit ($500 paid), late fee 75 after 5 days; November short $500. */
+	const seedOwing = () => {
+		seedTenant('t1', { stripeID: 'cus_t1' });
+		seedProperty('prop-1', { streetAddress: '1 Main St', city: 'Terre Haute', state: 'IN' });
+		seedLease('lease-1', {
+			tenantIds: ['t1'],
+			rent: 1500,
+			startDate: '2026-10-01',
+			deposit: { amount: 1000, dueDate: '2026-10-01' },
+			lateFee: 75,
+			graceDays: 5,
+			lateFeesFrom: '2026-10-01'
+		});
+		db.seed('leases/lease-1/payment_history/2026', {
+			October: { remainingBalance: 0, transactions: [{ date: oct1, amount: 1500 }] },
+			November: { remainingBalance: 500, transactions: [{ date: nov2, amount: 1000 }] }
+		});
+		db.seed('leases/lease-1/deposit/ledger', { paid: 500, transactions: [] });
+		// November's late fee, as the daily job charged it on 2026-11-07.
+		db.seed('leases/lease-1/late_fees/2026-11', {
+			amount: 75,
+			paid: 0,
+			chargedAt: '2026-11-07T11:00:00.000Z',
+			chargedBy: 'daily-job',
+			dueDate: '2026-11-07'
+		});
+	};
+	const tenantLease = {
+		id: 'lease-1',
+		propertyId: 'prop-1',
+		address: '1 Main St, Terre Haute',
+		rent: 1500,
+		startDate: '2026-10-01',
+		endDate: null,
+		status: 'current',
+		hasDocument: false,
+		deposit: { amount: 1000, dueDate: '2026-10-01' },
+		lateFee: 75,
+		graceDays: 5,
+		lateFeesFrom: '2026-10-01'
+	};
+
+	it('Scenario: Breakdown: /payment shows the total split into late fees, deposit and rent', async () => {
+		seedOwing();
+		const result = await call(paymentLoad, { userID: 't1', parent: { userLeases: [tenantLease] } });
+		expect(result.data.leases[0]).toMatchObject({
+			balanceCents: 107500,
+			owed: { lateFeesCents: 7500, depositCents: 50000, rentCents: 50000 },
+			// The deposit and October are due before the late fee.
+			dueDate: '2026-10-01'
+		});
+	});
+
+	it('Scenario: Split across parts: Late Fee, Security Deposit and Rent lines, fee on the whole amount', async () => {
+		seedOwing();
+
+		expect((await pay(600)).status).toBe(200);
+		const session = services.stripe.checkout.sessions.create.mock.calls[0][0];
+		expect(
+			session.line_items.map(
+				(l: { price_data: { product_data: { name: string }; unit_amount: number } }) => [
+					l.price_data.product_data.name,
+					l.price_data.unit_amount
+				]
+			)
+		).toEqual([
+			['Late Fee', 7500],
+			['Security Deposit', 50000],
+			['Rent', 2500],
+			['Transaction Fee', 1800]
+		]);
+		expect(session.invoice_creation.invoice_data.metadata).toMatchObject({
+			lateFeeCents: '7500',
+			depositCents: '50000',
+			rentCents: '2500',
+			feeCents: '1800'
+		});
+		expect((await pay(1075.01)).status).toBe(400);
+	});
+
+	it('Scenario: Upcoming lease with a deposit is payable before it starts', async () => {
+		seedTenant('t1', { stripeID: 'cus_t1' });
+		seedProperty('prop-1');
+		seedLease('lease-1', {
+			tenantIds: ['t1'],
+			rent: 1500,
+			startDate: '2026-12-01',
+			deposit: { amount: 1000, dueDate: '2026-12-01' },
+			lateFee: 75,
+			graceDays: 5,
+			lateFeesFrom: '2026-11-01'
+		});
+		const upcoming = {
+			...tenantLease,
+			startDate: '2026-12-01',
+			status: 'upcoming',
+			deposit: { amount: 1000, dueDate: '2026-12-01' }
+		};
+
+		const result = await call(paymentLoad, { userID: 't1', parent: { userLeases: [upcoming] } });
+		expect(result.data.leases[0]).toMatchObject({
+			balanceCents: 100000,
+			dueDate: '2026-12-01',
+			owed: { lateFeesCents: 0, depositCents: 100000, rentCents: 0 }
+		});
+		expect((await pay(400)).status).toBe(200);
+		const [deposit] = services.stripe.checkout.sessions.create.mock.calls[0][0].line_items;
+		expect(deposit.price_data.product_data.name).toBe('Security Deposit');
+	});
+
+	const invoice = (metadata: Record<string, string>, id = 'in_split') => ({
+		type: 'invoice.payment_succeeded',
+		data: {
+			object: {
+				id,
+				created: Math.floor(NOW.getTime() / 1000),
+				customer: 'cus_t1',
+				metadata: { leaseID: 'lease-1', propertyID: 'prop-1', ...metadata },
+				lines: { data: [] }
+			}
+		}
+	});
+	const send = (event: object) =>
+		call(webhook, {
+			rawBody: JSON.stringify(event),
+			headers: { 'stripe-signature': VALID_STRIPE_SIGNATURE }
+		});
+	const split = {
+		lateFeeCents: '7500',
+		depositCents: '50000',
+		rentCents: '2500',
+		feeCents: '1800'
+	};
+
+	it('Scenario: Late fee and deposit parts are recorded separately from rent', async () => {
+		seedOwing();
+
+		expect((await send(invoice(split))).status).toBe(200);
+
+		expect(db.peek('leases/lease-1/late_fees/2026-11')).toMatchObject({
+			amount: 75,
+			paid: 75,
+			transactions: [expect.objectContaining({ amount: 75, fee: 18, invoiceId: 'in_split' })]
+		});
+		expect(db.peek('leases/lease-1/deposit/ledger')).toMatchObject({
+			paid: 1000,
+			transactions: [expect.objectContaining({ amount: 500, invoiceId: 'in_split' })]
+		});
+		const november = (
+			db.peek('leases/lease-1/payment_history/2026') as Record<
+				string,
+				{ remainingBalance: number; transactions: { amount: number }[] }
+			>
+		).November;
+		expect(november.remainingBalance).toBe(475);
+		expect(november.transactions.map((t) => t.amount)).toEqual([1000, 25]);
+
+		const result = await call(paymentLoad, { userID: 't1', parent: { userLeases: [tenantLease] } });
+		expect(result.data.leases[0]).toMatchObject({
+			balanceCents: 47500,
+			owed: { lateFeesCents: 0, depositCents: 0, rentCents: 47500 }
+		});
+	});
+
+	it('Scenario: Owed amounts changed after checkout: a fee waived meanwhile goes to the deposit and rent', async () => {
+		seedOwing();
+		db.seed('leases/lease-1/late_fees/2026-11', {
+			amount: 75,
+			paid: 0,
+			waivedAt: '2026-11-19T00:00:00Z',
+			waivedBy: 'admin'
+		});
+
+		await send(invoice(split));
+
+		expect(db.peek('leases/lease-1/late_fees/2026-11')).toMatchObject({ paid: 0 });
+		expect(db.peek('leases/lease-1/deposit/ledger')).toMatchObject({ paid: 1000 });
+		const november = (
+			db.peek('leases/lease-1/payment_history/2026') as Record<string, { remainingBalance: number }>
+		).November;
+		expect(november.remainingBalance).toBe(400);
+	});
+
+	it('Scenario: Invoice from before this change: the whole amount goes to rent', async () => {
+		seedOwing();
+
+		await send(invoice({ rentCents: '60000', feeCents: '1800' }));
+
+		expect(db.peek('leases/lease-1/late_fees/2026-11')).toMatchObject({ paid: 0 });
+		expect(db.peek('leases/lease-1/deposit/ledger')).toMatchObject({ paid: 500 });
+		const november = (
+			db.peek('leases/lease-1/payment_history/2026') as Record<string, { remainingBalance: number }>
+		).November;
+		expect(november.remainingBalance).toBe(-100);
+	});
+
+	it('a legacy entry without transactions keeps its paid amount when a payment is added', async () => {
+		seedOwing();
+		db.seed('leases/lease-1/payment_history/2026', {
+			October: { remainingBalance: 0 },
+			November: { remainingBalance: 500 }
+		});
+
+		await send(invoice({ rentCents: '50000', feeCents: '1480' }));
+
+		const november = (
+			db.peek('leases/lease-1/payment_history/2026') as Record<
+				string,
+				{ remainingBalance: number; transactions: { amount: number; legacy?: boolean }[] }
+			>
+		).November;
+		expect(november.remainingBalance).toBe(0);
+		expect(november.transactions).toEqual([
+			{ amount: 1000, legacy: true },
+			expect.objectContaining({ amount: 500, fee: 14.8 })
+		]);
+	});
+
+	it('Scenario: Redelivered split invoice is not counted twice', async () => {
+		seedOwing();
+		await send(invoice(split));
+		await send(invoice(split));
+		expect(db.peek('leases/lease-1/deposit/ledger')).toMatchObject({ paid: 1000 });
+		expect(db.peek('leases/lease-1/late_fees/2026-11')).toMatchObject({ paid: 75 });
 	});
 });

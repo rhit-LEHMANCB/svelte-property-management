@@ -50,7 +50,7 @@ The system SHALL expose tab groups as a tablist with tabs and tab panels, switch
 - **THEN** it announces the tablist, each tab with its selected state, and the panel
 
 ### Requirement: Comboboxes are operable by keyboard
-The system SHALL let a user filter a combobox (for example the tenant or address picker) by typing, move through the options with the arrow keys, choose one with Enter, and dismiss the list with Escape, with the list's expanded state exposed.
+The system SHALL let a user filter any combobox by typing, move through the options with the arrow keys, choose one with Enter, and dismiss the list with Escape, with the list's expanded state exposed. Since leases take tenant emails, no combobox remains; this applies to any that is added.
 
 #### Scenario: Choose by keyboard
 - **WHEN** a user types part of a name, presses the down arrow and Enter

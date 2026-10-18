@@ -12,11 +12,20 @@ import { currentTenancy, loadTenantLeases } from '$lib/server/leases';
 export const load = (async (event) => {
 	getUserIdOrError(event.locals.userID);
 
-	const { userProperty } = await event.parent();
+	const { userProperty, userLeases = [] } = await event.parent();
 
-	// A tenant without a property has no requests to show; the dashboard explains why.
+	// A tenant without a current lease has no property to report problems for. The page says why
+	// (naming the lease that starts next) instead of leaving.
 	if (!userProperty) {
-		throw redirect(303, '/');
+		const next = userLeases
+			.filter((lease) => lease.status === 'upcoming')
+			.sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
+		return {
+			form: await superValidate(zod(maintenanceSchema)),
+			openMaintenanceRequests: [] as MaintenanceRequest[],
+			closedMaintenanceRequests: [] as MaintenanceRequest[],
+			noProperty: { upcoming: next ? { address: next.address, startDate: next.startDate } : null }
+		};
 	}
 
 	const maintenanceRequestQuery = adminDB
@@ -61,7 +70,8 @@ export const load = (async (event) => {
 	return {
 		form,
 		openMaintenanceRequests,
-		closedMaintenanceRequests
+		closedMaintenanceRequests,
+		noProperty: null
 	};
 }) satisfies PageServerLoad;
 

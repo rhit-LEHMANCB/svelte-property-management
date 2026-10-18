@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ADMIN, FAKE_STRIPE_URL, LEASE_ID, PROPERTY, TENANT } from '../support/constants';
 import { adminAuth, adminDb } from '../support/admin';
-import { signIn } from '../support/helpers';
+import { dollarsPattern, nextMonthPayable, signIn } from '../support/helpers';
 
 type Recorded = { path: string; body: Record<string, string> };
 const recorded = async () =>
@@ -22,7 +22,10 @@ test.describe('rent-payments', () => {
 		await page.getByRole('button', { name: 'Make a Payment' }).click();
 		const dialog = page.getByRole('dialog');
 		await dialog.getByRole('spinbutton').fill('500');
-		await dialog.getByRole('button', { name: 'Submit' }).click();
+		// Card is the default, and its fee for the amount is shown.
+		await expect(dialog.getByText('Fee 3% ($15.00)')).toBeVisible();
+		await expect(dialog.getByText('Total charged: $515.00')).toBeVisible();
+		await dialog.getByRole('button', { name: 'Continue to payment' }).click();
 
 		// The browser is sent to the (fake) hosted checkout page.
 		await expect(page.locator('#fake-checkout')).toBeVisible();
@@ -37,10 +40,108 @@ test.describe('rent-payments', () => {
 		expect(body['line_items[0][price_data][product_data][name]']).toBe('Rent');
 		expect(body['line_items[0][price_data][unit_amount]']).toBe('50000');
 		expect(body['line_items[1][price_data][product_data][name]']).toBe('Transaction Fee');
-		// $500 * 2.9% + $0.30 = $14.80
-		expect(body['line_items[1][price_data][unit_amount]']).toBe('1480');
+		// $500 * 3% = $15.00
+		expect(body['line_items[1][price_data][unit_amount]']).toBe('1500');
 		expect(body['invoice_creation[invoice_data][metadata][propertyID]']).toBe(PROPERTY.id);
 		expect(body['invoice_creation[invoice_data][metadata][leaseID]']).toBe(LEASE_ID);
+		expect(body['invoice_creation[invoice_data][metadata][paymentMethod]']).toBe('card');
+		// Only cards (with Apple Pay and Google Pay); no bank account or Cash App Pay.
+		expect(body['payment_method_types[0]']).toBe('card');
+		expect(body['payment_method_types[1]']).toBeUndefined();
+	});
+
+	test('Scenario: Bank account: the tenant picks a bank account and pays a flat $5.00 fee', async ({
+		page
+	}) => {
+		await signIn(page, TENANT);
+		await page.goto('/payment');
+		await page.waitForLoadState('networkidle');
+
+		await page.getByRole('button', { name: 'Make a Payment' }).click();
+		const dialog = page.getByRole('dialog');
+		await dialog.getByRole('spinbutton').fill('500');
+		await dialog.getByRole('radio', { name: /Bank account/ }).check();
+		await expect(dialog.getByText('Total charged: $505.00')).toBeVisible();
+		await dialog.getByRole('button', { name: 'Continue to payment' }).click();
+
+		await expect(page.locator('#fake-checkout')).toBeVisible();
+		const [request] = await recorded();
+		const body = request.body;
+		expect(body['line_items[0][price_data][unit_amount]']).toBe('50000');
+		expect(body['line_items[1][price_data][product_data][name]']).toBe('Transaction Fee');
+		expect(body['line_items[1][price_data][unit_amount]']).toBe('500');
+		expect(body['payment_method_types[0]']).toBe('us_bank_account');
+		expect(body['payment_method_types[1]']).toBeUndefined();
+		expect(body['invoice_creation[invoice_data][metadata][paymentMethod]']).toBe('bank');
+		expect(body['invoice_creation[invoice_data][metadata][bankPaymentId]']).toMatch(/^\w+$/);
+		expect(body['success_url']).toMatch(/\/payment\/success\?bank=\{CHECKOUT_SESSION_ID\}$/);
+	});
+
+	test('Scenario: Return from a bank payment: the confirmation says it takes a few business days and it shows as processing', async ({
+		page
+	}) => {
+		await signIn(page, TENANT);
+		await page.goto('/payment');
+		await page.waitForLoadState('networkidle');
+		await page.getByRole('button', { name: 'Make a Payment' }).click();
+		const dialog = page.getByRole('dialog');
+		await dialog.getByRole('spinbutton').fill('250');
+		await dialog.getByRole('radio', { name: /Bank account/ }).check();
+		await dialog.getByRole('button', { name: 'Continue to payment' }).click();
+		await expect(page.locator('#fake-checkout')).toBeVisible();
+		const [request] = await recorded();
+		const id = request.body['metadata[bankPaymentId]'];
+
+		try {
+			// Stripe sends the tenant back with the session id.
+			await page.goto('/payment/success?bank=cs_fake_1');
+			await expect(
+				page.getByText('Bank payments take a few business days to complete.')
+			).toBeVisible();
+
+			await page.getByRole('link', { name: 'Back to payments' }).click();
+			await expect(
+				page.getByText(/A bank payment of \$250\.00 started on\s+\S+ is processing\./)
+			).toBeVisible();
+		} finally {
+			await adminDb().doc(`leases/${LEASE_ID}/bank_payments/${id}`).delete();
+		}
+	});
+
+	test('Scenario: Pending: a processing bank payment is shown and lowers what can be paid', async ({
+		page
+	}) => {
+		const ref = adminDb().doc(`leases/${LEASE_ID}/bank_payments/e2ependingbank1`);
+		await ref.set({
+			uid: TENANT.uid,
+			amountCents: 40000,
+			feeCents: 500,
+			state: 'pending',
+			createdAt: '2026-10-16T15:00:00.000Z',
+			startedAt: '2026-10-16T15:00:00.000Z',
+			startedDay: '2026-10-16'
+		});
+		try {
+			await signIn(page, TENANT);
+			await page.goto('/payment');
+			await page.waitForLoadState('networkidle');
+
+			await expect(
+				page.getByText('A bank payment of $400.00 started on 10/16/26 is processing.')
+			).toBeVisible();
+			await page.getByRole('button', { name: 'Make a Payment' }).click();
+			const dialog = page.getByRole('dialog');
+			const payable = (nextMonthPayable() ? 2000 : 1000) - 400;
+			await expect(
+				dialog.getByText(new RegExp(`pay up to ${dollarsPattern(payable)} now`))
+			).toBeVisible();
+			await dialog.getByRole('spinbutton').fill(String(payable + 1));
+			await dialog.getByRole('button', { name: 'Continue to payment' }).click();
+			await expect(dialog.getByRole('alert')).toContainText('no more than');
+			expect(await recorded()).toHaveLength(0);
+		} finally {
+			await ref.delete();
+		}
 	});
 
 	test('Scenario: an amount above the balance is refused in the browser and nothing is sent to Stripe', async ({
@@ -53,10 +154,10 @@ test.describe('rent-payments', () => {
 		await page.getByRole('button', { name: 'Make a Payment' }).click();
 		const dialog = page.getByRole('dialog');
 		await dialog.getByRole('spinbutton').fill('999999');
-		await dialog.getByRole('button', { name: 'Submit' }).click();
+		await dialog.getByRole('button', { name: 'Continue to payment' }).click();
 
-		// Wait for the app to react (an error toast) before checking that nothing was sent.
-		await expect(page.getByText(/less than or equal to/)).toBeVisible();
+		// Wait for the app to react (an error in the dialog) before checking that nothing was sent.
+		await expect(dialog.getByRole('alert')).toContainText('no more than');
 		await expect(page).toHaveURL(/\/payment$/);
 		expect(await recorded()).toHaveLength(0);
 	});
@@ -66,7 +167,11 @@ test.describe('rent-payments', () => {
 		await page.goto('/payment');
 		await page.waitForLoadState('networkidle');
 
-		await expect(page.getByText(/You have a balance of \$1,000\.00 due on/)).toBeVisible();
+		// One month of rent, two once next month is payable (from 7 days before the 1st).
+		const owed = nextMonthPayable() ? 2000 : 1000;
+		await expect(
+			page.getByText(new RegExp(`You have a balance of ${dollarsPattern(owed)} due on`))
+		).toBeVisible();
 	});
 
 	test('Scenario: the server refuses an amount above the balance and creates no session', async ({
@@ -80,7 +185,7 @@ test.describe('rent-payments', () => {
 			const response = await fetch('/api/stripe/create-checkout-session/payment', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ amount: 1000.01, leaseId })
+				body: JSON.stringify({ amount: 1000.01, leaseId, method: 'card' })
 			});
 			return response.status;
 		}, LEASE_ID);
@@ -100,7 +205,7 @@ test.describe('rent-payments', () => {
 			const response = await fetch('/api/stripe/create-checkout-session/payment', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ amount: 10, leaseId: 'someone-elses-lease' })
+				body: JSON.stringify({ amount: 10, leaseId: 'someone-elses-lease', method: 'card' })
 			});
 			return response.status;
 		});
@@ -149,7 +254,7 @@ test.describe('rent-payments: request checks', () => {
 		await signIn(page, TENANT);
 		await page.goto('/payment');
 
-		expect(await post(page, { amount: 10 })).toBe(403);
+		expect(await post(page, { amount: 10, method: 'card' })).toBe(403);
 		expect(await recorded()).toHaveLength(0);
 	});
 
@@ -159,8 +264,8 @@ test.describe('rent-payments: request checks', () => {
 		await signIn(page, TENANT);
 		await page.goto('/payment');
 
-		expect(await post(page, { leaseId: LEASE_ID })).toBe(400);
-		expect(await post(page, { leaseId: LEASE_ID, amount: 'abc' })).toBe(400);
+		expect(await post(page, { leaseId: LEASE_ID, method: 'card' })).toBe(400);
+		expect(await post(page, { leaseId: LEASE_ID, amount: 'abc', method: 'card' })).toBe(400);
 		expect(await recorded()).toHaveLength(0);
 	});
 
@@ -170,9 +275,18 @@ test.describe('rent-payments: request checks', () => {
 		await signIn(page, TENANT);
 		await page.goto('/payment');
 
-		expect(await post(page, { leaseId: LEASE_ID, amount: 10.005 })).toBe(400);
-		expect(await post(page, { leaseId: LEASE_ID, amount: 0 })).toBe(400);
-		expect(await post(page, { leaseId: LEASE_ID, amount: -5 })).toBe(400);
+		expect(await post(page, { leaseId: LEASE_ID, amount: 10.005, method: 'card' })).toBe(400);
+		expect(await post(page, { leaseId: LEASE_ID, amount: 0, method: 'card' })).toBe(400);
+		expect(await post(page, { leaseId: LEASE_ID, amount: -5, method: 'card' })).toBe(400);
+		expect(await recorded()).toHaveLength(0);
+	});
+
+	test('Scenario: Missing or unknown method is refused with 400', async ({ page }) => {
+		await signIn(page, TENANT);
+		await page.goto('/payment');
+
+		expect(await post(page, { leaseId: LEASE_ID, amount: 10 })).toBe(400);
+		expect(await post(page, { leaseId: LEASE_ID, amount: 10, method: 'cashapp' })).toBe(400);
 		expect(await recorded()).toHaveLength(0);
 	});
 });
@@ -260,7 +374,9 @@ test.describe.serial('rent-payments: one balance per lease', () => {
 		const current = page.locator(`[data-lease="${CURRENT}"]`);
 		await expect(current).toContainText('22 New Rd, Terre Haute');
 		await expect(current).toContainText('current');
-		await expect(current).toContainText('You have a balance of $500.00');
+		await expect(current).toContainText(
+			nextMonthPayable() ? 'You have a balance of $1,000.00' : 'You have a balance of $500.00'
+		);
 		await expect(
 			page.getByRole('button', { name: 'Make a Payment for 20 Old Rd, Terre Haute' })
 		).toBeEnabled();
@@ -270,6 +386,7 @@ test.describe.serial('rent-payments: one balance per lease', () => {
 		page
 	}) => {
 		await markPaid(CURRENT, monthDay(0));
+		if (nextMonthPayable()) await markPaid(CURRENT, monthDay(1));
 		await markPaid(ENDED, monthDay(-2));
 		await markPaid(ENDED, monthDay(-1));
 		await signIn(page, PAYER);
@@ -286,7 +403,7 @@ test.describe.serial('rent-payments: one balance per lease', () => {
 			const response = await fetch('/api/stripe/create-checkout-session/payment', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ amount: 1, leaseId })
+				body: JSON.stringify({ amount: 1, leaseId, method: 'card' })
 			});
 			return response.status;
 		}, CURRENT);

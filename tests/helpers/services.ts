@@ -38,12 +38,23 @@ const storage = { bucket: vi.fn(), log: storageLog };
 
 const stripe = {
 	customers: { create: vi.fn(), update: vi.fn(), del: vi.fn() },
-	checkout: { sessions: { create: vi.fn() } },
+	checkout: { sessions: { create: vi.fn(), retrieve: vi.fn() } },
+	invoices: {
+		create: vi.fn(),
+		finalizeInvoice: vi.fn(),
+		pay: vi.fn(),
+		voidInvoice: vi.fn(),
+		retrieve: vi.fn(),
+		del: vi.fn()
+	},
+	invoiceItems: { create: vi.fn() },
+	paymentIntents: { retrieve: vi.fn() },
 	billingPortal: { sessions: { create: vi.fn() } },
 	webhooks: { constructEvent: vi.fn() }
 };
 
 const sendPasswordResetEmail = vi.fn();
+const sendEmail = vi.fn();
 
 /** Stands in for the Firebase password check: only VALID_PASSWORD passes. */
 export const VALID_PASSWORD = 'right-password';
@@ -115,6 +126,30 @@ function reset() {
 	stripe.checkout.sessions.create
 		.mockReset()
 		.mockResolvedValue({ id: 'cs_test_1', url: 'https://checkout.test/session' });
+	stripe.checkout.sessions.retrieve.mockReset().mockRejectedValue(new Error('No such session'));
+	// Autopay invoices: created as drafts, finalized, then paid at once (a card that works).
+	let invoices = 0;
+	stripe.invoices.create.mockReset().mockImplementation(async (args: Record<string, unknown>) => {
+		invoices += 1;
+		return { id: `in_auto_${invoices}`, status: 'draft', ...args };
+	});
+	stripe.invoiceItems.create
+		.mockReset()
+		.mockImplementation(async (args: object) => ({ id: 'ii_1', ...args }));
+	stripe.invoices.finalizeInvoice
+		.mockReset()
+		.mockImplementation(async (id: string) => ({ id, status: 'open' }));
+	stripe.invoices.pay.mockReset().mockImplementation(async (id: string) => ({
+		id,
+		status: 'paid',
+		payment_intent: { id: `pi_${id}`, status: 'succeeded' }
+	}));
+	stripe.invoices.voidInvoice
+		.mockReset()
+		.mockImplementation(async (id: string) => ({ id, status: 'void' }));
+	stripe.invoices.retrieve.mockReset().mockRejectedValue(new Error('No such invoice'));
+	stripe.invoices.del.mockReset().mockResolvedValue({ deleted: true });
+	stripe.paymentIntents.retrieve.mockReset().mockRejectedValue(new Error('No such payment intent'));
 	stripe.billingPortal.sessions.create
 		.mockReset()
 		.mockResolvedValue({ url: 'https://portal.test/session' });
@@ -129,6 +164,7 @@ function reset() {
 		});
 
 	sendPasswordResetEmail.mockReset().mockResolvedValue(undefined);
+	sendEmail.mockReset().mockResolvedValue(undefined);
 	verifyPassword
 		.mockReset()
 		.mockImplementation(async (_email: string, password: string) =>
@@ -162,6 +198,7 @@ export const services = {
 	storage,
 	stripe,
 	sendPasswordResetEmail,
+	sendEmail,
 	verifyPassword,
 	reset
 };

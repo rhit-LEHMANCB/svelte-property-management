@@ -1,7 +1,7 @@
 # Lifecycle: add-leases
 
 - Branch: `claude/add-leases`
-- Stage: 7, production PR open, waiting for Gate B (human verification and merge)
+- Stage: **complete (archived automatically on 2026-10-15 after the production release `0cf0dc3`)**
 - GitHub backend: GitHub MCP (`gh` token invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 4 of 5
 - QA cycle: 2 of 3 (cycle 2 passed)
@@ -237,3 +237,6 @@ Ranked by risk. Items 1 and 2 must be done **before** merging the production PR,
     - 1 junction for a tenant that no longer exists (`eVO0c9os…` on `wrIhk0hPRVK1hDCaId8y`).
   - No balance changes, and no tenants on several properties.
 - **Hosting:** version `09d5393511f7d8e2` on https://lehman-realty-dev.web.app.
+
+## Archive
+Archived automatically on 2026-10-15 after the production release `0cf0dc3` ([workflow run](https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/38659779211)). That marks this lifecycle complete.

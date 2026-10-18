@@ -25,6 +25,18 @@ The system SHALL exchange a freshly issued Firebase ID token for an httpOnly, se
 - **WHEN** Firebase rejects the email or password
 - **THEN** the user sees an error toast "Your email or password is incorrect."
 
+#### Scenario: Disabled account
+- **WHEN** the credentials belong to a disabled account
+- **THEN** the user sees "This account has been disabled. Please contact Lehman Family LLC." and stays on `/signin`
+
+#### Scenario: Too many attempts
+- **WHEN** Firebase refuses the sign-in because of too many attempts
+- **THEN** the user sees "Too many sign-in attempts. Please wait a few minutes and try again." and stays on `/signin`
+
+#### Scenario: Session cookie cannot be created
+- **WHEN** the credentials are accepted but `/api/signin` does not succeed
+- **THEN** the user sees "Sign-in is unavailable right now. Please try again." and stays on `/signin`
+
 ### Requirement: Sign-out
 The system SHALL end a session by deleting the `__session` cookie via `DELETE /api/signin`.
 
@@ -36,27 +48,35 @@ The system SHALL end a session by deleting the `__session` cookie via `DELETE /a
 The system SHALL verify the session cookie on every request and populate `locals.userID` with the verified uid, or null.
 
 #### Scenario: Unauthenticated page request
-- **WHEN** the cookie is missing, expired or invalid and the path is not `/signin`, `/reset` or under `/api`
+- **WHEN** the cookie is missing, expired or invalid and the path is not `/signin`, `/forgot`, `/reset` or under `/api`
 - **THEN** the response is a 303 redirect to `/signin`
 
 #### Scenario: API requests are not redirected
 - **WHEN** an unauthenticated request targets a path under `/api`
 - **THEN** the hook does not redirect and each endpoint decides its own response
 
+#### Scenario: Forgot password page is public
+- **WHEN** a request without a valid session targets `/forgot`
+- **THEN** the page is served without a redirect
+
 ### Requirement: Password reset request
-The system SHALL email a password reset link through the configured email provider when requested via `PUT /api/signin/reset`.
+The system SHALL email a password reset link through the configured email provider when requested via `PUT /api/signin/reset` or the `/forgot` page, and SHALL answer the same way whether or not an account exists for the email.
 
 #### Scenario: Reset email sent
-- **WHEN** a request supplies an email
+- **WHEN** a request supplies the email of an existing account that is within the rate limit
 - **THEN** a Firebase reset link is generated with a continue URL of `PUBLIC_FRONTEND_URL/`
 - **AND** a reset email containing that link is sent to that address and `{ status: "email_sent" }` is returned
 
+#### Scenario: Unknown email
+- **WHEN** a request supplies an email that has no account
+- **THEN** no email is sent and the response is the same `{ status: "email_sent" }`
+
 #### Scenario: Email failure
-- **WHEN** link generation fails, the provider rejects the message, or the provider reports an error
+- **WHEN** link generation fails for a reason other than an unknown account, the provider rejects the message, or the provider reports an error
 - **THEN** the response is 500
 
 ### Requirement: Password reset completion
-The system SHALL let a user set a new password at `/reset` using the Firebase `oobCode` from the emailed link.
+The system SHALL let a user set a new password at `/reset` using the Firebase `oobCode` from the emailed link, and then send them to `/signin`.
 
 #### Scenario: Valid link and password
 - **WHEN** `mode=resetPassword`, the code verifies, and the new password satisfies the password policy
@@ -64,7 +84,16 @@ The system SHALL let a user set a new password at `/reset` using the Firebase `o
 
 #### Scenario: Wrong mode
 - **WHEN** `mode` is not `resetPassword`
-- **THEN** the page shows an "Invalid action" error and does not show the reset form
+- **THEN** the response is 400 with "Invalid action" and the reset form is not shown
+
+#### Scenario: Missing code
+- **WHEN** `mode=resetPassword` but there is no `oobCode`
+- **THEN** the response is 400 with "Invalid action" and the reset form is not shown
+
+#### Scenario: Continue after a reset
+- **WHEN** the user presses Continue in the success modal
+- **THEN** the browser goes to `/signin` without a "Leave site?" prompt, whatever `continueUrl` the link carried
+- **AND** `/signin` shows "Your password was changed. Please sign in."
 
 ### Requirement: Password policy
 The system SHALL require passwords of 8 to 32 characters with at least one lowercase letter, one uppercase letter and one digit or special character, entered twice identically.
@@ -88,6 +117,14 @@ The system SHALL let a user sign in with the sign-in form before or without clie
 - **WHEN** the credentials are wrong
 - **THEN** the form is shown again with "Your email or password is incorrect." and the email kept
 
+#### Scenario: Disabled or rate-limited account on the POST form
+- **WHEN** Firebase reports the account as disabled or refuses for too many attempts
+- **THEN** the form is shown again with the matching message from Session establishment and the email kept
+
+#### Scenario: Session failure on the POST form
+- **WHEN** the credentials are accepted but the session cookie cannot be created
+- **THEN** the form is shown again with "Sign-in is unavailable right now. Please try again.", no cookie is set, and the response is not a bare 500 page
+
 ### Requirement: Welcome email
 The system SHALL email a newly created user a welcome message containing a Firebase link to set their password, distinct in subject and wording from the reset email.
 
@@ -108,6 +145,44 @@ The system SHALL send application email from `support@lehmanfamilyllc.com` with 
 - **WHEN** any application email is sent
 - **THEN** its sender is `support@lehmanfamilyllc.com`, shown as "Lehman Family LLC"
 - **AND** it carries an HTML body and a plain-text body that both contain the link
+
+### Requirement: Password reset rate limit
+The system SHALL send at most one password reset email per mailbox per minute and at most five per hour, whether or not an account exists. Addresses that deliver to the same mailbox count together: case is ignored, a `+tag` is ignored, and for Gmail dots in the name are ignored.
+
+#### Scenario: Second request within a minute
+- **WHEN** a reset is requested twice for the same address within one minute
+- **THEN** only one email is sent and both requests get the same answer
+
+#### Scenario: Sixth request within an hour
+- **WHEN** a sixth reset is requested for the same address within one hour
+- **THEN** no email is sent for it and the answer is the same as for a sent email
+
+#### Scenario: Case-insensitive address
+- **WHEN** resets are requested for `Tenant@Example.com` and `tenant@example.com` within one minute
+- **THEN** they count as the same address
+
+#### Scenario: Variants of one mailbox
+- **WHEN** resets are requested for `tenant+one@example.com` and `tenant+two@example.com`, or for `first.last@gmail.com` and `firstlast@gmail.com`, within one minute
+- **THEN** each pair counts as one mailbox and only one email is sent
+
+### Requirement: Forgot password page
+The system SHALL provide a public `/forgot` page, linked as "Forgot password?" from `/signin`, where a signed-out user requests a reset email, with or without client-side scripts.
+
+#### Scenario: Request from the sign-in page
+- **WHEN** a signed-out user follows "Forgot password?" on `/signin` and submits an email on `/forgot`
+- **THEN** the page shows "If an account exists for that email, we've sent a reset link."
+
+#### Scenario: Same answer for unknown or limited emails
+- **WHEN** the email has no account or is over the rate limit
+- **THEN** the page shows the same message as for a sent email
+
+#### Scenario: Empty or invalid email
+- **WHEN** the submitted email is empty or not an email address
+- **THEN** the page asks for a valid email and no reset is requested
+
+#### Scenario: Delivery failure
+- **WHEN** the reset email cannot be sent for an existing account
+- **THEN** the page shows "We couldn't send the email right now. Please try again." and keeps the email
 
 ## Known Gaps
 - There is no sign-in rate limiting beyond Firebase's own.

@@ -59,6 +59,10 @@ export function seedLease(
 		startDate: string;
 		endDate?: string | null;
 		document?: Record<string, unknown> | null;
+		deposit?: { amount: number; dueDate: string } | null;
+		lateFee?: number;
+		graceDays?: number;
+		lateFeesFrom?: string;
 	}
 ) {
 	db.seed(`leases/${id}`, {

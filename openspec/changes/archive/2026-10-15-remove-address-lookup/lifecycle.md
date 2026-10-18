@@ -1,7 +1,7 @@
 # Lifecycle: remove-address-lookup
 
 - Branch: `remove-address-lookup`
-- Stage: 7 Production PR (QA passed; waiting on Gate B: a human merges the develop -> production PR)
+- Stage: **complete (archived automatically on 2026-10-15 after the production release `0cf0dc3`)**
 - Renamed from `fix-maps-address-autocomplete` on 2026-10-13 when the scope changed (see interview summary)
 - Review round: 1 of 5 (skill updated to 5 rounds by #135 mid-run)
 - QA cycle: 1 of 3
@@ -121,3 +121,6 @@ Production-only risks: none from this change (no env vars, secrets, Stripe, doma
 
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
+
+## Archive
+Archived automatically on 2026-10-15 after the production release `0cf0dc3` ([workflow run](https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/38659779211)). That marks this lifecycle complete.
