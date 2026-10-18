@@ -73,3 +73,7 @@
 - [x] 10.2 Extend the contrast scan to the new dashboard and admin home in both modes. Verify that it passes.
 - [x] 10.3 Run `npm run lint`, `npm run check`, `npm test`, `npm run test:e2e`, `npm run build` and `openspec validate make-ui-consistent --strict`. Verify that all pass.
 
+## 11. Owner feedback during QA cycle 2
+
+- [x] 11.1 Remove the dashboard's "Your lease at ... starts on" notice, which repeated the upcoming lease card and the tiles; keep the no-property warning. Verify with the home-pages unit test, the access-control handler tests and the data-integrity e2e upcoming-lease test.
+- [x] 11.2 Maintenance without a current lease: show the reason in a "Your requests" card with an empty state instead of a notice on the page background. Verify with the data-integrity e2e no-property and upcoming-lease tests.

@@ -72,19 +72,19 @@
 		subtitle="Report a problem with your home and follow it until it is fixed."
 	/>
 	{#if data.noProperty}
-		<Notice tone="warning">
+		<Card title="Your requests">
 			{#if data.noProperty.upcoming}
-				<strong>Maintenance requests open when your lease starts.</strong>
-				<p>
+				<EmptyState icon={IconTool} title="Requests open when your lease starts">
 					Your lease at {data.noProperty.upcoming.address} starts on
 					{longDate(data.noProperty.upcoming.startDate)}. From then on you can report problems with
 					your home here.
-				</p>
+				</EmptyState>
 			{:else}
-				<strong>No property is assigned to your account yet.</strong>
-				<p>Maintenance requests are for the home you rent. Please contact your property manager.</p>
+				<EmptyState icon={IconTool} title="No property is assigned to your account yet.">
+					Maintenance requests are for the home you rent. Please contact your property manager.
+				</EmptyState>
 			{/if}
-		</Notice>
+		</Card>
 	{:else}
 		<Card title="New request">
 			<form method="POST" use:enhance class="space-y-4" novalidate>

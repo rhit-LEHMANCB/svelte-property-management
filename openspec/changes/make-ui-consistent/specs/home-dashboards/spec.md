@@ -15,7 +15,7 @@ The system SHALL show a tenant three tiles on `/`: the balance owed across their
 
 #### Scenario: Only an ended lease, still owing
 - **WHEN** a tenant whose only lease has ended still owes $500.00
-- **THEN** the balance tile shows $500.00 with a "Make a payment" link, and no autopay or maintenance tiles are shown
+- **THEN** the "no property" notice is shown above a balance tile with $500.00 and a "Make a payment" link, and no autopay or maintenance tiles are shown
 
 #### Scenario: Nothing owed
 - **WHEN** a tenant owes nothing
@@ -34,7 +34,7 @@ The system SHALL show a tenant three tiles on `/`: the balance owed across their
 - **THEN** none of them affects this tenant's tiles
 
 ### Requirement: Tenant lease and insurance cards
-The system SHALL show a tenant a "Your lease" card for each current or upcoming lease, a "Renters insurance" card with the policy's status, and their ended leases with a deposit in one "Past leases" card. The insurance status is "On file" when the policy ends more than 30 days from today, "Ending soon" within 30 days, "Expired" after its end date, and "Missing" when none is saved; each links to `/insurance`.
+The system SHALL show a tenant a card for each current or upcoming lease, titled with its address, marked current or upcoming, and named "Your lease" for assistive technology, a "Renters insurance" card with the policy's status, and their ended leases with a deposit in one "Past leases" card. The insurance status is "On file" when the policy ends more than 30 days from today, "Ending soon" within 30 days, "Expired" after its end date, and "Missing" when none is saved; each links to `/insurance`.
 
 #### Scenario: Ending soon
 - **WHEN** the tenant's saved policy ends in 20 days
@@ -43,6 +43,10 @@ The system SHALL show a tenant a "Your lease" card for each current or upcoming 
 #### Scenario: Missing
 - **WHEN** the tenant has never saved a policy
 - **THEN** the insurance card shows "Missing" and an "Add insurance" link
+
+#### Scenario: Upcoming lease
+- **WHEN** a tenant whose only lease starts on October 23, 2099 and owes its $500.00 deposit opens `/`
+- **THEN** the "Your lease" card shows the lease as upcoming with its dates, the balance tile shows $500.00 with a "Make a payment" link, and no notice above the tiles repeats the start date
 
 #### Scenario: No lease
 - **WHEN** a tenant has no lease on file

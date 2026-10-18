@@ -336,8 +336,9 @@ describe('access-control: data is not shared between tenants', () => {
 	});
 });
 
-// #165: a tenant whose only lease has not started was told no property is assigned.
-describe('access-control: dashboard notice for a tenant without a current lease', () => {
+// #165: a tenant whose only lease has not started was told no property is assigned. The upcoming
+// lease now shows in its own card and what can be paid now in the balance tile, with no notice.
+describe('access-control: dashboard for a tenant without a current lease', () => {
 	const upcoming = () => {
 		seedTenant('t1');
 		seedProperty('p1', {
@@ -353,24 +354,29 @@ describe('access-control: dashboard notice for a tenant without a current lease'
 			deposit: { amount: 500, dueDate: '2099-10-23' }
 		});
 	};
+	// The dashboard as the app loads it: the layout first, its data passed down as the parent.
+	const home = async (userID: string) => {
+		const layout = await call(layoutLoad, { userID });
+		return call(homeLoad, { userID, parent: layout.data });
+	};
 
-	it('Scenario: an upcoming lease is named with its start date and what is owed now', async () => {
+	it('Scenario: an upcoming lease gets its card and what is owed now, with no notice', async () => {
 		upcoming();
-		const result = await call(homeLoad, { userID: 't1', parent: {} });
-		expect(result.data.notice).toEqual({
-			kind: 'upcoming',
-			address: '570 Maple Ave, Apt 317, Noblesville',
-			startDate: '2099-10-23',
-			owedCents: 50000
-		});
+		const result = await home('t1');
+		expect(result.data.noLease).toBe(false);
+		expect(result.data.leaseCards).toMatchObject([
+			{ id: 'soon', status: 'upcoming', address: '570 Maple Ave, Apt 317, Noblesville' }
+		]);
+		expect(result.data.summary.balanceCents).toBe(50000);
 	});
 
-	it('Scenario: nothing owed yet: the notice has 0 to pay (the page offers autopay setup)', async () => {
+	it('Scenario: nothing owed yet: the balance is 0 (the autopay tile offers setup)', async () => {
 		seedTenant('t1');
 		seedProperty('p1', { streetAddress: '1 Far St', apartmentInfo: '', city: 'Carmel' });
 		seedLease('far', { propertyId: 'p1', tenantIds: ['t1'], startDate: '2099-10-23' });
-		const result = await call(homeLoad, { userID: 't1', parent: {} });
-		expect(result.data.notice).toMatchObject({ kind: 'upcoming', owedCents: 0 });
+		const result = await home('t1');
+		expect(result.data.noLease).toBe(false);
+		expect(result.data.summary).toMatchObject({ balanceCents: 0, autopayOn: false });
 	});
 
 	it('Scenario: rent payable 7 days early counts as owed now', async () => {
@@ -385,31 +391,33 @@ describe('access-control: dashboard notice for a tenant without a current lease'
 				rent: 1550,
 				startDate: '2026-10-23'
 			});
-			const result = await call(homeLoad, { userID: 't1', parent: {} });
+			const result = await home('t1');
 			// October 23 to 31: 9 of 31 days of $1,550.
-			expect(result.data.notice).toMatchObject({ kind: 'upcoming', owedCents: 45000 });
+			expect(result.data.summary.balanceCents).toBe(45000);
 		} finally {
 			vi.useRealTimers();
 		}
 	});
 
-	it('Scenario: with two upcoming leases the one starting first is named', async () => {
-		seedTenant('t1');
-		seedProperty('p1', { streetAddress: '1 Later St', apartmentInfo: '', city: 'Carmel' });
-		seedProperty('p2', { streetAddress: '2 First St', apartmentInfo: '', city: 'Carmel' });
-		seedLease('later', { propertyId: 'p1', tenantIds: ['t1'], startDate: '2099-12-01' });
-		seedLease('first', { propertyId: 'p2', tenantIds: ['t1'], startDate: '2099-11-01' });
-		const result = await call(homeLoad, { userID: 't1', parent: {} });
-		expect(result.data.notice).toMatchObject({
-			address: '2 First St, Carmel',
-			startDate: '2099-11-01'
-		});
-	});
-
 	it('Scenario: no lease at all keeps the contact-your-manager notice', async () => {
 		seedTenant('t1');
-		const result = await call(homeLoad, { userID: 't1', parent: {} });
-		expect(result.data.notice).toEqual({ kind: 'none' });
+		const result = await home('t1');
+		expect(result.data.noLease).toBe(true);
+	});
+
+	it('Scenario: only an ended lease, still owing: the notice and the balance both show', async () => {
+		seedTenant('t1');
+		seedProperty('p1', { streetAddress: '9 Old St', apartmentInfo: '', city: 'Carmel' });
+		seedLease('past', {
+			propertyId: 'p1',
+			tenantIds: ['t1'],
+			rent: 1000,
+			startDate: '2019-01-01',
+			endDate: '2019-01-31'
+		});
+		const result = await home('t1');
+		expect(result.data.noLease).toBe(true);
+		expect(result.data.summary.balanceCents).toBeGreaterThan(0);
 	});
 
 	it('Scenario: a tenant with a current property gets no notice', async () => {
@@ -418,6 +426,6 @@ describe('access-control: dashboard notice for a tenant without a current lease'
 			userID: 't1',
 			parent: { userProperty: { id: 'p1', data: {} } }
 		});
-		expect(result.data.notice).toBeNull();
+		expect(result.data.noLease).toBe(false);
 	});
 });

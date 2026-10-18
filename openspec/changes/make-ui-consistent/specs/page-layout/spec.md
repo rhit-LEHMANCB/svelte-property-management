@@ -25,7 +25,7 @@ The system SHALL render the content of every signed-in page centered in the cont
 The system SHALL render content cards on page backgrounds with the same padding on every page (16px, 24px from the small breakpoint up). A card's section heading, when it has one, SHALL be its first child, inside the padding. Forms in a card SHALL sit inside the same padding.
 
 #### Scenario: Two pages' cards
-- **WHEN** the Profile "Contact Info" card and the Maintenance "Add Maintenance Request" card are compared at the same window size
+- **WHEN** the Profile "Contact info" card and the Maintenance "New request" card are compared at the same window size
 - **THEN** they have the same padding and each heading is inside its card as the first element
 
 #### Scenario: Dashboard and admin home
@@ -40,10 +40,10 @@ The system SHALL render Sign in, Forgot password and Reset password in the same 
 - **THEN** the three cards have the same width, padding, field spacing and submit button placement
 
 ### Requirement: Notices share one style
-The system SHALL render tonal warning, error and info boxes (for example the maintenance "no property" notice, lease warnings and form-level errors) with the same padding. Warning and info notices SHALL be announced politely (status), except a warning that stopped the user's action, which is announced assertively (alert); error notices SHALL be announced assertively (alert).
+The system SHALL render tonal warning, error and info boxes (for example the dashboard "no property" notice, lease warnings and form-level errors) with the same padding. Warning and info notices SHALL be announced politely (status), except a warning that stopped the user's action, which is announced assertively (alert); error notices SHALL be announced assertively (alert).
 
 #### Scenario: Warning notice
-- **WHEN** a tenant with no property opens Maintenance
+- **WHEN** a tenant with no lease opens the dashboard
 - **THEN** the notice has the shared notice padding and a role of status
 
 #### Scenario: Warning that stops a save

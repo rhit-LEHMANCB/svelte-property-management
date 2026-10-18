@@ -15,7 +15,7 @@ The system SHALL show a tenant the 5 newest open requests (by `dateAdded`) and 5
 
 #### Scenario: No current lease
 - **WHEN** a tenant without a current lease opens `/maintenance`
-- **THEN** the page stays open and, in place of the form and lists, says that requests open when their upcoming lease starts (naming its address and start date), or that no property is assigned when there is no upcoming lease
+- **THEN** the page stays open and, in place of the form and lists, a "Your requests" card says that requests open when their upcoming lease starts (naming its address and start date), or that no property is assigned when there is no upcoming lease
 
 ### Requirement: Admin request list
 The system SHALL show admins the 5 newest open and 5 most recently closed requests across all properties, in one "Requests" card with "Open (n)" and "Closed (n)" tabs.
