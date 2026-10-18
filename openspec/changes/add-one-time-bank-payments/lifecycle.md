@@ -1,10 +1,10 @@
 # Lifecycle: add-one-time-bank-payments
 
 - Branch: `claude/add-one-time-bank-payments`
-- Stage: 6 QA: **HALTED** (environment) after QA cycle 1, 2026-10-17. See "Halted" below.
+- Stage: 6 QA: resumed 2026-10-18 after the user enabled the `checkout.session.*` events on the dev webhook endpoint; QA cycle 2 agent running.
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 2 of 5
-- QA cycle: 1 of 3
+- QA cycle: 2 of 3
 - Started: 2026-10-16
 
 ## Interview summary
@@ -152,7 +152,9 @@ HALTED at stage 6 (QA), 2026-10-17.
 - **Evidence:** the F1 entry in the QA report above, and `openspec/changes/add-one-time-bank-payments/qa/screenshots/pending-bank-payments-failed-bank-payment.png` on the evidence branch.
 - **No app bug found.** All rent-payments scenarios and all observable pending-bank-payments scenarios passed.
 
-**Next steps for a human:**
+**Resolved 2026-10-18:** the user enabled the events on the dev endpoint. Stripe cannot resend the old `async_payment_failed` event to an endpoint that was not subscribed when the event was created. The stuck $50 record on `IopO2Aqo5Glp3aY5CVqX` will be failed by the daily job's 7-day check, from 2026-10-24. The run resumed with QA cycle 2 (QA cycle 1 classification: `environment`, cycle +1).
+
+**Next steps for a human (done):**
 1. In the Stripe dashboard (test mode), go to Developers > Webhooks and open the dev endpoint (`https://lehman-realty-dev.web.app/api/stripe/webhook`). Add the three `checkout.session.*` events.
 2. In Stripe test mode, check the pending $50 payment on "deposits QA Way". If it failed, use "Resend" on its `checkout.session.async_payment_failed` event, once the endpoint has the event, to clear it on dev.
 3. Resume the lifecycle in a session: "continue the dev-lifecycle run for add-one-time-bank-payments". It runs a fresh QA cycle (2 of 3), then opens the production PR.
