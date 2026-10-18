@@ -1,7 +1,7 @@
 # Lifecycle: add-lease-proration-and-deposits
 
 - Branch: `claude/add-lease-proration-and-deposits`
-- Stage: 7 done: production PR #157 updated and off hold, waiting for Gate B (human setup, verification and merge)
+- Stage: **complete (archived automatically on 2026-10-18 after the production release `82681f9`)**
 - GitHub backend: GitHub MCP (`gh` token in GH_TOKEN is invalid; cloud session, `get_me` returns rhit-LEHMANCB)
 - Review round: 3 of 5
 - QA cycle: 3 of 3
@@ -238,3 +238,6 @@ Ranked by risk. Production-only setup comes first.
 No other secrets or variables are needed. Several `qa-` properties with test payments remain on the dev site and can be removed by hand.
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
+
+## Archive
+Archived automatically on 2026-10-18 after the production release `82681f9` ([workflow run](https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/39145552594)). That marks this lifecycle complete.
