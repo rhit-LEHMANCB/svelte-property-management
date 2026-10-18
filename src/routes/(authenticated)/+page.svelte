@@ -39,23 +39,7 @@
 
 <PageBody>
 	<PageHeader title="Dashboard" subtitle={leases[0]?.address} />
-	{#if isTenant && data.notice?.kind === 'upcoming'}
-		<Notice tone="info">
-			<strong
-				>Your lease at {data.notice.address} starts on {longDate(data.notice.startDate)}.</strong
-			>
-			{#if data.notice.owedCents > 0}
-				<p>{cents(data.notice.owedCents)} can be paid now.</p>
-				<a class="btn btn-sm preset-filled-primary-500" href="/payment">Make a payment</a>
-			{:else}
-				<p>
-					Maintenance requests open once it starts. You can set up autopay now, so rent is paid on
-					its due date.
-				</p>
-				<a class="btn btn-sm preset-tonal" href="/payment">Set up autopay</a>
-			{/if}
-		</Notice>
-	{:else if isTenant && data.notice?.kind === 'none'}
+	{#if isTenant && data.noLease}
 		<Notice tone="warning">
 			<strong>No property is assigned to your account yet.</strong>
 			<p>Please contact your property manager. You can still update your profile.</p>

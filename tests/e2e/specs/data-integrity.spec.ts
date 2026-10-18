@@ -348,7 +348,7 @@ test.describe('access-control: a tenant without a property', () => {
 	});
 
 	// #165: a tenant whose lease has not started was told no property is assigned.
-	test('Scenario: Upcoming lease: the dashboard and Maintenance name it and its start date', async ({
+	test('Scenario: Upcoming lease: the dashboard card and Maintenance name it and its start date', async ({
 		page
 	}) => {
 		const db = adminDb();
@@ -373,13 +373,13 @@ test.describe('access-control: a tenant without a property', () => {
 		try {
 			await signIn(page, { email: EMAIL, password: PASSWORD });
 			await page.waitForLoadState('networkidle');
-			const notice = page.getByRole('status').filter({ hasText: 'starts on' });
-			await expect(notice).toContainText(
-				'Your lease at 570 Maple Ave, Apt 317, Noblesville starts on October 23, 2099.'
-			);
-			await expect(notice).toContainText('$500.00 can be paid now.');
-			await expect(page.getByText('No property is assigned to your account yet.')).toHaveCount(0);
-			await notice.getByRole('link', { name: 'Make a payment' }).click();
+			const card = page.getByRole('region', { name: 'Your lease' });
+			await expect(card).toContainText('570 Maple Ave, Apt 317, Noblesville');
+			await expect(card).toContainText('October 23, 2099 to month to month');
+			const balance = page.getByRole('region', { name: 'Balance' });
+			await expect(balance).toContainText('$500.00');
+			await expect(page.locator('[data-notice]')).toHaveCount(0);
+			await balance.getByRole('link', { name: 'Make a payment' }).click();
 			await expect(page).toHaveURL(/\/payment$/);
 
 			await page.goto('/maintenance');

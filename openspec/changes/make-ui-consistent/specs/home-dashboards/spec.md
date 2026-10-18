@@ -44,6 +44,10 @@ The system SHALL show a tenant a "Your lease" card for each current or upcoming 
 - **WHEN** the tenant has never saved a policy
 - **THEN** the insurance card shows "Missing" and an "Add insurance" link
 
+#### Scenario: Upcoming lease
+- **WHEN** a tenant whose only lease starts on October 23, 2099 and owes its $500.00 deposit opens `/`
+- **THEN** the "Your lease" card shows the lease as upcoming with its dates, the balance tile shows $500.00 with a "Make a payment" link, and no notice above the tiles repeats the start date
+
 #### Scenario: No lease
 - **WHEN** a tenant has no lease on file
 - **THEN** the dashboard shows the existing "no property" notice and no lease, balance or maintenance tiles

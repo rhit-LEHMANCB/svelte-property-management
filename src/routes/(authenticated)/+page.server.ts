@@ -28,24 +28,11 @@ export const load = (async ({ locals, parent }) => {
 		...lease,
 		billing: leaseBilling(ledgers.get(lease.id)!)
 	}));
-	// A tenant without a current lease is told why: the lease that starts next, with what can be
-	// paid now on all their leases (a deposit, rent payable early, or an ended lease's balance), or
-	// that no lease is on file.
+	// A tenant with no current or upcoming lease is told no property is assigned. An upcoming lease
+	// shows in its own card, and what can be paid now in the balance tile.
 	const { userProperty, userLeases = [] } = await parent();
 	const today = businessToday();
-	const next = cards
-		.filter((card) => card.status === 'upcoming')
-		.sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
-	const notice = userProperty
-		? null
-		: next
-			? {
-					kind: 'upcoming' as const,
-					address: next.address,
-					startDate: next.startDate,
-					owedCents: cards.reduce((sum, card) => sum + card.billing.totalCents, 0)
-				}
-			: { kind: 'none' as const };
+	const noLease = !userProperty && !cards.some((card) => card.status === 'upcoming');
 	// The summary tiles: what is owed across the tenant's leases, whether their own autopay is on, and
 	// the open requests for the property they live in. Only the caller's own data is read.
 	const [summaries, openRequests] = await Promise.all([
@@ -69,7 +56,7 @@ export const load = (async ({ locals, parent }) => {
 	};
 	return {
 		summary,
-		notice,
+		noLease,
 		leaseCards: cards.filter(
 			(card) =>
 				card.status !== 'ended' ||

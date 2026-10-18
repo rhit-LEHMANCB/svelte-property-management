@@ -36,7 +36,7 @@ const summary = {
 function dashboard(overrides: Record<string, unknown> = {}, summaryOverrides = {}) {
 	const data = {
 		user: { permissions: 'user' },
-		notice: null,
+		noLease: false,
 		leaseCards: [lease],
 		summary: { ...summary, ...summaryOverrides },
 		...overrides
@@ -113,9 +113,32 @@ describe('home-dashboards: Tenant lease and insurance cards', () => {
 		expect(anchor.getAttribute('href')).toBe('/insurance');
 	});
 
+	it('Scenario: Upcoming lease', () => {
+		const doc = dashboard(
+			{
+				leaseCards: [
+					{
+						...lease,
+						address: '570 Maple Ave, Apt 317, Noblesville',
+						status: 'upcoming',
+						startDate: '2099-10-23'
+					}
+				]
+			},
+			{ balanceCents: 50000, dueDate: '2099-10-23', hasProperty: false }
+		);
+		const card = region(doc, 'Your lease')!;
+		expect(text(card)).toContain('upcoming');
+		expect(text(card)).toContain('October 23, 2099 to month to month');
+		const balance = region(doc, 'Balance')!;
+		expect(text(balance)).toContain('$500.00');
+		expect(text(balance.querySelector('a'))).toBe('Make a payment');
+		expect(doc.querySelector('[data-notice]')).toBeNull();
+	});
+
 	it('Scenario: No lease', () => {
 		const doc = dashboard(
-			{ leaseCards: [], notice: { kind: 'none' } },
+			{ leaseCards: [], noLease: true },
 			{ balanceCents: 0, dueDate: null, openRequests: 0, hasProperty: false }
 		);
 		expect(text(doc.querySelector('[data-notice="warning"]'))).toContain(

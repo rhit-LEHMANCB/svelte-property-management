@@ -1,9 +1,9 @@
 # Lifecycle: make-ui-consistent
 
 - Branch: `claude/make-ui-consistent`
-- Stage: 5 Ship to develop (scope change 2)
+- Stage: 4 Review (scope change 3)
 - Review round: 4 of 5
-- QA cycle: 1 of 3 (cycle 2 follows scope change 2)
+- QA cycle: 2 of 3 (running on `a074d8c`; scope change 3 follows)
 - Started: 2026-10-18
 - Issue: #154
 
@@ -90,6 +90,9 @@ Assumptions:
 - Rows at 0 are hidden in "Needs attention".
 
 The revised proposal was approved as a new Gate A on 2026-10-18 ("approve"). Stages 3 to 6 run again for task groups 7 to 10.
+
+## Scope change 3 (2026-10-18, owner feedback)
+While QA cycle 2 ran on `a074d8c`, the owner said the dashboard's upcoming-lease notice was redundant and sat outside a card. The notice is removed: the upcoming lease shows in its "Your lease" card, what can be paid now in the balance tile, and autopay and maintenance in their tiles. The no-property warning stays. Spec deltas: `access-control` (Tenant property context, MODIFIED) and a new "Upcoming lease" scenario in `home-dashboards`. Task group 11. It gets one review round, and the next QA cycle covers it.
 
 ## Gate A
 Approved: yes, 2026-10-18 ("approve")
