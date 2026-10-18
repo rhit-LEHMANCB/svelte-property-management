@@ -45,9 +45,10 @@ function dashboard(overrides: Record<string, unknown> = {}, summaryOverrides = {
 	return parseHtml(render(Dashboard, { props: { data } as any }).body);
 }
 
-const region = (doc: Document, name: string) =>
-	doc.querySelector(`section[aria-label="${name}"]`) as HTMLElement | null;
-const text = (el: Element | null) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim();
+type Doc = ReturnType<typeof parseHtml>;
+const region = (doc: Doc, name: string) => doc.querySelector(`section[aria-label="${name}"]`);
+const text = (el: { textContent: string | null } | null) =>
+	(el?.textContent ?? '').replace(/\s+/g, ' ').trim();
 
 describe('home-dashboards: Tenant summary tiles', () => {
 	it('Scenario: Balance owed', () => {

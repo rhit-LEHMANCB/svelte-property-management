@@ -152,7 +152,7 @@ Found while implementing and folded into the change:
   - The dashboard loads each ledger once.
   - The spec scenario says "owed".
 
-  Checks: lint, check and unit tests pass.
+  Checks: lint, check (after typing the test helpers for happy-dom) and 782 unit tests pass.
 
 ## Ship to develop
 - 2026-10-18: opened PR #175 into `develop`. Waiting on the required checks `tests` and `build_and_preview`, with a PR activity subscription. Next: merge with a merge commit once both are green, then stage 6.
