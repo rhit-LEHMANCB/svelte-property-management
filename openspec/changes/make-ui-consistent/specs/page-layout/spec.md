@@ -55,7 +55,7 @@ The system SHALL render tonal warning, error and info boxes (for example the mai
 - **THEN** the message is shown in an error notice above the submit button with a role of alert
 
 ### Requirement: Forms end with one action row
-The system SHALL place every form's submit and secondary buttons in an action row at the end of the form with the same top spacing and gap on every form. Form submits and page-level actions SHALL use the regular button size; the small size SHALL be used only for actions inside list rows and page or card headers.
+The system SHALL place the submit and secondary buttons of every form on a page in an action row at the end of the form with the same top spacing and gap on every form. Dialog footers keep the dialog's own right-aligned layout. Form submits and page-level actions SHALL use the regular button size; the small size SHALL be used only for actions inside list rows and page or card headers.
 
 #### Scenario: Form submits match
 - **WHEN** the Profile, Insurance, Maintenance and property forms are compared

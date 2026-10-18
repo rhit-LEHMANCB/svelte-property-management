@@ -1,9 +1,9 @@
 # Lifecycle: make-ui-consistent
 
 - Branch: `claude/make-ui-consistent`
-- Stage: 5 Ship to develop
+- Stage: 7 Production PR (Gate B: waiting on the human)
 - Review round: 2 of 5
-- QA cycle: 0 of 3
+- QA cycle: 1 of 3
 - Started: 2026-10-18
 - Issue: #154
 
@@ -129,15 +129,100 @@ Found while implementing and folded into the change:
 
 ## Ship to develop
 - 2026-10-18: opened PR #175 into `develop`. Waiting on the required checks `tests` and `build_and_preview`, with a PR activity subscription. Next: merge with a merge commit once both are green, then stage 6.
+- Before merging, `develop` had gained the archive of the three payment changes (#171). `develop` was merged into the branch with a merge commit, and the `rent-payments` delta was rebuilt on the archived "Client-side amount limits" text, which keeps the new "Method choice with fees" scenario.
+- 2026-10-18 18:25: checks green on `d25d649`. Merged PR #175 into `develop` as merge commit `324e354`. Dev deploy run 107 (firebase-hosting-merge.yml) is queued.
 
 ## Out-of-scope observations
-(only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)
+- `/api/signin` returns 500 "Internal Error" for a malformed ID token. It should be 400 or 401. No cookie is set, so it is not a security problem.
+- The Reset page's "Change Password" button has no explicit `type="submit"` and relies on its click handler.
 
 ## QA report
-(filled in stage 6; link to the QA evidence branch)
+- 2026-10-18 18:31: dev deploy run 107 succeeded on `324e354`.
+- 2026-10-18 18:33: QA cycle 1 started. It is a fresh agent and was given only the dev URL, the proposal, the delta specs, the QA guide and the report template.
+
+### QA report: make-ui-consistent (cycle 1 of 3)
+
+- Deployed commit: `324e354` on `develop` (https://lehman-realty-dev.web.app)
+- Run at: 2026-10-18, about 18:33 to 18:48 UTC
+- Result: **PASS**, with no failing scenarios. One scenario could not be reached with the QA accounts (see below).
+- Evidence: branch `qa-evidence/make-ui-consistent` (commit `1652607`): 67 screenshots under `openspec/changes/make-ui-consistent/qa/screenshots/` and the QA specs under `tests/qa/make-ui-consistent/`.
+
+| Capability | Scenario | Result | Evidence |
+|---|---|---|---|
+| page-layout | Wide screen: 9 admin and 5 tenant pages are 1024px wide with equal side gaps | pass | [admin users](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-wide-screen-admin-admin-users.png), [tenant home](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-wide-screen-tenant-home.png) |
+| page-layout | List and form pages match: Users and Profile share x and width | pass | [users](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-list-and-form-pages-match-users.png), [profile](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-list-and-form-pages-match-profile.png) |
+| page-layout | Phone width (360px) in light and dark: no horizontal overflow on any page, including the auth pages | pass | [admin dark](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-phone-width-admin-dark-profile.png), [tenant light](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-phone-width-tenant-light-home.png) |
+| page-layout | Two pages' cards: 24px padding, heading is the first child | pass | [profile](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-two-pages-cards-profile.png), [maintenance](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-two-pages-cards-maintenance.png) |
+| page-layout | Dashboard and admin home: same padding | pass | [lease card](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-dashboard-and-admin-home-tenant-lease-card.png), [admin tile](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-dashboard-and-admin-home-admin-tile.png) |
+| page-layout | Compare auth pages: same width, padding, shadow, button width and gap | pass | [sign in](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-compare-auth-pages-signin.png), [forgot](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-compare-auth-pages-forgot.png), [reset](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-compare-auth-pages-reset.png) |
+| page-layout | Warning notice (role status, tenant with no property) | not covered | The QA tenant has a current lease. It is covered by the emulator e2e test `data-integrity.spec.ts`. |
+| page-layout | Warning that stops a save: overlap warning is an alert, 16px padding | pass | [overlap](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-warning-that-stops-a-save.png) |
+| page-layout | Form error notice: wrong password shows an alert notice above Sign in | pass | [sign in](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-form-error-notice.png) |
+| page-layout | Form submits match: regular buttons, same spacing and gap | pass | [profile](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-form-submits-profile.png), [property](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-form-submits-property.png) |
+| page-layout | Row actions use the small size | pass | [maintenance](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-row-actions-maintenance.png) |
+| page-layout | Edit lease breadcrumbs, with links | pass | [edit lease](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-edit-lease-breadcrumbs.png) |
+| page-layout | Other nested pages: New property, Property edit, New lease, Payment success | pass | [new lease](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-nested-new-lease-breadcrumbs.png), [payment success](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-nested-payment-success-breadcrumbs.png) |
+| page-layout | Top-level pages have no breadcrumbs | pass | [dashboard](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-top-level-tenant-dashboard.png) |
+| page-layout | Long title on a phone: ellipsis, no horizontal scroll | pass | [property edit](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-long-title-on-a-phone-property-edit.png) |
+| page-layout | Missing required field, then fixing it (Profile) | pass | [error](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-missing-required-field-profile.png), [fixed](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-fixing-the-field-profile.png) |
+| page-layout | Untouched form: no errors before submit (New lease) | pass | [new lease](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-untouched-form-new-lease.png) |
+| page-layout | Without scripts: Forgot shows the error under the email field | pass | [forgot](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-without-scripts-forgot.png) |
+| page-layout | Sign-in errors stay form-level | pass | [sign in](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/page-layout-sign-in-errors-stay-form-level.png) |
+| page-layout | Svelte 4 event directives rejected by lint | pass | Command output: exit 1 with the rule message, file and line |
+| ui-accessibility | Focus an invalid field, then field fixed (Insurance) | pass | [invalid](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/ui-accessibility-focus-an-invalid-field-insurance.png), [fixed](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/ui-accessibility-field-fixed-insurance.png) |
+| ui-accessibility | Breadcrumb landmark | pass | [edit lease](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/ui-accessibility-landmark-navigation-breadcrumb.png) |
+| authentication | Invalid credentials in the error notice, no toast | pass | [sign in](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/authentication-invalid-credentials.png) |
+| authentication | Disabled account, too many attempts, session cookie failure | pass (simulated with route mocks) | [disabled](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/authentication-disabled-account.png) |
+| authentication | Successful sign-in and cookie lifetime (Max-Age 432000, HttpOnly, Secure) | pass | [signed in](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/authentication-successful-sign-in.png) |
+| authentication | Stale ID token | not covered | Needs a token older than 5 minutes |
+| rent-payments | Over balance: message under the field, dialog stays open, nothing sent | pass | [error](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/rent-payments-over-balance.png), [cleared](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/rent-payments-over-balance-cleared.png) |
+| rent-payments | Method choice with fees | pass | [dialog](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/rent-payments-method-choice-with-fees.png) |
+| regression | 7 admin and 5 tenant pages load with an h1, no console errors and no 5xx; sign out works | pass | [admin users](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/regression-admin-admin-users.png), [tenant payment](https://github.com/rhit-LEHMANCB/svelte-property-management/blob/qa-evidence/make-ui-consistent/openspec/changes/make-ui-consistent/qa/screenshots/regression-tenant-payment.png) |
+
+Triage: no `app bug`, `test bug` or `environment` failures on the final run. The QA agent fixed its own early test bugs (selectors, a focus-colour comparison).
+
+QA observations and how they were handled:
+- **Dialog footers are not the shared form action row.** In scope as a wording fix. The proposal already puts dialog layout out of scope, so the `page-layout` requirement now says it applies to forms on a page and that dialog footers keep their own layout. No behaviour change.
+- **A malformed ID token to `/api/signin` returns 500, not 400 or 401.** This predates the change. Listed under out-of-scope observations.
+- **The Reset submit button has no explicit `type="submit"`.** It works, and the behaviour predates the change. Listed under out-of-scope observations.
+- **A tenant with no phone number cannot save Profile.** This predates the change, and #119 already lists it.
+- **The regular and small button heights differ by only 2px (30 and 28).** This is the theme's sizing and colours and theme are out of scope, so it is recorded here only.
+
+Not covered by automation:
+- the no-property warning on the live site;
+- a real `/reset` email link;
+- a stale ID token;
+- the disabled-account and rate-limit states with real accounts;
+- the autopay, Add user and DateInput field errors on the live site (each is covered by emulator e2e);
+- real screen readers and real phones.
+
+Cleanup: QA's properties were deleted. One record remains: the open maintenance request **`qa-ui-row-action`** in the dev `maintenance` collection. It has no delete API and this session has read-only access, so it is on the human checklist.
+
 
 ## Verification checklist for the human
-(filled in stage 7)
+Ranked by risk. The same list is in the production PR.
+
+1. **(high) Forms on the production site, after deploy.** Production has real tenants, so check that nobody is blocked.
+   - Do: as a tenant, open Profile and Insurance and save each with no changes. Then clear a required field, save, and expect the red outline and the message under the field. Fix it and save.
+   - Expect: saving works. The error appears only after Save and clears as you type.
+2. **(high) Reset password with a real emailed link,** on a phone.
+   - Do: request a reset from `/forgot` and open the emailed link. Submit mismatched passwords, then a weak one, then a valid one.
+   - Expect: the errors show under New Password and Verify Password and clear as fixed. The card looks like Sign in and Forgot. You land on Sign in with the "password was changed" message.
+3. **(medium) Screen reader pass.** Use VoiceOver or NVDA on Insurance or Profile and on Edit lease.
+   - Do: submit an empty required field and Tab to it. List the landmarks on Edit lease.
+   - Expect: "invalid" plus the message is read. A "Breadcrumb" navigation landmark is listed, and its last item is the current page.
+4. **(medium) Real phones, light and dark.** On an iPhone and an Android phone, open a property with a long title, its Edit lease page, and Payment → Make a Payment with too large an amount.
+   - Expect: breadcrumbs shorten with "…" and there is no sideways scroll. The amount message is readable with the keyboard open.
+5. **(medium) Tenant with no property or an upcoming lease, on Maintenance and the dashboard.**
+   - Expect: the yellow notice with the same padding as other notices.
+   - QA could not reach this state with the QA accounts.
+6. **(low) Overall look: does the narrower, centered layout suit the list pages on a wide monitor?** Check Users, Properties, Payment and the dashboard. This was a requested design choice; confirm it reads well.
+7. **(low) Dev cleanup.** Delete the leftover QA maintenance request with the subject `qa-ui-row-action` from the `maintenance` collection in the dev Firebase project (`lehman-realty-dev`). An admin can also close it from Admin → Maintenance, but closing does not delete it.
+
+Production-only risks:
+- **No new environment variables, secrets or Stripe changes.** Production still uses Stripe test mode (#98), which is unchanged by this release.
+- **One server-side behaviour change:** Profile now returns a missing or wrong current password as a field error, with HTTP 400 as before. Forgot password adds `field: 'email'` to its 400 response.
+- **`happy-dom` is a dev dependency only.** `npm run check:server` passes, so the deployed function's dependencies are unchanged.
 
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
