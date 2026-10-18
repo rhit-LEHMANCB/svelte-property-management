@@ -3,6 +3,8 @@ import type { PageServerLoad } from './$types';
 import { getUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
 import { leaseBilling, loadTenantLeases } from '$lib/server/leases';
 import { loadLeaseLedger } from '$lib/server/balance';
+import { businessToday } from '$lib/server/leaseDates';
+import { insuranceStatus, openRequestCount, tenantLeaseSummaries } from '$lib/server/tenantSummary';
 
 export const load = (async ({ locals, parent }) => {
 	const uid = getUserIdOrError(locals.userID);
@@ -23,7 +25,8 @@ export const load = (async ({ locals, parent }) => {
 	// A tenant without a current lease is told why: the lease that starts next, with what can be
 	// paid now on all their leases (a deposit, rent payable early, or an ended lease's balance), or
 	// that no lease is on file.
-	const { userProperty } = await parent();
+	const { userProperty, userLeases = [] } = await parent();
+	const today = businessToday();
 	const next = cards
 		.filter((card) => card.status === 'upcoming')
 		.sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
@@ -37,7 +40,29 @@ export const load = (async ({ locals, parent }) => {
 					owedCents: cards.reduce((sum, card) => sum + card.billing.totalCents, 0)
 				}
 			: { kind: 'none' as const };
+	// The summary tiles: what is owed across the tenant's leases, whether their own autopay is on, and
+	// the open requests for the property they live in. Only the caller's own data is read.
+	const [summaries, openRequests] = await Promise.all([
+		tenantLeaseSummaries(uid, userLeases, today),
+		userProperty ? openRequestCount(userProperty.id) : Promise.resolve(0)
+	]);
+	const owing = summaries.filter((lease) => lease.balanceCents > 0);
+	const summary = {
+		balanceCents: owing.reduce((sum, lease) => sum + lease.balanceCents, 0),
+		dueDate:
+			owing
+				.map((lease) => lease.dueDate)
+				.filter((day): day is string => !!day)
+				.sort()[0] ?? null,
+		autopayOn: summaries.some(
+			(lease) => lease.status !== 'ended' && lease.autopay.enrollment !== null
+		),
+		openRequests,
+		hasProperty: !!userProperty,
+		insurance: insuranceStatus(userData.insurance, today)
+	};
 	return {
+		summary,
 		notice,
 		leaseCards: cards.filter(
 			(card) =>

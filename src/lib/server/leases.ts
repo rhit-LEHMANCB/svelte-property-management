@@ -148,6 +148,39 @@ export async function listPropertyLeases(
 	);
 }
 
+/**
+ * What needs an admin's attention across all properties: open maintenance requests, ended leases
+ * whose deposit is still to settle, and leases whose latest autopay charge failed or gave up while
+ * money is still owed. Reads every lease, which is fine at a family landlord's scale.
+ */
+export async function adminAttention(now = new Date()) {
+	const [openRequests, leaseDocs] = await Promise.all([
+		adminDB.collection('maintenance').where('status', '==', 'Open').get(),
+		leases().get()
+	]);
+	const perLease = await Promise.all(
+		leaseDocs.docs.map(async (doc) => {
+			const lease = doc.data() as LeaseDoc;
+			const [ledger, charges] = await Promise.all([
+				loadLeaseLedger(doc.id, lease, now),
+				loadCharges(doc.ref)
+			]);
+			const charge = latestOpenCharge(charges, { owedCents: ledger.totalCents });
+			return {
+				depositToSettle: ledger.deposit.toSettle,
+				autopayFailed: charge?.state === 'failed' || charge?.state === 'gave-up'
+			};
+		})
+	);
+	return {
+		openRequests: openRequests.docs.length,
+		depositsToSettle: perLease.filter((l) => l.depositToSettle).length,
+		failedAutopay: perLease.filter((l) => l.autopayFailed).length
+	};
+}
+
+export type AdminAttention = Awaited<ReturnType<typeof adminAttention>>;
+
 /** Every lease a user is on, as `[id, lease]` pairs. */
 export async function leasesOfTenant(uid: string): Promise<[string, LeaseDoc][]> {
 	const snapshot = await leases().where('tenantIds', 'array-contains', uid).get();

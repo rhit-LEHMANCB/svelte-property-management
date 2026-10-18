@@ -7,7 +7,7 @@ Defines the first page each role lands on: a tenant's summary of what they owe, 
 ## ADDED Requirements
 
 ### Requirement: Tenant summary tiles
-The system SHALL show a tenant three tiles on `/`: the balance payable now across their leases with the earliest due date and a "Make a payment" link, whether autopay is on for them, and the number of open maintenance requests for their property with a link to Maintenance. Each figure uses only the tenant's own leases, enrollment and property.
+The system SHALL show a tenant three tiles on `/`: the balance owed across their leases (as Payment shows it) with the earliest due date and a "Make a payment" link, whether autopay is on for them, and the number of open maintenance requests for their property with a link to Maintenance. Each figure uses only the tenant's own leases, enrollment and property.
 
 #### Scenario: Balance owed
 - **WHEN** a tenant with $1,000.00 payable and rent due October 1 opens `/`

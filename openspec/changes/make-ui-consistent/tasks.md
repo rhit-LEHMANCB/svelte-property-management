@@ -51,9 +51,9 @@
 
 ## 7. Shared summaries
 
-- [ ] 7.1 Move the per-lease balance and autopay logic from `payment/+page.server.ts` into `src/lib/server/tenantSummary.ts` and call it from Payment. Verify that the payment handler and e2e specs still pass unchanged.
-- [ ] 7.2 Add the dashboard's open-request count and insurance status (On file, Ending soon, Expired, Missing) to `tenantSummary.ts`. Verify with unit tests for each insurance status boundary (31, 30 and 0 days, past, none) and a handler test that another tenant's leases and requests never count.
-- [ ] 7.3 Add `adminAttention()` to `src/lib/server/leases.ts`. Verify with handler tests: open requests counted, a settled deposit not counted, a `failed` and a `gave-up` charge counted, a paid one not, and a tenant gets 403 from `/admin`.
+- [x] 7.1 Move the per-lease balance and autopay logic from `payment/+page.server.ts` into `src/lib/server/tenantSummary.ts` and call it from Payment. Verify that the payment handler and e2e specs still pass unchanged.
+- [x] 7.2 Add the dashboard's open-request count and insurance status (On file, Ending soon, Expired, Missing) to `tenantSummary.ts`. Verify with unit tests for each insurance status boundary (31, 30 and 0 days, past, none) and a handler test that another tenant's leases and requests never count.
+- [x] 7.3 Add `adminAttention()` to `src/lib/server/leases.ts`. Verify with handler tests: open requests counted, a settled deposit not counted, a `gave-up` charge counted, a succeeded one not, and a tenant gets the existing 401 from `/admin` with no counts.
 
 ## 8. Tenant pages from the design pass
 
