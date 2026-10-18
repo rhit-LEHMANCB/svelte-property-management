@@ -16,12 +16,18 @@ export const load = (async ({ locals, parent }) => {
 	// The lease cards, with the other tenants' names, which the layout does not load, and what each
 	// lease holds (deposit, credit). Ended leases are shown only for their deposit.
 	const tenantLeases = await loadTenantLeases(uid, { withOtherTenants: true });
-	const cards = await Promise.all(
-		tenantLeases.map(async ({ lease }) => ({
-			...lease,
-			billing: leaseBilling(await loadLeaseLedger(lease.id, lease))
-		}))
+	// Each ledger is loaded once, for the cards and for the summary tiles below.
+	const ledgers = new Map(
+		await Promise.all(
+			tenantLeases.map(
+				async ({ lease }) => [lease.id, await loadLeaseLedger(lease.id, lease)] as const
+			)
+		)
 	);
+	const cards = tenantLeases.map(({ lease }) => ({
+		...lease,
+		billing: leaseBilling(ledgers.get(lease.id)!)
+	}));
 	// A tenant without a current lease is told why: the lease that starts next, with what can be
 	// paid now on all their leases (a deposit, rent payable early, or an ended lease's balance), or
 	// that no lease is on file.
@@ -43,7 +49,7 @@ export const load = (async ({ locals, parent }) => {
 	// The summary tiles: what is owed across the tenant's leases, whether their own autopay is on, and
 	// the open requests for the property they live in. Only the caller's own data is read.
 	const [summaries, openRequests] = await Promise.all([
-		tenantLeaseSummaries(uid, userLeases, today),
+		tenantLeaseSummaries(uid, userLeases, today, ledgers),
 		userProperty ? openRequestCount(userProperty.id) : Promise.resolve(0)
 	]);
 	const owing = summaries.filter((lease) => lease.balanceCents > 0);

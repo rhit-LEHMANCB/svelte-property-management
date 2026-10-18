@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { load as adminPageLoad } from '../../src/routes/(authenticated)/admin/+page.server';
 import { load as layoutLoad } from '../../src/routes/(authenticated)/+layout.server';
 import { load as homeLoad } from '../../src/routes/(authenticated)/+page.server';
@@ -132,6 +132,46 @@ describe('home-dashboards: Admin needs-attention list', () => {
 		const { data } = await call(adminPageLoad, { userID: 'a1' });
 
 		expect(data.attention).toEqual({ openRequests: 2, depositsToSettle: 1, failedAutopay: 1 });
+	});
+
+	it('a failure followed by a successful charge is resolved, even while a late fee is owed', async () => {
+		seedAdmin('a1');
+		seedTenant('t1');
+		seedProperty('p1');
+		seedLease('l1', { propertyId: 'p1', tenantIds: ['t1'], rent: 1000, startDate: '2026-01-01' });
+		const charge = (cycle: string, state: string) => ({
+			uid: 't1',
+			cycleKey: cycle,
+			state,
+			attempts: 1,
+			lastAttemptDay: cycle,
+			claimedAt: `${cycle}T10:58:00.000Z`,
+			amountCents: 100000,
+			feeCents: 0
+		});
+		db.seed('leases/l1/autopay_charges/2026-09-01_t1', charge('2026-09-01', 'gave-up'));
+		db.seed('leases/l1/autopay_charges/2026-10-01_t1', charge('2026-10-01', 'succeeded'));
+
+		const { data } = await call(adminPageLoad, { userID: 'a1' });
+
+		expect(data.attention.failedAutopay).toBe(0);
+	});
+
+	it('a lease that cannot be read is left out, and the page still loads', async () => {
+		seedAdmin('a1');
+		seedTenant('t1');
+		seedProperty('p1');
+		openRequest('r1', 'p1');
+		// A lease document missing its terms: its ledger cannot be computed.
+		db.seed('leases/broken', { propertyId: 'p1', tenantIds: ['t1'] });
+		const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		const result = await call(adminPageLoad, { userID: 'a1' });
+
+		expect(result.status).toBe(200);
+		expect(result.data.attention.openRequests).toBe(1);
+		expect(logged).toHaveBeenCalledWith('adminAttention: lease broken skipped', expect.anything());
+		logged.mockRestore();
 	});
 
 	it('Scenario: Tenant: no counts are loaded', async () => {

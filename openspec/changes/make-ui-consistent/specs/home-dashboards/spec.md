@@ -7,10 +7,10 @@ Defines the first page each role lands on: a tenant's summary of what they owe, 
 ## ADDED Requirements
 
 ### Requirement: Tenant summary tiles
-The system SHALL show a tenant three tiles on `/`: the balance owed across their leases (as Payment shows it) with the earliest due date and a "Make a payment" link, whether autopay is on for them, and the number of open maintenance requests for their property with a link to Maintenance. Each figure uses only the tenant's own leases, enrollment and property.
+The system SHALL show a tenant three tiles on `/`: the balance owed across their leases (as Payment shows it) with the earliest due date and a "Make a payment" link, whether autopay is on for them on a current or upcoming lease, and the number of open maintenance requests for their property with a link to Maintenance. Each figure uses only the tenant's own leases, enrollment and property.
 
 #### Scenario: Balance owed
-- **WHEN** a tenant with $1,000.00 payable and rent due October 1 opens `/`
+- **WHEN** a tenant who owes $1,000.00 with rent due October 1 opens `/`
 - **THEN** the balance tile shows $1,000.00, "Due October 1, 2026" and a "Make a payment" link to `/payment`
 
 #### Scenario: Nothing owed
@@ -18,7 +18,7 @@ The system SHALL show a tenant three tiles on `/`: the balance owed across their
 - **THEN** the balance tile shows $0.00 and says nothing is due, with no payment link
 
 #### Scenario: Autopay on
-- **WHEN** the tenant is enrolled in autopay on a current lease
+- **WHEN** the tenant is enrolled in autopay on a current or upcoming lease
 - **THEN** the autopay tile shows "On" with a link to `/payment`; otherwise it shows "Off" and "Set up autopay"
 
 #### Scenario: Open requests
@@ -45,7 +45,7 @@ The system SHALL show a tenant a "Your lease" card for each current or upcoming 
 - **THEN** the dashboard shows the existing "no property" notice and no lease, balance or maintenance tiles
 
 ### Requirement: Admin needs-attention list
-The system SHALL show an admin on `/admin` a "Needs attention" card listing the number of open maintenance requests, ended leases whose deposit is still to settle, and autopay charges that failed or gave up and are still owed, each with a link to where it is handled. A row whose count is 0 is not shown; when all are 0 the card says nothing needs attention.
+The system SHALL show an admin on `/admin` a "Needs attention" card listing the number of open maintenance requests, ended leases whose deposit is still to settle, and leases whose latest autopay charge failed or gave up while money is still owed, each with a link to where it is handled. A row whose count is 0 is not shown; when all are 0 the card says nothing needs attention.
 
 #### Scenario: Counts
 - **WHEN** there are 3 open requests, 1 deposit to settle and no failed autopay charges

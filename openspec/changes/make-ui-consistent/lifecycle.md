@@ -2,7 +2,7 @@
 
 - Branch: `claude/make-ui-consistent`
 - Stage: 4 Review (scope change 2)
-- Review round: 2 of 5
+- Review round: 3 of 5
 - QA cycle: 1 of 3 (cycle 2 follows scope change 2)
 - Started: 2026-10-18
 - Issue: #154
@@ -143,6 +143,16 @@ Found while implementing and folded into the change:
   - The lockfile nit. npm 10.9 only cleared `"dev": true` on `@esbuild/*` platform packages. `esbuild` is already a production dependency on `develop` through `vite` and `tsx`, so production installs do not change.
 
   Checks: lint, check, 759 unit tests, build, and the affected e2e specs (55) pass.
+
+- Round 3 (2026-10-18, scope change 2): 0 blockers, 1 major, 3 minors, 1 nit. All fixed:
+  - Rendering tests for every dashboard and admin home scenario (the major).
+  - The autopay tile counts current or upcoming leases, and the spec now says so.
+  - Only the latest autopay charge counts as failed.
+  - `adminAttention` skips and logs an unreadable lease (allSettled).
+  - The dashboard loads each ledger once.
+  - The spec scenario says "owed".
+
+  Checks: lint, check and unit tests pass.
 
 ## Ship to develop
 - 2026-10-18: opened PR #175 into `develop`. Waiting on the required checks `tests` and `build_and_preview`, with a PR activity subscription. Next: merge with a merge commit once both are green, then stage 6.

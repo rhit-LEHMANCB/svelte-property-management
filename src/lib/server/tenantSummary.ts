@@ -1,5 +1,6 @@
 import { adminDB } from './admin';
 import { loadLeaseLedger } from './balance';
+import type { Ledger } from './billing';
 import { latestOpenCharge, leaseRefOf, loadCharges, ownEnrollment } from './autopayStore';
 import { inFlightCents } from './autopay';
 import {
@@ -21,7 +22,9 @@ type TenantLease = Awaited<ReturnType<typeof loadTenantLeases>>[number]['lease']
 export async function tenantLeaseSummaries(
 	uid: string,
 	userLeases: TenantLease[],
-	today = businessToday()
+	today = businessToday(),
+	/** Ledgers the caller has already loaded, by lease id, so they are not read twice. */
+	ledgers: Map<string, Ledger> = new Map()
 ) {
 	// Each lease has its own balance. An ended lease keeps its unpaid rent payable; an upcoming one
 	// can owe its deposit, or rent payable 7 days early.
@@ -29,7 +32,7 @@ export async function tenantLeaseSummaries(
 		userLeases.map(async (lease) => {
 			const leaseRef = leaseRefOf(lease.id);
 			const [ledger, enrollment, charges, bankPayments] = await Promise.all([
-				loadLeaseLedger(lease.id, lease),
+				ledgers.get(lease.id) ?? loadLeaseLedger(lease.id, lease),
 				ownEnrollment(leaseRef, uid),
 				loadCharges(leaseRef),
 				loadBankPayments(leaseRef)
