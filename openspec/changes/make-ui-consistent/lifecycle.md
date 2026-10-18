@@ -127,6 +127,9 @@ Found while implementing and folded into the change:
 
   Checks: lint, check, 759 unit tests, build, and the affected e2e specs (55) pass.
 
+## Ship to develop
+- 2026-10-18: opened PR #175 into `develop`. Waiting on the required checks `tests` and `build_and_preview`, with a PR activity subscription. Next: merge with a merge commit once both are green, then stage 6.
+
 ## Out-of-scope observations
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)
 
