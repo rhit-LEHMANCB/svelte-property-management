@@ -3,6 +3,10 @@
 	import { getModalStore, getToastStore, type ModalSettings } from '$lib/ui';
 	import { z } from 'zod';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
+	import PageBody from '$lib/Components/Shell/PageBody.svelte';
+	import Card from '$lib/Components/Shell/Card.svelte';
+	import FormActions from '$lib/Components/Shell/FormActions.svelte';
+	import Field from '$lib/Components/Forms/Field.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -37,7 +41,7 @@
 			} | null;
 		};
 	};
-	export let data: { leases: LeaseBalance[] };
+	let { data }: { data: { leases: LeaseBalance[] } } = $props();
 
 	// The due date is a calendar day (YYYY-MM-DD); parse it as local so it is not shifted a day.
 	const dueDateOf = (lease: LeaseBalance) =>
@@ -52,29 +56,34 @@
 		new Date(`${day}T00:00:00`).toLocaleString('en-us', { dateStyle: 'short' });
 
 	/** The autopay amount typed for each lease that is not enrolled yet (blank: the full balance). */
-	let autopayAmounts: Record<string, string> = {};
-	let busy = false;
+	let autopayAmounts = $state<Record<string, string>>({});
+	/** The problem with each lease's typed autopay amount, shown under the field after a try. */
+	let autopayProblems = $state<Record<string, string | undefined>>({});
+	let busy = $state(false);
 
 	const amountSchema = z
 		.number()
 		.gt(0, 'The amount must be greater than 0')
 		.multipleOf(0.01, 'The amount must be a multiple of 0.01');
 
-	/** A typed amount as dollars, null for blank, or undefined (after a toast) when it is not valid. */
-	function parseAmount(value: string | undefined): number | null | undefined {
-		if (value === undefined || String(value).trim() === '') return null;
-		const amount = parseFloat(String(value));
-		const result = amountSchema.safeParse(amount);
-		if (!result.success) {
-			errorToast(result.error.issues[0].message, toastStore);
-			return undefined;
-		}
-		return amount;
+	const isBlank = (value: string | undefined) => value === undefined || String(value).trim() === '';
+
+	/** Why a typed amount cannot be used, or undefined when it is blank or valid. */
+	function amountProblem(value: string | undefined): string | undefined {
+		if (isBlank(value)) return undefined;
+		const result = amountSchema.safeParse(parseFloat(String(value)));
+		return result.success ? undefined : result.error.issues[0].message;
 	}
 
+	/** A checked amount as dollars, or null for blank (the full balance). */
+	const parseAmount = (value: string | undefined) =>
+		isBlank(value) ? null : parseFloat(String(value));
+
 	async function startAutopay(lease: LeaseBalance) {
+		const problem = amountProblem(autopayAmounts[lease.id]);
+		autopayProblems[lease.id] = problem;
+		if (problem || busy) return;
 		const amount = parseAmount(autopayAmounts[lease.id]);
-		if (amount === undefined || busy) return;
 		busy = true;
 		try {
 			const response = await fetch('/api/autopay/setup', {
@@ -100,10 +109,10 @@
 			body: 'The most autopay charges for each due date. Leave it blank to pay the full balance.',
 			value: current ? (current / 100).toFixed(2) : '',
 			valueAttr: { type: 'number', step: '0.01', min: '0.01' },
+			validate: amountProblem,
 			response: async (response: string | false) => {
 				if (response === false) return;
 				const amount = parseAmount(response);
-				if (amount === undefined) return;
 				const result = await fetch('/api/autopay', {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
@@ -203,11 +212,10 @@
 	}
 </script>
 
-<div class="space-y-4 p-4 sm:p-6">
+<PageBody>
 	<PageHeader title="Payment" />
-	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-		<section class="card bg-surface-100-900 flex flex-col gap-4 p-4 sm:p-6">
-			<h2 class="h4">Your current balance</h2>
+	<div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+		<Card as="section" title="Your current balance">
 			{#if data.leases.length === 0}
 				<p role="status">
 					You have no lease to pay for. If you expect one, please contact your property manager.
@@ -278,7 +286,7 @@
 							aria-label={data.leases.length > 1
 								? `Make a Payment for ${lease.address}`
 								: undefined}
-							on:click={() => viewPaymentClicked(lease)}>Make a Payment</button
+							onclick={() => viewPaymentClicked(lease)}>Make a Payment</button
 						>
 					</div>
 					<div class="border-surface-300-700 flex flex-col gap-2 border-t pt-3" data-autopay>
@@ -300,12 +308,12 @@
 								<button
 									data-needs-hydration
 									class="btn preset-tonal"
-									on:click={() => changeAutopayAmount(lease)}>Change amount</button
+									onclick={() => changeAutopayAmount(lease)}>Change amount</button
 								>
 								<button
 									data-needs-hydration
 									class="btn preset-tonal-error"
-									on:click={() => turnOffAutopay(lease)}>Turn off autopay</button
+									onclick={() => turnOffAutopay(lease)}>Turn off autopay</button
 								>
 							</div>
 						{:else}
@@ -313,26 +321,39 @@
 								Save a card or bank account and we charge it on each due date. Bank accounts have no
 								fee; cards include a transaction fee of 3%.
 							</p>
-							<div class="flex flex-wrap items-end gap-2">
-								<label class="label w-48">
-									<span class="label-text">Amount (optional)</span>
-									<input
-										class="input"
-										type="number"
-										min="0.01"
-										step="0.01"
-										placeholder="Full balance"
-										bind:value={autopayAmounts[lease.id]}
-									/>
-								</label>
+							<div class="flex flex-wrap items-start gap-2">
+								<Field
+									label="Amount"
+									hint="(optional)"
+									class="w-48"
+									errors={autopayProblems[lease.id] ? [autopayProblems[lease.id]!] : undefined}
+								>
+									{#snippet children({ attrs, invalid })}
+										<input
+											{...attrs}
+											class="input"
+											class:input-error={invalid}
+											type="number"
+											min="0.01"
+											step="0.01"
+											placeholder="Full balance"
+											bind:value={autopayAmounts[lease.id]}
+											oninput={() => {
+												// Once shown, the message follows what is typed.
+												if (autopayProblems[lease.id])
+													autopayProblems[lease.id] = amountProblem(autopayAmounts[lease.id]);
+											}}
+										/>
+									{/snippet}
+								</Field>
 								<button
 									data-needs-hydration
-									class="btn preset-tonal"
+									class="btn preset-tonal mt-7"
 									disabled={busy}
 									aria-label={data.leases.length > 1
 										? `Set up autopay for ${lease.address}`
 										: undefined}
-									on:click={() => startAutopay(lease)}>Set up autopay</button
+									onclick={() => startAutopay(lease)}>Set up autopay</button
 								>
 							</div>
 						{/if}
@@ -355,15 +376,14 @@
 					</div>
 				</div>
 			{/each}
-		</section>
-		<section class="card bg-surface-100-900 flex flex-col gap-4 p-4 sm:p-6">
-			<h2 class="h4">Transaction History</h2>
+		</Card>
+		<Card as="section" title="Transaction History">
 			<p class="opacity-80">See past payments and manage payment methods in the Stripe portal.</p>
-			<div>
-				<button data-needs-hydration class="btn preset-tonal" on:click={startCustomerPortal}
+			<FormActions>
+				<button data-needs-hydration class="btn preset-tonal" onclick={startCustomerPortal}
 					>View Portal</button
 				>
-			</div>
-		</section>
+			</FormActions>
+		</Card>
 	</div>
-</div>
+</PageBody>

@@ -9,6 +9,7 @@
 	import RowMenu from '$lib/Components/DataList/RowMenu.svelte';
 	import EmptyState from '$lib/Components/DataList/EmptyState.svelte';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
+	import PageBody from '$lib/Components/Shell/PageBody.svelte';
 	import UsersListView from '$lib/Components/Users/UsersListView.svelte';
 	import { viewUserInfoModal } from '$lib/Hooks/modals';
 
@@ -17,14 +18,9 @@
 	const modalStore = getModalStore();
 	const toastStore = getToastStore();
 
-	async function handleResponse(response: string) {
+	async function handleResponse(response: string | false) {
+		// The dialog only closes with a valid email (see `validate`), or with false when dismissed.
 		if (!response) {
-			return;
-		}
-		try {
-			emailSchema.parse(response);
-		} catch {
-			errorToast('Please enter a valid email.', toastStore);
 			return;
 		}
 		const fetchResponse = await fetch('/api/user/add', {
@@ -47,6 +43,8 @@
 		title: 'Enter User Email',
 		body: 'Provide the email to be used for the new user.',
 		valueAttr: { type: 'text', minlength: 1, maxlength: 200, required: true },
+		validate: (value) =>
+			emailSchema.safeParse(value).success ? undefined : 'Please enter a valid email.',
 		response: handleResponse
 	};
 
@@ -74,7 +72,7 @@
 	}
 </script>
 
-<div class="space-y-4 p-4 sm:p-6">
+<PageBody>
 	<PageHeader title="Users" />
 	<UsersListView users={data.users}>
 		{#snippet toolbar()}
@@ -105,4 +103,4 @@
 			</EmptyState>
 		{/snippet}
 	</UsersListView>
-</div>
+</PageBody>

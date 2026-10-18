@@ -7,25 +7,33 @@
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
 	import { passwordChangeSchema } from '$lib/schemas';
+	import { errorsAfterSubmit } from '$lib/forms/errorsAfterSubmit';
+	import AuthCard from '$lib/Components/Shell/AuthCard.svelte';
+	import FormActions from '$lib/Components/Shell/FormActions.svelte';
+	import Field from '$lib/Components/Forms/Field.svelte';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 
+	// svelte-ignore state_referenced_locally
+	const { markSubmitted, shown: gate } = errorsAfterSubmit(data.form.posted);
+	// svelte-ignore state_referenced_locally
 	const { form, errors, validateForm, enhance } = superForm(data.form, {
-		customValidity: true,
 		validators: zodClient(passwordChangeSchema),
-		validationMethod: 'onblur',
 		// Never ask "Leave site?": the form is done with once the password has changed.
 		taintedMessage: false
 	});
+	const shown = gate(errors);
 
 	const toastStore = getToastStore();
 	const modalStore = getModalStore();
 
 	// The server load has already rejected links without a code or with another mode.
+	// svelte-ignore state_referenced_locally
 	const actionCode = data.oobCode;
 
 	async function handleVerifyPasswordReset(event: Event) {
 		event.preventDefault();
+		markSubmitted();
 
 		const result = await validateForm({ update: true });
 
@@ -61,44 +69,54 @@
 </script>
 
 <div class="flex h-full items-center justify-center overflow-y-auto p-4">
-	<form use:enhance class="card bg-surface-100-900 w-full max-w-md space-y-4 p-6 shadow-xl">
-		<h1 class="h3">Lehman Family LLC</h1>
-		<p>Please fill out the information below to create your new password.</p>
-		<label class="label"
-			><span class="label-text">New Password</span>
-			<input
-				name="newPassword"
-				bind:value={$form.newPassword}
-				class="input"
-				class:input-error={$errors.newPassword}
-				title="New Password"
-				type="password"
-				autocomplete="new-password"
-				aria-describedby="password-rules"
-			/></label
-		>
-		<ul id="password-rules" class="list-inside list-disc text-sm opacity-80">
-			<li>At least 8 characters</li>
-			<li>Less than 32 characters</li>
-			<li>One uppercase letter</li>
-			<li>One lowercase letter</li>
-			<li>A number or special character</li>
-		</ul>
-		<label class="label"
-			><span class="label-text">Verify Password</span><input
-				name="verifyPassword"
-				bind:value={$form.verifyPassword}
-				class="input"
-				class:input-error={$errors.verifyPassword}
-				title="Verify Password"
-				type="password"
-				autocomplete="new-password"
-			/></label
-		>
-		<button
-			data-needs-hydration
-			on:click={(event) => handleVerifyPasswordReset(event)}
-			class="btn preset-filled-primary-500 w-full">Change Password</button
-		>
-	</form>
+	<AuthCard>
+		<form use:enhance class="space-y-4" novalidate>
+			<div>
+				<h1 class="h3">Lehman Family LLC</h1>
+				<p class="opacity-80">Please fill out the information below to create your new password.</p>
+			</div>
+			<Field label="New Password" errors={$shown.newPassword} describedBy="password-rules">
+				{#snippet children({ attrs, invalid })}
+					<input
+						{...attrs}
+						name="newPassword"
+						bind:value={$form.newPassword}
+						class="input"
+						class:input-error={invalid}
+						title="New Password"
+						type="password"
+						autocomplete="new-password"
+					/>
+				{/snippet}
+			</Field>
+			<ul id="password-rules" class="list-inside list-disc text-sm opacity-80">
+				<li>At least 8 characters</li>
+				<li>Less than 32 characters</li>
+				<li>One uppercase letter</li>
+				<li>One lowercase letter</li>
+				<li>A number or special character</li>
+			</ul>
+			<Field label="Verify Password" errors={$shown.verifyPassword}>
+				{#snippet children({ attrs, invalid })}
+					<input
+						{...attrs}
+						name="verifyPassword"
+						bind:value={$form.verifyPassword}
+						class="input"
+						class:input-error={invalid}
+						title="Verify Password"
+						type="password"
+						autocomplete="new-password"
+					/>
+				{/snippet}
+			</Field>
+			<FormActions>
+				<button
+					data-needs-hydration
+					onclick={(event) => handleVerifyPasswordReset(event)}
+					class="btn preset-filled-primary-500 w-full">Change Password</button
+				>
+			</FormActions>
+		</form>
+	</AuthCard>
 </div>

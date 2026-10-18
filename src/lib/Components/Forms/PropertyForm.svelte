@@ -7,14 +7,20 @@
 	import { goto } from '$app/navigation';
 	import type { SuperValidated } from 'sveltekit-superforms';
 	import { getToastStore } from '$lib/ui';
+	import FormActions from '$lib/Components/Shell/FormActions.svelte';
+	import Field from './Field.svelte';
+	import { errorsAfterSubmit } from '$lib/forms/errorsAfterSubmit';
 
 	const toastStore = getToastStore();
 
-	export let data: SuperValidated<PropertySchema, string>;
+	let { data }: { data: SuperValidated<PropertySchema, string> } = $props();
 
+	// svelte-ignore state_referenced_locally
+	const { markSubmitted, shown: gate } = errorsAfterSubmit(data.posted);
+	// svelte-ignore state_referenced_locally
 	const { form, errors, enhance } = superForm(data, {
-		customValidity: true,
 		validators: zodClient(propertySchema),
+		onSubmit: () => markSubmitted(),
 		onUpdated({ form }) {
 			if (form.message === 'Form submitted') {
 				// Display the message using a toast library
@@ -26,135 +32,96 @@
 			}
 		}
 	});
+	const shown = gate(errors);
+
+	type TextName = 'title' | 'streetAddress' | 'apartmentInfo' | 'city' | 'state' | 'zip';
+	type NumberName = 'bedrooms' | 'bathrooms' | 'squareFeet';
 </script>
 
-<form method="POST" action="?/basicInfo" use:enhance class="">
-	<div class="flex flex-col gap-4">
-		<h2 class="h4">Basic Info</h2>
-		<div class="grid grid-cols-2 gap-4">
-			<label class="label"
-				><span>Title</span><input
-					name="title"
-					bind:value={$form.title}
-					class="input"
-					class:input-error={$errors.title}
-					title="Title"
-					type="text"
-				/></label
-			>
-			<label class="label"
-				><span>Rent</span>
+{#snippet textField(label: string, name: TextName)}
+	<Field {label} errors={$shown[name]}>
+		{#snippet children({ attrs, invalid })}
+			<input
+				{...attrs}
+				{name}
+				bind:value={$form[name]}
+				class="input"
+				class:input-error={invalid}
+				title={label}
+				type="text"
+			/>
+		{/snippet}
+	</Field>
+{/snippet}
+
+{#snippet numberField(label: string, name: NumberName, step?: string)}
+	<Field {label} errors={$shown[name]}>
+		{#snippet children({ attrs, invalid })}
+			<input
+				{...attrs}
+				{name}
+				bind:value={$form[name]}
+				class="input"
+				class:input-error={invalid}
+				title={label}
+				type="number"
+				{step}
+			/>
+		{/snippet}
+	</Field>
+{/snippet}
+
+<form method="POST" action="?/basicInfo" use:enhance class="space-y-4" novalidate>
+	<h2 class="h4">Basic Info</h2>
+	<div class="grid gap-4 sm:grid-cols-2">
+		{@render textField('Title', 'title')}
+		<Field label="Rent" errors={$shown.rent}>
+			{#snippet children({ attrs, invalid })}
 				<div class="flex items-center gap-2">
-					<IconCurrencyDollar />
+					<IconCurrencyDollar aria-hidden="true" />
 					<input
+						{...attrs}
 						name="rent"
 						bind:value={$form.rent}
 						class="input"
-						class:input-error={$errors.rent}
+						class:input-error={invalid}
 						title="Rent"
 						type="number"
 					/>
-				</div></label
-			>
-		</div>
-		<div>
-			<label class="label"
-				><span>Description</span><textarea
-					name="description"
-					bind:value={$form.description}
-					rows="4"
-					class="textarea"
-					class:input-error={$errors.description}
-					title="Description"></textarea></label
-			>
-		</div>
-		<div class="grid grid-cols-3 gap-4">
-			<label class="label"
-				><span>Bedrooms</span><input
-					name="bedrooms"
-					bind:value={$form.bedrooms}
-					class="input"
-					class:input-error={$errors.bedrooms}
-					title="Bedrooms"
-					type="number"
-				/></label
-			>
-			<label class="label"
-				><span>Bathrooms</span><input
-					name="bathrooms"
-					bind:value={$form.bathrooms}
-					class="input"
-					class:input-error={$errors.bathrooms}
-					title="Bathrooms"
-					type="number"
-					step="0.5"
-				/></label
-			>
-			<label class="label"
-				><span>Square Feet</span><input
-					name="squareFeet"
-					bind:value={$form.squareFeet}
-					class="input"
-					class:input-error={$errors.squareFeet}
-					title="Square Feet"
-					type="number"
-				/></label
-			>
-		</div>
-		<h2 class="h4">Address</h2>
-		<div class="grid md:grid-cols-2 gap-4">
-			<label class="label"
-				><span>Street Address</span><input
-					name="streetAddress"
-					bind:value={$form.streetAddress}
-					class="input"
-					class:input-error={$errors.streetAddress}
-					title="Street Address"
-				/></label
-			>
-			<label class="label"
-				><span>Apartment Info</span><input
-					name="apartmentInfo"
-					bind:value={$form.apartmentInfo}
-					class="input"
-					class:input-error={$errors.apartmentInfo}
-					title="Apartment Info"
-				/></label
-			>
-		</div>
-		<div class="grid md:grid-cols-2 gap-4">
-			<label class="label"
-				><span>City</span><input
-					name="city"
-					bind:value={$form.city}
-					class="input"
-					class:input-error={$errors.city}
-					title="City"
-				/></label
-			>
-			<div class="grid grid-cols-2 gap-4">
-				<label class="label"
-					><span>State</span><input
-						name="state"
-						bind:value={$form.state}
-						class="input"
-						class:input-error={$errors.state}
-						title="State"
-					/></label
-				>
-				<label class="label"
-					><span>Zip Code</span><input
-						name="zip"
-						bind:value={$form.zip}
-						class="input"
-						class:input-error={$errors.zip}
-						title="Zip Code"
-					/></label
-				>
-			</div>
-		</div>
-		<div class="justify-self-start">
-			<button type="submit" class="btn preset-filled-primary-500">Save</button>
+				</div>
+			{/snippet}
+		</Field>
+	</div>
+	<Field label="Description" errors={$shown.description}>
+		{#snippet children({ attrs, invalid })}
+			<textarea
+				{...attrs}
+				name="description"
+				bind:value={$form.description}
+				rows="4"
+				class="textarea"
+				class:input-error={invalid}
+				title="Description"></textarea>
+		{/snippet}
+	</Field>
+	<div class="grid gap-4 sm:grid-cols-3">
+		{@render numberField('Bedrooms', 'bedrooms')}
+		{@render numberField('Bathrooms', 'bathrooms', '0.5')}
+		{@render numberField('Square Feet', 'squareFeet')}
+	</div>
+	<h2 class="h4">Address</h2>
+	<div class="grid gap-4 md:grid-cols-2">
+		{@render textField('Street Address', 'streetAddress')}
+		{@render textField('Apartment Info', 'apartmentInfo')}
+	</div>
+	<div class="grid gap-4 md:grid-cols-2">
+		{@render textField('City', 'city')}
+		<div class="grid grid-cols-2 gap-4">
+			{@render textField('State', 'state')}
+			{@render textField('Zip Code', 'zip')}
 		</div>
 	</div>
+	<FormActions>
+		<button type="submit" class="btn preset-filled-primary-500">Save</button>
+	</FormActions>
 </form>

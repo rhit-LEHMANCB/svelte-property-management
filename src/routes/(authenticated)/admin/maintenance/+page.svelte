@@ -8,6 +8,7 @@
 	import DataList, { type DataColumn } from '$lib/Components/DataList/DataList.svelte';
 	import EmptyState from '$lib/Components/DataList/EmptyState.svelte';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
+	import PageBody from '$lib/Components/Shell/PageBody.svelte';
 	import { formatDateTime } from '$lib/Components/DataList/format';
 
 	let { data }: { data: PageData } = $props();
@@ -69,7 +70,7 @@
 	>
 {/snippet}
 
-<div class="space-y-8 p-4 sm:p-6">
+<PageBody>
 	<PageHeader title="Maintenance" />
 	<section class="space-y-3" aria-labelledby="open-requests">
 		<h2 id="open-requests" class="h4">Open Maintenance Requests</h2>
@@ -142,4 +143,4 @@
 			{/snippet}
 		</DataList>
 	</section>
-</div>
+</PageBody>

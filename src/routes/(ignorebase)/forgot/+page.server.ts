@@ -10,7 +10,7 @@ export const actions = {
 		const email = String(data.get('email') ?? '').trim();
 
 		if (!emailSchema.safeParse(email).success) {
-			return fail(400, { email, error: 'Please enter a valid email.' });
+			return fail(400, { email, field: 'email' as const, error: 'Please enter a valid email.' });
 		}
 
 		try {

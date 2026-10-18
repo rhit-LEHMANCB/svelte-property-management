@@ -4,6 +4,11 @@
 	import { getToastStore } from '$lib/ui';
 	import UserAvatar from '$lib/Components/Users/UserAvatar.svelte';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
+	import PageBody from '$lib/Components/Shell/PageBody.svelte';
+	import Card from '$lib/Components/Shell/Card.svelte';
+	import FormActions from '$lib/Components/Shell/FormActions.svelte';
+	import Field from '$lib/Components/Forms/Field.svelte';
+	import { errorsAfterSubmit } from '$lib/forms/errorsAfterSubmit';
 	import type { PageData } from './$types';
 	import { superForm } from 'sveltekit-superforms';
 	import { zod4Client as zodClient } from 'sveltekit-superforms/adapters';
@@ -11,25 +16,29 @@
 	import { enhance } from '$app/forms';
 	import { MaskedTextChangedListener } from 'ts-input-mask';
 	import { onMount } from 'svelte';
+	import type { HTMLInputAttributes } from 'svelte/elements';
 
 	const toastStore = getToastStore();
 
-	export let data: PageData;
-	let phoneInput: HTMLInputElement;
+	let { data }: { data: PageData } = $props();
+	let phoneInput = $state<HTMLInputElement>();
 
 	onMount(async () => {
-		MaskedTextChangedListener.installOn('([000]) [000]-[0000]', phoneInput);
+		if (phoneInput) MaskedTextChangedListener.installOn('([000]) [000]-[0000]', phoneInput);
 	});
 
+	// svelte-ignore state_referenced_locally
+	const { markSubmitted, shown: gate } = errorsAfterSubmit(data.form.posted);
+	// svelte-ignore state_referenced_locally
 	const {
 		form,
 		errors,
 		enhance: enhanceContact
 	} = superForm(data.form, {
-		customValidity: true,
 		// The default reset puts back the values the page first loaded with, which are stale after a save.
 		resetForm: false,
 		validators: zodClient(profileSchema),
+		onSubmit: () => markSubmitted(),
 		onUpdated({ form: updated }) {
 			if (updated.message === 'Form submitted') {
 				// Display the message using a toast library
@@ -40,10 +49,11 @@
 			}
 		}
 	});
+	const shown = gate(errors);
 
-	$: photoUrl = data.user.photoUrl;
+	const photoUrl = $derived(data.user.photoUrl);
 	// Changing the email asks for the current password.
-	$: emailChanged = $form.email !== data.form.data.email;
+	const emailChanged = $derived($form.email !== data.form.data.email);
 
 	async function handleResetPasswordClicked() {
 		const response = await fetch('/api/signin/reset', {
@@ -61,130 +71,112 @@
 	}
 </script>
 
-<div class="space-y-4 p-4 sm:p-6">
+{#snippet textField(
+	label: string,
+	name: 'firstName' | 'lastName' | 'email',
+	type: string,
+	autocomplete: HTMLInputAttributes['autocomplete']
+)}
+	<Field {label} errors={$shown[name]}>
+		{#snippet children({ attrs, invalid })}
+			<input
+				{...attrs}
+				{name}
+				bind:value={$form[name]}
+				{autocomplete}
+				class="input"
+				class:input-error={invalid}
+				title={label}
+				{type}
+			/>
+		{/snippet}
+	</Field>
+{/snippet}
+
+<PageBody>
 	<PageHeader title="Profile" />
-	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-		<div class="flex flex-col gap-2">
-			<div class="card bg-surface-100-900">
-				<form method="POST" action="?/contact" use:enhanceContact class="p-4 sm:p-6">
-					<h2 class="h4">Contact Info</h2>
-					<div class="mt-3 grid gap-3">
-						<div>
-							<label class="label"
-								><span class="label-text">First Name</span><input
-									name="firstName"
-									bind:value={$form.firstName}
-									class="input"
-									class:input-error={$errors.firstName}
-									title="First Name"
-									type="text"
-								/></label
-							>
-						</div>
-						<div>
-							<label class="label"
-								><span class="label-text">Last Name</span><input
-									name="lastName"
-									bind:value={$form.lastName}
-									class="input"
-									class:input-error={$errors.lastName}
-									title="Last Name"
-									type="text"
-								/></label
-							>
-						</div>
-						<div>
-							<label class="label"
-								><span class="label-text">Email</span><input
-									name="email"
-									bind:value={$form.email}
-									class="input"
-									class:input-error={$errors.email}
-									title="Email"
-									type="email"
-								/></label
-							>
-						</div>
-						{#if emailChanged}
-							<div>
-								<label class="label"
-									><span class="label-text">Current password (required to change your email)</span
-									><input
-										name="currentPassword"
-										bind:value={$form.currentPassword}
-										autocomplete="current-password"
-										class="input"
-										title="Current password"
-										type="password"
-									/></label
-								>
-							</div>
-						{/if}
-						<div>
-							<label class="label"
-								><span class="label-text">Phone Number</span><input
-									bind:this={phoneInput}
-									name="phoneNumber"
-									bind:value={$form.phoneNumber}
-									class="input"
-									class:input-error={$errors.phoneNumber}
-									title="Phone Number"
-									type="tel"
-								/></label
-							>
-						</div>
-					</div>
-					<button type="submit" class="btn preset-filled-primary-500 mt-5">Save</button>
-				</form>
-			</div>
-		</div>
-		<div class="flex flex-col gap-2">
-			<div class="card bg-surface-100-900">
+	<div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+		<Card title="Contact Info">
+			<form method="POST" action="?/contact" use:enhanceContact class="space-y-4" novalidate>
+				{@render textField('First Name', 'firstName', 'text', 'given-name')}
+				{@render textField('Last Name', 'lastName', 'text', 'family-name')}
+				{@render textField('Email', 'email', 'email', 'email')}
+				{#if emailChanged}
+					<Field label="Current password" hint="(required to change your email)">
+						{#snippet children({ attrs })}
+							<input
+								{...attrs}
+								name="currentPassword"
+								bind:value={$form.currentPassword}
+								autocomplete="current-password"
+								class="input"
+								title="Current password"
+								type="password"
+							/>
+						{/snippet}
+					</Field>
+				{/if}
+				<Field label="Phone Number" errors={$shown.phoneNumber}>
+					{#snippet children({ attrs, invalid })}
+						<input
+							{...attrs}
+							bind:this={phoneInput}
+							name="phoneNumber"
+							bind:value={$form.phoneNumber}
+							autocomplete="tel"
+							class="input"
+							class:input-error={invalid}
+							title="Phone Number"
+							type="tel"
+						/>
+					{/snippet}
+				</Field>
+				<FormActions>
+					<button type="submit" class="btn preset-filled-primary-500">Save</button>
+				</FormActions>
+			</form>
+		</Card>
+		<div class="flex flex-col gap-4">
+			<Card title="Profile Picture">
 				<form
-					class="p-4 sm:p-6"
+					class="space-y-4"
 					use:enhance
 					method="POST"
 					action="?/photo"
 					enctype="multipart/form-data"
 				>
-					<h2 class="h4">Profile Picture</h2>
-					<div class="flex flex-col gap-5">
-						<div class="self-center">
-							<UserAvatar
-								src={photoUrl}
-								name="{data.user.firstName} {data.user.lastName}"
-								class="size-32"
-							/>
-						</div>
-						<div class="flex flex-row flex-wrap gap-2">
-							<input
-								aria-label="Profile picture file"
-								name="photo"
-								class="input"
-								type="file"
-								accept="image/png, image/jpeg, image/gif, image/webp"
-							/>
-							<button
-								type="submit"
-								on:click={() => {
-									invalidateAll();
-								}}
-								class="btn preset-filled-primary-500">Upload</button
-							>
-						</div>
+					<div class="flex justify-center">
+						<UserAvatar
+							src={photoUrl}
+							name="{data.user.firstName} {data.user.lastName}"
+							class="size-32"
+						/>
 					</div>
-				</form>
-			</div>
-			<div class="card bg-surface-100-900">
-				<div class="p-4 sm:p-6">
-					<h2 class="h4">Password</h2>
-					<div>
-						<button on:click={handleResetPasswordClicked} class="btn preset-filled-primary-500 mt-5"
-							>Reset</button
+					<input
+						aria-label="Profile picture file"
+						name="photo"
+						class="input"
+						type="file"
+						accept="image/png, image/jpeg, image/gif, image/webp"
+					/>
+					<FormActions>
+						<button
+							type="submit"
+							onclick={() => {
+								invalidateAll();
+							}}
+							class="btn preset-filled-primary-500">Upload</button
 						>
-					</div>
-				</div>
-			</div>
+					</FormActions>
+				</form>
+			</Card>
+			<Card title="Password">
+				<FormActions>
+					<button onclick={handleResetPasswordClicked} class="btn preset-filled-primary-500"
+						>Reset</button
+					>
+				</FormActions>
+			</Card>
 		</div>
 	</div>
-</div>
+</PageBody>
