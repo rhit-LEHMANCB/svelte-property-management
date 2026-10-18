@@ -4,6 +4,9 @@
 	import { errorToast, successToast } from '$lib/Hooks/toasts';
 	import { refresh } from '$lib/Hooks/refresh';
 	import { getToastStore } from '$lib/ui';
+	import Field from '$lib/Components/Forms/Field.svelte';
+	import FormActions from '$lib/Components/Shell/FormActions.svelte';
+	import Notice from '$lib/Components/Shell/Notice.svelte';
 
 	let { leaseId, billing, ended }: { leaseId: string; billing: LeaseBilling; ended: boolean } =
 		$props();
@@ -143,31 +146,40 @@
 	{/if}
 
 	{#if settling}
-		<form class="card preset-tonal space-y-3 p-3" onsubmit={saveSettlement} novalidate>
+		<form class="card preset-tonal space-y-3 p-4" onsubmit={saveSettlement} novalidate>
 			<p class="font-semibold">
 				Settle the {money(billing.deposit.paidCents)} deposit paid. Return the money outside the app;
 				this records what was returned and kept.
 			</p>
-			<label class="label">
-				<span>Returned to the tenants</span>
-				<input
-					class="input"
-					class:input-error={errors.returned}
-					type="number"
-					step="0.01"
-					min="0"
-					bind:value={returned}
-				/>
-				{#if errors.returned}<span class="text-error-600-400">{errors.returned}</span>{/if}
-			</label>
+			<Field
+				label="Returned to the tenants"
+				errors={errors.returned ? [errors.returned] : undefined}
+			>
+				{#snippet children({ attrs, invalid })}
+					<input
+						{...attrs}
+						class="input"
+						class:input-error={invalid}
+						type="number"
+						step="0.01"
+						min="0"
+						bind:value={returned}
+					/>
+				{/snippet}
+			</Field>
 			<fieldset class="space-y-2">
 				<legend class="label-text">Kept (deductions)</legend>
 				{#each deductions, index}
+					{@const problem = errors.deductions?.[index]}
+					{@const problemId = `${leaseId}-deduction-${index}-error`}
 					<div class="flex flex-wrap items-start gap-2">
 						<label class="w-32">
 							<span class="sr-only">Deduction {index + 1} amount</span>
 							<input
 								class="input"
+								class:input-error={problem}
+								aria-invalid={problem ? 'true' : undefined}
+								aria-describedby={problem ? problemId : undefined}
 								type="number"
 								step="0.01"
 								min="0"
@@ -179,6 +191,9 @@
 							<span class="sr-only">Deduction {index + 1} reason</span>
 							<input
 								class="input"
+								class:input-error={problem}
+								aria-invalid={problem ? 'true' : undefined}
+								aria-describedby={problem ? problemId : undefined}
 								type="text"
 								maxlength="500"
 								placeholder="Reason"
@@ -192,9 +207,9 @@
 							onclick={() => (deductions = deductions.filter((_, i) => i !== index))}
 							><IconTrash size={18} aria-hidden="true" /></button
 						>
-						{#if errors.deductions?.[index]}<span class="text-error-600-400 w-full"
-								>{errors.deductions[index]}</span
-							>{/if}
+						{#if problem}<p id={problemId} class="text-error-800-200 w-full" data-field-error>
+								{problem}
+							</p>{/if}
 					</div>
 				{/each}
 				<button
@@ -204,15 +219,15 @@
 					><IconPlus size={16} aria-hidden="true" />Add deduction</button
 				>
 			</fieldset>
-			{#if errors.total}<p class="text-error-600-400" role="alert">{errors.total}</p>{/if}
-			<div class="flex gap-2">
+			{#if errors.total}<Notice tone="error"><p>{errors.total}</p></Notice>{/if}
+			<FormActions>
 				<button type="submit" class="btn btn-sm preset-filled-primary-500" disabled={busy}
 					>Save settlement</button
 				>
 				<button type="button" class="btn btn-sm preset-tonal" onclick={() => (settling = false)}
 					>Cancel</button
 				>
-			</div>
+			</FormActions>
 		</form>
 	{/if}
 </div>

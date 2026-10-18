@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { ADMIN, PROPERTY, TENANT } from '../support/constants';
+import { ADMIN, LEASE_ID, PROPERTY, TENANT } from '../support/constants';
 import { adminDb } from '../support/admin';
 import { contrastViolations } from '../support/contrast';
 import { signIn } from '../support/helpers';
@@ -75,6 +75,15 @@ async function scanPages(page: Page) {
 	).toBeVisible();
 	await check(page, 'closed requests with address links');
 	await adminDb().doc('maintenance/e2e-contrast-closed').delete();
+	// Breadcrumbs, and a form showing field errors under its fields.
+	await page.goto(`/admin/properties/${PROPERTY.id}/leases/${LEASE_ID}`);
+	await page.waitForLoadState('networkidle');
+	await check(page, 'edit lease with breadcrumbs');
+	await page.goto(`/admin/properties/${PROPERTY.id}/leases/new`);
+	await page.waitForLoadState('networkidle');
+	await page.getByRole('button', { name: 'Save lease' }).click();
+	await expect(page.locator('[data-field-error]').first()).toBeVisible();
+	await check(page, 'new lease with field errors');
 	await page.context().clearCookies();
 
 	await signIn(page, TENANT);

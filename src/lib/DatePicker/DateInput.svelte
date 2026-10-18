@@ -1,27 +1,35 @@
 <script lang="ts">
+	import type { HTMLInputAttributes } from 'svelte/elements';
 	import { formatDate } from './date-utils';
 
-	export let value: Date;
-
-	export let name = '';
-
-	export let title = '';
-
-	export let errors: string[] | undefined;
+	let {
+		value = $bindable(),
+		name = '',
+		title = '',
+		invalid = false,
+		...rest
+	}: {
+		value: Date;
+		name?: string;
+		title?: string;
+		/** Shows the error outline; the message itself is rendered by the surrounding Field. */
+		invalid?: boolean;
+	} & Omit<HTMLInputAttributes, 'value' | 'type'> = $props();
 
 	const onChange = (newValue: string) => {
 		value = new Date(newValue.replace(/-/g, '/'));
 	};
 
-	$: convertedValue = value ? formatDate(value) : '';
+	const convertedValue = $derived(value ? formatDate(value) : '');
 </script>
 
 <input
+	{...rest}
 	{name}
-	on:input={(e) => onChange(e.currentTarget.value)}
-	bind:value={convertedValue}
+	oninput={(e) => onChange(e.currentTarget.value)}
+	value={convertedValue}
 	class="input"
-	class:input-error={errors}
+	class:input-error={invalid}
 	{title}
 	type="date"
 />

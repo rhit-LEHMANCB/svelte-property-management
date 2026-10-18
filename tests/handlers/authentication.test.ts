@@ -348,7 +348,7 @@ describe('authentication: forgot password page (forgot page action)', () => {
 			const result = await call(forgotActions.default, { form: { email } });
 
 			expect(result.status).toBe(400);
-			expect(result.data).toEqual({ email, error: 'Please enter a valid email.' });
+			expect(result.data).toEqual({ email, field: 'email', error: 'Please enter a valid email.' });
 			expect(services.sendPasswordResetEmail).not.toHaveBeenCalled();
 		}
 	);

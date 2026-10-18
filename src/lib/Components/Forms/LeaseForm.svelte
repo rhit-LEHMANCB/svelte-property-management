@@ -6,6 +6,10 @@
 	import { leaseSchema, type LeaseInput } from '$lib/schemas';
 	import type { LeaseFormMessage } from '$lib/leaseTypes';
 	import { defaultLateFee } from '$lib/lateFee';
+	import FormActions from '$lib/Components/Shell/FormActions.svelte';
+	import Notice from '$lib/Components/Shell/Notice.svelte';
+	import Field, { type FieldAttrs } from './Field.svelte';
+	import { errorsAfterSubmit } from '$lib/forms/errorsAfterSubmit';
 
 	let {
 		data,
@@ -23,12 +27,16 @@
 	const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 
 	// svelte-ignore state_referenced_locally
+	const { markSubmitted, shown: gate } = errorsAfterSubmit(data.posted);
+	// svelte-ignore state_referenced_locally
 	const { form, errors, message, enhance, submitting } = superForm(data, {
 		validators: zodClient(leaseSchema),
 		// Plain form posts: the email rows go as repeated `emails` fields, next to the PDF file.
 		dataType: 'form',
-		taintedMessage: false
+		taintedMessage: false,
+		onSubmit: () => markSubmitted()
 	});
+	const shown = gate(errors);
 
 	let formElement = $state<HTMLFormElement>();
 	let documentError = $state('');
@@ -72,23 +80,61 @@
 	});
 </script>
 
+{#snippet moneyInput(
+	attrs: FieldAttrs,
+	invalid: boolean,
+	name: 'rent' | 'deposit' | 'lateFee',
+	oninput?: (event: Event) => void
+)}
+	<div class="flex items-center gap-2">
+		<IconCurrencyDollar aria-hidden="true" />
+		<input
+			{...attrs}
+			{name}
+			bind:value={$form[name]}
+			{oninput}
+			class="input"
+			class:input-error={invalid}
+			type="number"
+			step="0.01"
+			min="0"
+		/>
+	</div>
+{/snippet}
+
+{#snippet dateInput(
+	attrs: FieldAttrs,
+	invalid: boolean,
+	name: 'startDate' | 'endDate' | 'depositDueDate'
+)}
+	<input
+		{...attrs}
+		{name}
+		bind:value={$form[name]}
+		class="input"
+		class:input-error={invalid}
+		type="date"
+	/>
+{/snippet}
+
 <form
 	bind:this={formElement}
 	method="POST"
 	use:enhance
 	enctype="multipart/form-data"
-	class="flex flex-col gap-4"
+	class="space-y-4"
 	novalidate
 >
 	{#if $message?.type === 'conflicts'}
-		<div class="card preset-tonal-error p-4" role="alert">
+		<Notice tone="error">
 			<p class="font-semibold">This lease cannot be saved:</p>
 			<ul class="list-disc pl-5">
 				{#each $message.problems as problem}<li>{problem.message}</li>{/each}
 			</ul>
-		</div>
+		</Notice>
 	{:else if $message?.type === 'overlap'}
-		<div class="card preset-tonal-warning space-y-3 p-4" role="alert">
+		<!-- Urgent: saving stopped and waits for the admin's answer. -->
+		<Notice tone="warning" urgent>
 			<p class="font-semibold">These dates overlap another lease at this property:</p>
 			<ul class="list-disc pl-5">
 				{#each $message.overlapping as other}
@@ -105,11 +151,11 @@
 				onclick={saveAnyway}
 				disabled={$submitting}>Save anyway</button
 			>
-		</div>
+		</Notice>
 	{:else if $message?.type === 'document' || $message?.type === 'error'}
-		<div class="card preset-tonal-error p-4" role="alert">{$message.text}</div>
+		<Notice tone="error"><p>{$message.text}</p></Notice>
 	{:else if $message?.type === 'emailFailures'}
-		<div class="card preset-tonal-warning space-y-2 p-4" role="alert">
+		<Notice tone="warning" urgent>
 			<p class="font-semibold">The lease was saved, but these welcome emails were not sent:</p>
 			<ul class="list-disc pl-5">
 				{#each $message.emails as email}<li>{email}</li>{/each}
@@ -117,130 +163,67 @@
 			<p>They can set a password with "Forgot password" on the sign-in page.</p>
 			<!-- The lease is saved, so the form is gone: saving again would make a second lease. -->
 			<a class="anchor" href="/admin/properties/{propertyId}/edit?tab=leases">Back to leases</a>
-		</div>
+		</Notice>
 	{/if}
 
 	{#if $message?.type !== 'emailFailures'}
 		<input type="hidden" name="confirmOverlap" value={$form.confirmOverlap ? 'true' : ''} />
 
 		<div class="grid gap-4 md:grid-cols-3">
-			<label class="label">
-				<span>Monthly rent</span>
-				<div class="flex items-center gap-2">
-					<IconCurrencyDollar aria-hidden="true" />
-					<input
-						name="rent"
-						bind:value={$form.rent}
-						oninput={rentChanged}
-						class="input"
-						class:input-error={$errors.rent}
-						aria-invalid={$errors.rent ? 'true' : undefined}
-						type="number"
-						step="0.01"
-						min="0"
-					/>
-				</div>
-				{#if $errors.rent}<span class="text-error-600-400 text-sm">{$errors.rent[0]}</span>{/if}
-			</label>
-			<label class="label">
-				<span>Start date</span>
-				<input
-					name="startDate"
-					bind:value={$form.startDate}
-					class="input"
-					class:input-error={$errors.startDate}
-					aria-invalid={$errors.startDate ? 'true' : undefined}
-					type="date"
-				/>
-				{#if $errors.startDate}<span class="text-error-600-400 text-sm">{$errors.startDate[0]}</span
-					>{/if}
-			</label>
-			<label class="label">
-				<span>End date <span class="opacity-70">(leave empty for month to month)</span></span>
-				<input
-					name="endDate"
-					bind:value={$form.endDate}
-					class="input"
-					class:input-error={$errors.endDate}
-					aria-invalid={$errors.endDate ? 'true' : undefined}
-					type="date"
-				/>
-				{#if $errors.endDate}<span class="text-error-600-400 text-sm">{$errors.endDate[0]}</span
-					>{/if}
-			</label>
+			<Field label="Monthly rent" errors={$shown.rent}>
+				{#snippet children({ attrs, invalid })}
+					{@render moneyInput(attrs, invalid, 'rent', rentChanged)}
+				{/snippet}
+			</Field>
+			<Field label="Start date" errors={$shown.startDate}>
+				{#snippet children({ attrs, invalid })}
+					{@render dateInput(attrs, invalid, 'startDate')}
+				{/snippet}
+			</Field>
+			<Field label="End date" hint="(leave empty for month to month)" errors={$shown.endDate}>
+				{#snippet children({ attrs, invalid })}
+					{@render dateInput(attrs, invalid, 'endDate')}
+				{/snippet}
+			</Field>
 		</div>
 
 		<fieldset class="space-y-2">
 			<legend class="label-text">Deposit and late fees</legend>
 			<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-				<label class="label">
-					<span>Security deposit <span class="opacity-70">(optional)</span></span>
-					<div class="flex items-center gap-2">
-						<IconCurrencyDollar aria-hidden="true" />
+				<Field label="Security deposit" hint="(optional)" errors={$shown.deposit}>
+					{#snippet children({ attrs, invalid })}
+						{@render moneyInput(attrs, invalid, 'deposit')}
+					{/snippet}
+				</Field>
+				<Field
+					label="Deposit due"
+					hint="(empty: when the lease begins)"
+					errors={$shown.depositDueDate}
+				>
+					{#snippet children({ attrs, invalid })}
+						{@render dateInput(attrs, invalid, 'depositDueDate')}
+					{/snippet}
+				</Field>
+				<Field label="Late fee" errors={$shown.lateFee}>
+					{#snippet children({ attrs, invalid })}
+						{@render moneyInput(attrs, invalid, 'lateFee', () => (lateFeeEdited = true))}
+					{/snippet}
+				</Field>
+				<Field label="Grace days" errors={$shown.graceDays}>
+					{#snippet children({ attrs, invalid })}
 						<input
-							name="deposit"
-							bind:value={$form.deposit}
+							{...attrs}
+							name="graceDays"
+							bind:value={$form.graceDays}
 							class="input"
-							class:input-error={$errors.deposit}
-							aria-invalid={$errors.deposit ? 'true' : undefined}
+							class:input-error={invalid}
 							type="number"
-							step="0.01"
+							step="1"
 							min="0"
+							max="31"
 						/>
-					</div>
-					{#if $errors.deposit}<span class="text-error-600-400 text-sm">{$errors.deposit[0]}</span
-						>{/if}
-				</label>
-				<label class="label">
-					<span>Deposit due <span class="opacity-70">(empty: when the lease begins)</span></span>
-					<input
-						name="depositDueDate"
-						bind:value={$form.depositDueDate}
-						class="input"
-						class:input-error={$errors.depositDueDate}
-						aria-invalid={$errors.depositDueDate ? 'true' : undefined}
-						type="date"
-					/>
-					{#if $errors.depositDueDate}<span class="text-error-600-400 text-sm"
-							>{$errors.depositDueDate[0]}</span
-						>{/if}
-				</label>
-				<label class="label">
-					<span>Late fee</span>
-					<div class="flex items-center gap-2">
-						<IconCurrencyDollar aria-hidden="true" />
-						<input
-							name="lateFee"
-							bind:value={$form.lateFee}
-							oninput={() => (lateFeeEdited = true)}
-							class="input"
-							class:input-error={$errors.lateFee}
-							aria-invalid={$errors.lateFee ? 'true' : undefined}
-							type="number"
-							step="0.01"
-							min="0"
-						/>
-					</div>
-					{#if $errors.lateFee}<span class="text-error-600-400 text-sm">{$errors.lateFee[0]}</span
-						>{/if}
-				</label>
-				<label class="label">
-					<span>Grace days</span>
-					<input
-						name="graceDays"
-						bind:value={$form.graceDays}
-						class="input"
-						class:input-error={$errors.graceDays}
-						aria-invalid={$errors.graceDays ? 'true' : undefined}
-						type="number"
-						step="1"
-						min="0"
-						max="31"
-					/>
-					{#if $errors.graceDays}<span class="text-error-600-400 text-sm"
-							>{$errors.graceDays[0]}</span
-						>{/if}
-				</label>
+					{/snippet}
+				</Field>
 			</div>
 			<p class="text-sm opacity-80">
 				The late fee is charged once for each month whose rent is not paid in full by the end of the
@@ -257,22 +240,25 @@
 			</p>
 			{#each $form.emails, index}
 				<div class="flex items-start gap-2">
-					<label class="min-w-0 flex-auto">
-						<span class="sr-only">Tenant email {index + 1}</span>
-						<input
-							name="emails"
-							bind:value={$form.emails[index]}
-							class="input"
-							class:input-error={$errors.emails?.[index]}
-							aria-invalid={$errors.emails?.[index] ? 'true' : undefined}
-							type="email"
-							autocomplete="off"
-							placeholder="tenant@example.com"
-						/>
-						{#if $errors.emails?.[index]}<span class="text-error-600-400 text-sm"
-								>{$errors.emails[index]?.[0]}</span
-							>{/if}
-					</label>
+					<Field
+						label="Tenant email {index + 1}"
+						srOnlyLabel
+						class="min-w-0 flex-auto"
+						errors={$shown.emails?.[index]}
+					>
+						{#snippet children({ attrs, invalid })}
+							<input
+								{...attrs}
+								name="emails"
+								bind:value={$form.emails[index]}
+								class="input"
+								class:input-error={invalid}
+								type="email"
+								autocomplete="off"
+								placeholder="tenant@example.com"
+							/>
+						{/snippet}
+					</Field>
 					<button
 						type="button"
 						class="btn-icon preset-tonal"
@@ -281,35 +267,42 @@
 					>
 				</div>
 			{/each}
-			{#if $errors.emails?._errors}<p class="text-error-600-400 text-sm">
-					{$errors.emails._errors[0]}
+			{#if $shown.emails?._errors}<p class="text-error-800-200 text-sm" data-field-error>
+					{$shown.emails._errors[0]}
 				</p>{/if}
 			<button type="button" class="btn btn-sm preset-tonal" onclick={addEmail}
 				><IconPlus size={16} aria-hidden="true" />Add tenant</button
 			>
 		</fieldset>
 
-		<label class="label">
-			<span>Lease document (PDF, up to 10 MB)</span>
-			{#if documentName}
-				<span class="text-sm opacity-80">Current: {documentName}. Choose a file to replace it.</span
-				>
-			{/if}
-			<input
-				name="document"
-				class="input"
-				type="file"
-				accept="application/pdf,.pdf"
-				onchange={checkDocument}
-			/>
-			{#if documentError}<span class="text-error-600-400 text-sm">{documentError}</span>{/if}
-		</label>
+		<Field
+			label="Lease document"
+			hint="(PDF, up to 10 MB)"
+			errors={documentError ? [documentError] : undefined}
+		>
+			{#snippet children({ attrs, invalid })}
+				{#if documentName}
+					<span class="block text-sm opacity-80"
+						>Current: {documentName}. Choose a file to replace it.</span
+					>
+				{/if}
+				<input
+					{...attrs}
+					name="document"
+					class="input"
+					class:input-error={invalid}
+					type="file"
+					accept="application/pdf,.pdf"
+					onchange={checkDocument}
+				/>
+			{/snippet}
+		</Field>
 
-		<div class="flex gap-3">
+		<FormActions>
 			<button type="submit" class="btn preset-filled-primary-500" disabled={$submitting}
 				>Save lease</button
 			>
 			<a class="btn preset-tonal" href="/admin/properties/{propertyId}/edit?tab=leases">Cancel</a>
-		</div>
+		</FormActions>
 	{/if}
 </form>

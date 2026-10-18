@@ -46,5 +46,18 @@ export default ts.config(
 		languageOptions: {
 			parserOptions: { parser: ts.parser }
 		}
+	},
+	{
+		// Svelte 5 event attributes only: `on:click` and friends are Svelte 4 syntax.
+		files: ['**/*.svelte'],
+		rules: {
+			'no-restricted-syntax': [
+				'error',
+				{
+					selector: 'SvelteDirective[kind="EventHandler"]',
+					message: 'Use Svelte 5 event attributes (onclick), not on:click.'
+				}
+			]
+		}
 	}
 );

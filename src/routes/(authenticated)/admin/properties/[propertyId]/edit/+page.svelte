@@ -8,16 +8,12 @@
 	import { page } from '$app/state';
 	import { Tabs } from '@skeletonlabs/skeleton-svelte';
 	import { getToastStore } from '$lib/ui';
-	import {
-		IconArrowLeft,
-		IconFileText,
-		IconInfoCircle,
-		IconPhoto,
-		IconPlus
-	} from '@tabler/icons-svelte';
+	import { IconFileText, IconInfoCircle, IconPhoto, IconPlus } from '@tabler/icons-svelte';
 	import type { PhotoItem } from '../../../../../../app';
 	import EmptyState from '$lib/Components/DataList/EmptyState.svelte';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
+	import PageBody from '$lib/Components/Shell/PageBody.svelte';
+	import Card from '$lib/Components/Shell/Card.svelte';
 	import LeaseBilling from '$lib/Components/Leases/LeaseBilling.svelte';
 
 	let { data }: { data: PageData } = $props();
@@ -40,8 +36,7 @@
 	const money = (amount: number) =>
 		amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 
-	async function sortList(e: CustomEvent) {
-		const newList = e.detail;
+	async function sortList(newList: PhotoItem[]) {
 		reordered = newList;
 		const response = await fetch(`/api/property/${propertyId}/photos`, {
 			method: 'POST',
@@ -82,12 +77,14 @@
 	}
 </script>
 
-<div class="space-y-4 p-4 sm:p-6">
-	<PageHeader title={data.form.data.title}>
-		<a href="/admin/properties" class="btn btn-sm preset-tonal order-first"
-			><IconArrowLeft class="size-4" aria-hidden="true" />Properties</a
-		>
-	</PageHeader>
+<PageBody>
+	<PageHeader
+		title={data.form.data.title}
+		breadcrumbs={[
+			{ label: 'Properties', href: '/admin/properties' },
+			{ label: data.form.data.title }
+		]}
+	/>
 
 	<!-- Tabs: arrow keys move between tabs; only the selected panel is rendered. -->
 	<Tabs value={tab} onValueChange={(details) => (tab = details.value)}>
@@ -105,56 +102,59 @@
 		</Tabs.List>
 		<Tabs.Content value="info" class="pt-4">
 			{#if tab === 'info'}
-				<div class="card bg-surface-100-900 p-4 sm:p-6">
+				<Card>
 					<PropertyForm data={data.form} />
-				</div>
+				</Card>
 			{/if}
 		</Tabs.Content>
 		<Tabs.Content value="photos" class="pt-4">
 			{#if tab === 'photos'}
-				<form
-					class="card bg-surface-100-900 flex flex-col gap-4 p-4 sm:p-6"
-					use:enhance
-					method="POST"
-					action="?/photos"
-					enctype="multipart/form-data"
-				>
-					<h2 class="h4">Photos</h2>
-					<div class="flex flex-wrap items-center gap-3">
-						<label class="label min-w-0 flex-auto">
-							<span class="sr-only">Photos to upload</span>
-							<input
-								name="photos"
-								class="input"
-								type="file"
-								multiple
-								accept="image/png, image/jpeg, image/gif, image/webp"
-							/>
-						</label>
-						<button type="submit" class="btn preset-filled-primary-500">Add</button>
-					</div>
-					<SortablePhotos list={photos} on:sort={sortList} let:item let:index>
-						<div class="relative">
-							<div class="flex size-40 items-center justify-center overflow-hidden">
-								<img
-									src={item.photoUrl}
-									alt="Photo {index + 1}"
-									onerror={(ev) => handleError(ev, item)}
+				<Card title="Photos">
+					<form
+						class="space-y-4"
+						use:enhance
+						method="POST"
+						action="?/photos"
+						enctype="multipart/form-data"
+					>
+						<div class="flex flex-wrap items-center gap-2">
+							<label class="label min-w-0 flex-auto">
+								<span class="sr-only">Photos to upload</span>
+								<input
+									name="photos"
+									class="input"
+									type="file"
+									multiple
+									accept="image/png, image/jpeg, image/gif, image/webp"
 								/>
-							</div>
-							<button
-								data-needs-hydration
-								type="button"
-								onclick={() => deleteLink(item)}
-								aria-label="Delete photo {index + 1}"
-								class="chip preset-filled-error-500 absolute -right-2 -bottom-3">Delete</button
-							>
-							<span class="badge-icon preset-filled absolute -top-3 -left-3" aria-hidden="true"
-								>{index + 1}</span
-							>
+							</label>
+							<button type="submit" class="btn preset-filled-primary-500">Add</button>
 						</div>
-					</SortablePhotos>
-				</form>
+						<SortablePhotos list={photos} onsort={sortList}>
+							{#snippet children(item, index)}
+								<div class="relative">
+									<div class="flex size-40 items-center justify-center overflow-hidden">
+										<img
+											src={item.photoUrl}
+											alt="Photo {index + 1}"
+											onerror={(ev) => handleError(ev, item)}
+										/>
+									</div>
+									<button
+										data-needs-hydration
+										type="button"
+										onclick={() => deleteLink(item)}
+										aria-label="Delete photo {index + 1}"
+										class="chip preset-filled-error-500 absolute -right-2 -bottom-3">Delete</button
+									>
+									<span class="badge-icon preset-filled absolute -top-3 -left-3" aria-hidden="true"
+										>{index + 1}</span
+									>
+								</div>
+							{/snippet}
+						</SortablePhotos>
+					</form>
+				</Card>
 			{/if}
 		</Tabs.Content>
 		<Tabs.Content value="leases" class="space-y-4 pt-4">
@@ -172,7 +172,10 @@
 				{:else}
 					<ul class="space-y-3" aria-label="Leases">
 						{#each data.leases as lease (lease.id)}
-							<li class="card bg-surface-100-900 flex flex-wrap items-start gap-4 p-4">
+							<li
+								class="card bg-surface-100-900 flex flex-wrap items-start gap-4 p-4 sm:p-6"
+								data-card
+							>
 								<div class="min-w-0 flex-auto space-y-1">
 									<div class="flex flex-wrap items-center gap-2">
 										<span class="badge capitalize {statusClass[lease.status]}">{lease.status}</span>
@@ -243,4 +246,4 @@
 			{/if}
 		</Tabs.Content>
 	</Tabs>
-</div>
+</PageBody>

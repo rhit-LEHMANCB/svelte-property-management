@@ -1,5 +1,5 @@
 import type { PageServerLoad } from './$types';
-import { message, superValidate } from 'sveltekit-superforms/server';
+import { message, setError, superValidate } from 'sveltekit-superforms/server';
 import { zod4 as zod } from 'sveltekit-superforms/adapters';
 import { adminAuth, adminDB, adminStorage } from '$lib/server/admin';
 import { error, fail } from '@sveltejs/kit';
@@ -50,7 +50,11 @@ export const actions = {
 				return unverified();
 			}
 			if (!check || ('error' in check && check.error === 'credentials')) {
-				return message(form, 'Enter your current password to change your email.', { status: 400 });
+				return setError(
+					form,
+					'currentPassword',
+					'Enter your current password to change your email.'
+				);
 			}
 			if ('error' in check) {
 				return unverified();

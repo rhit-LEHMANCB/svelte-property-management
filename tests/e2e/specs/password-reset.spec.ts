@@ -61,12 +61,11 @@ test.describe('authentication: password reset completion', () => {
 		await page.getByRole('button', { name: 'Change Password' }).click();
 
 		await expect
-			.poll(() =>
-				page
-					.getByTitle('Verify Password')
-					.evaluate((el) => (el as HTMLInputElement).validationMessage)
-			)
-			.toBe('Passwords must match');
+			.poll(() => page.getByTitle('Verify Password').getAttribute('aria-invalid'))
+			.toBe('true');
+		await expect(page.getByTitle('Verify Password')).toHaveAccessibleDescription(
+			'Passwords must match'
+		);
 		await expect(page.getByRole('dialog')).toHaveCount(0);
 		expect(await signInStatus(email, 'Old-Passw0rd1')).toBe(200);
 	});

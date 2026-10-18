@@ -7,13 +7,23 @@
 	import { getToastStore } from '$lib/ui';
 	import DateInput from '$lib/DatePicker/DateInput.svelte';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
+	import PageBody from '$lib/Components/Shell/PageBody.svelte';
+	import Card from '$lib/Components/Shell/Card.svelte';
+	import FormActions from '$lib/Components/Shell/FormActions.svelte';
+	import Notice from '$lib/Components/Shell/Notice.svelte';
+	import Field from '$lib/Components/Forms/Field.svelte';
+	import { errorsAfterSubmit } from '$lib/forms/errorsAfterSubmit';
+	import { formProblem } from '$lib/forms/formProblem';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 	const toastStore = getToastStore();
 
-	const { form, errors, enhance } = superForm(data.form, {
-		customValidity: true,
+	// svelte-ignore state_referenced_locally
+	const { markSubmitted, shown: gate } = errorsAfterSubmit(data.form.posted);
+	// svelte-ignore state_referenced_locally
+	const { form, errors, message, enhance } = superForm(data.form, {
 		validators: zodClient(insuranceSchema),
+		onSubmit: () => markSubmitted(),
 		onUpdated({ form }) {
 			if (form.message === 'Form submitted') {
 				// Display the message using a toast library
@@ -21,64 +31,70 @@
 			}
 		}
 	});
+	const shown = gate(errors);
+	const problem = $derived(formProblem($message));
 </script>
 
-<div class="space-y-4 p-4 sm:p-6">
+<PageBody>
 	<PageHeader title="Insurance" />
-	<div class="max-w-2xl">
-		<div class="card bg-surface-100-900">
-			<form method="POST" use:enhance class="p-4 sm:p-6">
-				<h2 class="h4">Renters insurance</h2>
-				<div class="mt-3 grid gap-3 sm:grid-cols-2">
-					<div>
-						<label class="label"
-							><span class="label-text">Insurance Company Name</span><input
-								name="companyName"
-								bind:value={$form.companyName}
-								class="input"
-								class:input-error={$errors.companyName}
-								title="Insurance Company Name"
-								type="text"
-							/></label
-						>
-					</div>
-					<div>
-						<label class="label"
-							><span class="label-text">Policy Number</span><input
-								name="policyNumber"
-								bind:value={$form.policyNumber}
-								class="input"
-								class:input-error={$errors.policyNumber}
-								title="Policy Number"
-								type="text"
-							/></label
-						>
-					</div>
-					<div>
-						<label class="label"
-							><span class="label-text">Start Date</span>
-							<DateInput
-								bind:value={$form.startDate}
-								name="startDate"
-								title="Start Date"
-								errors={$errors.startDate}
-							/>
-						</label>
-					</div>
-					<div>
-						<label class="label"
-							><span class="label-text">End Date</span>
-							<DateInput
-								bind:value={$form.endDate}
-								name="endDate"
-								title="End Date"
-								errors={$errors.endDate}
-							/>
-						</label>
-					</div>
-				</div>
-				<button type="submit" class="btn preset-filled-primary-500 mt-5">Save</button>
-			</form>
-		</div>
-	</div>
-</div>
+	<Card title="Renters insurance">
+		<form method="POST" use:enhance class="space-y-4" novalidate>
+			<div class="grid gap-4 sm:grid-cols-2">
+				<Field label="Insurance Company Name" errors={$shown.companyName}>
+					{#snippet children({ attrs, invalid })}
+						<input
+							{...attrs}
+							name="companyName"
+							bind:value={$form.companyName}
+							class="input"
+							class:input-error={invalid}
+							title="Insurance Company Name"
+							type="text"
+						/>
+					{/snippet}
+				</Field>
+				<Field label="Policy Number" errors={$shown.policyNumber}>
+					{#snippet children({ attrs, invalid })}
+						<input
+							{...attrs}
+							name="policyNumber"
+							bind:value={$form.policyNumber}
+							class="input"
+							class:input-error={invalid}
+							title="Policy Number"
+							type="text"
+						/>
+					{/snippet}
+				</Field>
+				<Field label="Start Date" errors={$shown.startDate}>
+					{#snippet children({ attrs, invalid })}
+						<DateInput
+							{...attrs}
+							bind:value={$form.startDate}
+							name="startDate"
+							title="Start Date"
+							{invalid}
+						/>
+					{/snippet}
+				</Field>
+				<Field label="End Date" errors={$shown.endDate}>
+					{#snippet children({ attrs, invalid })}
+						<DateInput
+							{...attrs}
+							bind:value={$form.endDate}
+							name="endDate"
+							title="End Date"
+							{invalid}
+						/>
+					{/snippet}
+				</Field>
+			</div>
+			{#if problem}
+				<Notice tone="error"><p>{problem}</p></Notice>
+			{/if}
+			<FormActions>
+				<button type="submit" class="btn preset-filled-primary-500">Save</button>
+			</FormActions>
+		</form>
+	</Card>
+</PageBody>

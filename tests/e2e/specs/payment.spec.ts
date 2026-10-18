@@ -137,7 +137,7 @@ test.describe('rent-payments', () => {
 			).toBeVisible();
 			await dialog.getByRole('spinbutton').fill(String(payable + 1));
 			await dialog.getByRole('button', { name: 'Continue to payment' }).click();
-			await expect(dialog.getByRole('alert')).toContainText('no more than');
+			await expect(dialog.getByRole('spinbutton')).toHaveAccessibleDescription(/no more than/);
 			expect(await recorded()).toHaveLength(0);
 		} finally {
 			await ref.delete();
@@ -157,7 +157,9 @@ test.describe('rent-payments', () => {
 		await dialog.getByRole('button', { name: 'Continue to payment' }).click();
 
 		// Wait for the app to react (an error in the dialog) before checking that nothing was sent.
-		await expect(dialog.getByRole('alert')).toContainText('no more than');
+		const amount = dialog.getByRole('spinbutton');
+		await expect(amount).toHaveAccessibleDescription(/no more than/);
+		await expect(amount).toHaveAttribute('aria-invalid', 'true');
 		await expect(page).toHaveURL(/\/payment$/);
 		expect(await recorded()).toHaveLength(0);
 	});

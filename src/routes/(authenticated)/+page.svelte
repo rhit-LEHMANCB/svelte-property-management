@@ -2,6 +2,9 @@
 	import type { PageData } from './$types';
 	import { IconFileText } from '@tabler/icons-svelte';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
+	import PageBody from '$lib/Components/Shell/PageBody.svelte';
+	import Card from '$lib/Components/Shell/Card.svelte';
+	import Notice from '$lib/Components/Shell/Notice.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -17,10 +20,10 @@
 		new Date(`${day}T00:00:00`).toLocaleDateString('en-US', { dateStyle: 'long' });
 </script>
 
-<div class="space-y-4 p-4 sm:p-6">
+<PageBody>
 	<PageHeader title="Dashboard" />
 	{#if isTenant && data.notice?.kind === 'upcoming'}
-		<div class="card preset-tonal-primary space-y-2 p-5" role="status">
+		<Notice tone="info">
 			<strong
 				>Your lease at {data.notice.address} starts on {longDate(data.notice.startDate)}.</strong
 			>
@@ -34,12 +37,12 @@
 				</p>
 				<a class="btn btn-sm preset-tonal" href="/payment">Set up autopay</a>
 			{/if}
-		</div>
+		</Notice>
 	{:else if isTenant && data.notice?.kind === 'none'}
-		<div class="card preset-tonal-warning p-5" role="status">
+		<Notice tone="warning">
 			<strong>No property is assigned to your account yet.</strong>
 			<p>Please contact your property manager. You can still update your profile.</p>
-		</div>
+		</Notice>
 	{/if}
 	{#if isTenant}
 		{#if leases.length === 0}
@@ -47,15 +50,14 @@
 		{:else}
 			<div class="grid gap-4 md:grid-cols-2">
 				{#each leases as lease (lease.id)}
-					<section class="card bg-surface-100-900 space-y-3 p-4 sm:p-6" aria-label="Your lease">
-						<div class="flex flex-wrap items-center justify-between gap-2">
-							<h2 class="h4">{lease.address}</h2>
+					<Card as="section" aria-label="Your lease" title={lease.address}>
+						{#snippet actions()}
 							<span
 								class="badge capitalize {lease.status === 'current'
 									? 'preset-filled-success-500'
 									: 'preset-filled-primary-500'}">{lease.status}</span
 							>
-						</div>
+						{/snippet}
 						<dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
 							<dt class="opacity-70">Dates</dt>
 							<dd>
@@ -97,7 +99,7 @@
 								rel="noopener"><IconFileText size={18} aria-hidden="true" />View lease document</a
 							>
 						{/if}
-					</section>
+					</Card>
 				{/each}
 			</div>
 		{/if}
@@ -106,7 +108,7 @@
 			<div class="grid gap-4 md:grid-cols-2">
 				{#each pastLeases as lease (lease.id)}
 					{@const deposit = lease.billing.deposit}
-					<section class="card bg-surface-100-900 space-y-2 p-4 sm:p-6" aria-label="Past lease">
+					<Card as="section" aria-label="Past lease">
 						<h3 class="font-semibold">{lease.address}</h3>
 						<p class="opacity-80">
 							{longDate(lease.startDate)} to {lease.endDate ? longDate(lease.endDate) : ''}
@@ -126,9 +128,9 @@
 								<dd>{cents(deposit.heldCents)}, not yet settled</dd>
 							{/if}
 						</dl>
-					</section>
+					</Card>
 				{/each}
 			</div>
 		{/if}
 	{/if}
-</div>
+</PageBody>

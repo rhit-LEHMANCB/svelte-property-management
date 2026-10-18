@@ -1,11 +1,14 @@
 import { fileURLToPath } from 'node:url';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { defineConfig } from 'vitest/config';
 
 const path = (relative: string) => fileURLToPath(new URL(relative, import.meta.url));
 
 // Deliberately does not use the SvelteKit plugin: the unit and handler tests only
 // need the aliases below, which keeps them independent of the SvelteKit version.
+// The plain Svelte plugin lets component tests render .svelte files with svelte/server.
 export default defineConfig({
+	plugins: [svelte()],
 	resolve: {
 		// sveltekit-superforms exposes its server entry only under the `svelte` condition.
 		conditions: ['svelte'],

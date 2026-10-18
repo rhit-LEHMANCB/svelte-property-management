@@ -25,6 +25,16 @@
 	--typo-anchor--color-light: var(--color-primary-700);
 }
 
+/*
+	Skeleton 5 has no error style for fields. An invalid field gets an error-colored ring, kept while
+	it has focus so the user can see which field they are fixing.
+*/
+.input-error,
+.input-error:focus,
+.input-error:focus-within {
+	--tw-ring-color: var(--color-error-500);
+}
+
 html,
 body {
 	@apply h-full overflow-hidden;

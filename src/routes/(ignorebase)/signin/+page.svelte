@@ -2,16 +2,22 @@
 	import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
 	import { goto } from '$app/navigation';
 	import { auth } from '$lib/firebase';
-	import { errorToast } from '$lib/Hooks/toasts';
-	import { getToastStore } from '$lib/ui';
+	import AuthCard from '$lib/Components/Shell/AuthCard.svelte';
+	import FormActions from '$lib/Components/Shell/FormActions.svelte';
+	import Notice from '$lib/Components/Shell/Notice.svelte';
+	import Field from '$lib/Components/Forms/Field.svelte';
 	import { classifySignInError, SIGN_IN_MESSAGES } from '$lib/authErrors';
 	import type { PageData } from './$types';
 
-	export let data: PageData;
-	// Set when the server rendered the form again after a failed sign-in without scripts.
-	export let form: { email?: string; error?: string } | null = null;
+	let {
+		data,
+		// Set when the server rendered the form again after a failed sign-in without scripts.
+		form = null
+	}: { data: PageData; form?: { email?: string; error?: string } | null } = $props();
 
-	const toastStore = getToastStore();
+	// A failure in the browser; it replaces the server's message from an earlier post.
+	let clientError = $state<string>();
+	const error = $derived(clientError ?? form?.error);
 
 	class SessionError extends Error {}
 
@@ -43,73 +49,78 @@
 	// before the page hydrated is never lost.
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
+		clientError = undefined;
 		const formData = new FormData(event.currentTarget as HTMLFormElement);
 
 		await signIn(String(formData.get('email') ?? ''), String(formData.get('password') ?? ''))
 			.then(() => goto('/'))
-			.catch((err) => errorToast(failureMessage(err), toastStore));
+			.catch((err) => (clientError = failureMessage(err)));
 	}
 </script>
 
 <div class="flex h-full items-center justify-center overflow-y-auto p-4">
-	<form
-		method="POST"
-		on:submit={handleSubmit}
-		class="card bg-surface-100-900 w-full max-w-sm p-6 shadow-xl sm:p-8"
-	>
-		<h1 class="h3">Lehman Family LLC</h1>
-		<p class="opacity-80">Please sign in to continue.</p>
-		{#if data.passwordChanged}
-			<p class="mt-3 font-semibold" role="status">Your password was changed. Please sign in.</p>
-		{/if}
-		<div class="mt-4 grid grid-cols-1 gap-3">
-			<!-- A value binding would make hydration reset text typed before it finished, so the input only
-				gets a value when the server sent one back after a failed sign-in without scripts. -->
-			{#if form?.email}
-				<label class="label"
-					><span class="label-text">Email</span><input
-						name="email"
-						value={form.email}
-						autocomplete="username"
-						class="input"
-						title="Email"
-						type="email"
-						required
-					/></label
-				>
-			{:else}
-				<label class="label"
-					><span class="label-text">Email</span><input
-						name="email"
-						autocomplete="username"
-						class="input"
-						title="Email"
-						type="email"
-						required
-					/></label
-				>
+	<AuthCard>
+		<form method="POST" onsubmit={handleSubmit} class="space-y-4">
+			<div>
+				<h1 class="h3">Lehman Family LLC</h1>
+				<p class="opacity-80">Please sign in to continue.</p>
+			</div>
+			{#if data.passwordChanged}
+				<p class="font-semibold" role="status">Your password was changed. Please sign in.</p>
 			{/if}
-			<label class="label"
-				><span class="label-text">Password</span><input
-					name="password"
-					autocomplete="current-password"
-					class="input"
-					title="Password"
-					type="password"
-					required
-				/></label
-			>
-		</div>
-		{#if form?.error}
-			<p class="text-error-700-300 mt-3" role="alert">{form.error}</p>
-		{/if}
-		<div>
-			<button type="submit" data-needs-hydration class="btn preset-filled-primary-500 mt-6 w-full"
-				>Sign in</button
-			>
-		</div>
+			<!-- Sign-in errors stay form-level, so they never reveal which of the two fields was wrong. -->
+			<Field label="Email">
+				{#snippet children({ attrs })}
+					<!-- A value binding would make hydration reset text typed before it finished, so the input
+						only gets a value when the server sent one back after a failed sign-in without scripts. -->
+					{#if form?.email}
+						<input
+							{...attrs}
+							name="email"
+							value={form.email}
+							autocomplete="username"
+							class="input"
+							title="Email"
+							type="email"
+							required
+						/>
+					{:else}
+						<input
+							{...attrs}
+							name="email"
+							autocomplete="username"
+							class="input"
+							title="Email"
+							type="email"
+							required
+						/>
+					{/if}
+				{/snippet}
+			</Field>
+			<Field label="Password">
+				{#snippet children({ attrs })}
+					<input
+						{...attrs}
+						name="password"
+						autocomplete="current-password"
+						class="input"
+						title="Password"
+						type="password"
+						required
+					/>
+				{/snippet}
+			</Field>
+			{#if error}
+				<Notice tone="error"><p>{error}</p></Notice>
+			{/if}
+			<FormActions>
+				<button type="submit" data-needs-hydration class="btn preset-filled-primary-500 w-full"
+					>Sign in</button
+				>
+			</FormActions>
+		</form>
 		<p class="mt-4 text-center text-sm">
 			<a href="/forgot" class="underline underline-offset-2">Forgot password?</a>
 		</p>
-	</form>
+	</AuthCard>
 </div>

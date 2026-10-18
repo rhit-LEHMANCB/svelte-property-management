@@ -58,7 +58,10 @@ describe('user-profile: edit contact information (profile contact action)', () =
 			{ ...profileForm, currentPassword: 'wrong' }
 		]) {
 			const result = await call(actions.contact, { userID: 't1', form });
-			expect(result.data.form.message).toMatch(/current password/);
+			expect(result.status).toBe(400);
+			expect(result.data.form.errors.currentPassword).toEqual([
+				'Enter your current password to change your email.'
+			]);
 		}
 		expect(db.peek('users/t1')?.firstName).toBe('Tom');
 		expect(services.auth.updateUser).not.toHaveBeenCalled();

@@ -16,6 +16,7 @@
 	import RowMenu from '$lib/Components/DataList/RowMenu.svelte';
 	import EmptyState from '$lib/Components/DataList/EmptyState.svelte';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
+	import PageBody from '$lib/Components/Shell/PageBody.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -66,7 +67,7 @@
 	>
 {/snippet}
 
-<div class="space-y-4 p-4 sm:p-6">
+<PageBody>
 	<PageHeader title="Properties" />
 	<DataList
 		label="properties"
@@ -132,4 +133,4 @@
 			</EmptyState>
 		{/snippet}
 	</DataList>
-</div>
+</PageBody>
