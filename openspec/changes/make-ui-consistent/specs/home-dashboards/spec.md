@@ -34,7 +34,7 @@ The system SHALL show a tenant three tiles on `/`: the balance owed across their
 - **THEN** none of them affects this tenant's tiles
 
 ### Requirement: Tenant lease and insurance cards
-The system SHALL show a tenant a "Your lease" card for each current or upcoming lease, a "Renters insurance" card with the policy's status, and their ended leases with a deposit in one "Past leases" card. The insurance status is "On file" when the policy ends more than 30 days from today, "Ending soon" within 30 days, "Expired" after its end date, and "Missing" when none is saved; each links to `/insurance`.
+The system SHALL show a tenant a card for each current or upcoming lease, titled with its address, marked current or upcoming, and named "Your lease" for assistive technology, a "Renters insurance" card with the policy's status, and their ended leases with a deposit in one "Past leases" card. The insurance status is "On file" when the policy ends more than 30 days from today, "Ending soon" within 30 days, "Expired" after its end date, and "Missing" when none is saved; each links to `/insurance`.
 
 #### Scenario: Ending soon
 - **WHEN** the tenant's saved policy ends in 20 days

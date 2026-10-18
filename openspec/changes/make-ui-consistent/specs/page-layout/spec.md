@@ -25,7 +25,7 @@ The system SHALL render the content of every signed-in page centered in the cont
 The system SHALL render content cards on page backgrounds with the same padding on every page (16px, 24px from the small breakpoint up). A card's section heading, when it has one, SHALL be its first child, inside the padding. Forms in a card SHALL sit inside the same padding.
 
 #### Scenario: Two pages' cards
-- **WHEN** the Profile "Contact Info" card and the Maintenance "Add Maintenance Request" card are compared at the same window size
+- **WHEN** the Profile "Contact info" card and the Maintenance "New request" card are compared at the same window size
 - **THEN** they have the same padding and each heading is inside its card as the first element
 
 #### Scenario: Dashboard and admin home

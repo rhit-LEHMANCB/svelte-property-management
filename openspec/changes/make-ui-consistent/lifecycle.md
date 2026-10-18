@@ -1,9 +1,9 @@
 # Lifecycle: make-ui-consistent
 
 - Branch: `claude/make-ui-consistent`
-- Stage: 4 Review (scope change 3)
+- Stage: 5 Ship to develop (scope change 3, PR #179)
 - Review round: 4 of 5
-- QA cycle: 2 of 3 (running on `a074d8c`; scope change 3 follows)
+- QA cycle: 2 of 3 passed on `a074d8c`; cycle 3 covers scope change 3
 - Started: 2026-10-18
 - Issue: #154
 
@@ -251,6 +251,22 @@ Not covered by automation:
 Cleanup: QA's properties were deleted. One record remains: the open maintenance request **`qa-ui-row-action`** in the dev `maintenance` collection. It has no delete API and this session has read-only access, so it is on the human checklist.
 
 
+### QA cycle 2 (scope change 2), summary
+- Deployed commit `a074d8c` (dev deploy run 109). Run 2026-10-18, about 22:00 to 22:15 UTC. The agent was fresh and was given only the dev URL, the proposal, all seven delta specs, the QA guide and the report template.
+- Result: **PASS**. The final run was 40 of 40 green, with 64 screenshots in `qa/screenshots/cycle-2/`. Every reachable scenario passed:
+  - home-dashboards: balance owed, autopay off, open requests, insurance missing, admin counts, and a tenant blocked from `/admin`;
+  - maintenance-requests: tenant and admin Open/Closed tabs;
+  - "Page content sits in cards", by an automated scan of 7 tenant views and 8 admin pages plus the property tabs;
+  - every page-layout, ui-accessibility, authentication, rent-payments and user-profile scenario it could reach.
+- Not reachable with the QA data: nothing owed, ended lease only, autopay on, 2 or more requests, insurance on file, ending soon or expired, all clear, another household, no property, and the overlap warning. All are covered by emulator e2e and rendering tests. They are on the human checklist.
+- Triage:
+  - **Lease card titled with its address, not "Your lease" (possible app bug, low).** This is spec wording. The card is named "Your lease" for assistive technology and titled with its address, which is needed when a tenant has two leases. The `home-dashboards` requirement now says so.
+  - **"Add Maintenance Request" and "Contact Info" in a page-layout scenario (stale wording).** Updated to "New request" and "Contact info".
+  - **Cards look flat against the background (info).** This is the theme's surface colours, which are out of scope. It was added to the human checklist.
+  - **Profile cannot save without a phone number, and `/api/signin` returns 500 for a malformed token.** Both predate the change and are already recorded.
+- Cleanup: the agent created property `bvf8KiUpPY4EJfLtYXww` (a 60-character `qa-` title) for the long-title breadcrumb check. It could not delete it, because the app has no delete-property UI and this session's Firebase connector cannot reach `lehman-realty-dev`. It is on the human checklist. The earlier leftover request `qa-ui-row-action` was gone by the end of the run.
+- Scope change 3 came in from the owner while this cycle ran. QA cycle 3 covers it.
+
 ## Verification checklist for the human
 Ranked by risk. The same list is in the production PR.
 
@@ -266,10 +282,28 @@ Ranked by risk. The same list is in the production PR.
 4. **(medium) Real phones, light and dark.** On an iPhone and an Android phone, open a property with a long title, its Edit lease page, and Payment → Make a Payment with too large an amount.
    - Expect: breadcrumbs shorten with "…" and there is no sideways scroll. The amount message is readable with the keyboard open.
 5. **(medium) Tenant with no property or an upcoming lease, on Maintenance and the dashboard.**
-   - Expect: the yellow notice with the same padding as other notices.
+   - Expect:
+     - With an upcoming lease: the dashboard shows its "Your lease" card with the dates and the tiles, and no separate notice.
+     - With no lease: the yellow "No property is assigned" notice.
+     - On Maintenance: the reason sits in a "Your requests" card.
    - QA could not reach this state with the QA accounts.
+5a. **(medium) Dashboard states QA could not reach.**
+   - Do: in dev, use tenants with:
+     - nothing owed;
+     - only an ended lease that still owes;
+     - autopay on;
+     - 2 open requests;
+     - insurance on file, ending within 30 days, and expired.
+   - Then compare two tenants on different properties.
+   - Expect:
+     - The tiles and the insurance badge match the `home-dashboards` scenarios.
+     - The ended-lease-only tenant sees the no-property notice and the balance tile only.
+     - Neither tenant's figures change the other's.
 6. **(low) Overall look: does the narrower, centered layout suit the list pages on a wide monitor?** Check Users, Properties, Payment and the dashboard. This was a requested design choice; confirm it reads well.
-7. **(low) Dev cleanup.** Delete the leftover QA maintenance request with the subject `qa-ui-row-action` from the `maintenance` collection in the dev Firebase project (`lehman-realty-dev`). An admin can also close it from Admin → Maintenance, but closing does not delete it.
+6a. **(low) Card contrast.** On a normal monitor, in light and dark mode, check that cards stand out from the page background. QA found them flat in screenshots. If they are too subtle, a theme follow-up is needed.
+7. **(low) Dev cleanup** in the dev Firebase project (`lehman-realty-dev`):
+   - Delete property `properties/bvf8KiUpPY4EJfLtYXww`, which has a 60-character `qa-xxx…` title and was left by QA cycle 2.
+   - Confirm that the maintenance request `qa-ui-row-action` is gone. QA cycle 2 saw it disappear. If it is still there, delete it from the `maintenance` collection.
 
 Production-only risks:
 - **No new environment variables, secrets or Stripe changes.** Production still uses Stripe test mode (#98), which is unchanged by this release.
