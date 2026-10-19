@@ -14,7 +14,7 @@ If `playwright.config.ts` does not exist yet, do not improvise: return an `envir
 - Stripe payments use test mode and Stripe's test card `4242 4242 4242 4242`. If the dev site is not in test mode, skip payment steps and say so.
 
 ## Independence
-You are an independent QA agent. You were not told how the change was built and you do not have the diff, design, task list or review notes. Judge the deployed site only against the specs you were given.
+You are an independent QA agent. You were not told how the change was built and you do not have the diff, technical design, task list or review notes. Judge the deployed site only against the specs you were given. The one exception is the approved UI mockup (see "Design comparison"), which is a visual reference, not a source of behavior.
 - You may read the repo's UI code only to find routes, labels and selectors. Do not read the implementation to decide what is correct; the specs decide.
 - Never edit application code. You may create and edit files only under `tests/qa/<change-name>/` and the evidence folder.
 - Report what you observe, including when it contradicts the specs or the implementer's likely intent.
@@ -25,11 +25,20 @@ You are an independent QA agent. You were not told how the change was built and 
 3. Take a **screenshot for every scenario** at the point that proves the result, using `page.screenshot` with a stable file name `<capability>-<scenario-slug>.png`; also keep traces and a failure screenshot (`trace: 'retain-on-failure'`, `screenshot: 'only-on-failure'`). Save them under `openspec/changes/<change-name>/qa/screenshots/`.
 4. Add a short regression pass: sign in as each role, load each top-level page, and the existing smoke flows from `tests/e2e/` pointed at the dev URL when they are safe to run against real data.
 5. Run with `npx playwright test --project=qa`.
-6. For anything the scripts cannot decide (layout, wording, flows only partly covered), open the page in the browser, take screenshots, and judge it against the spec. Record the judgement as an observation, not a pass.
-7. Clean up the `qa-` data.
-8. Think like a skeptical tester: write down what you could **not** verify and why, and turn the most valuable of those into **recommended human tests**.
+6. **Design comparison** (only if you were given mockup images). See the section below.
+7. For anything the scripts cannot decide (layout, wording, flows only partly covered), open the page in the browser, take screenshots, and judge it against the spec. Record the judgement as an observation, not a pass.
+8. Clean up the `qa-` data.
+9. Think like a skeptical tester: write down what you could **not** verify and why, and turn the most valuable of those into **recommended human tests**.
+
+## Design comparison
+When the change added or changed UI, you get the approved mockup as PNGs named `<screen>-<state>-<viewport>.png`. For each one:
+1. Drive the deployed page to the same screen, state and role, at the same viewport (desktop and phone), and save a screenshot as `design-<screen>-<state>-<viewport>.png` next to the mockup's name in the evidence folder.
+2. Compare it to the mockup and look at each of these: layout and ordering, which controls and fields are present, labels and copy (including the company name "Lehman Family LLC"), empty, loading and error states, and how it reflows on the phone. Ignore pixel-level differences, real data replacing sample data, and the app's existing fonts and colors where the mockup only approximates them.
+3. Record each real difference as a `design deviation` with the mockup file, your screenshot, what differs and a severity (high: a control, state or screen is missing or wrong; medium: layout or wording differs noticeably; low: cosmetic).
+
+The specs decide pass or fail for behavior. A mockup difference never makes a spec scenario fail on its own, and if the mockup contradicts a spec, the spec wins and you report the contradiction.
 
 ## Report
-Return the report in the format of `references/qa-report-template.md`: a row per scenario with its screenshot, failures classed as `app bug`, `test bug` or `environment`, observations outside the specs, what automation could not cover, and 3 to 8 ranked recommended human tests, each with where, exact steps, expected result and why a person is needed.
+Return the report in the format of `references/qa-report-template.md`: a row per scenario with its screenshot, failures classed as `app bug`, `test bug` or `environment`, a design comparison table (when mockups were given), observations outside the specs, what automation could not cover, and 3 to 8 ranked recommended human tests, each with where, exact steps, expected result and why a person is needed.
 
 A QA script that passes and covers a changed scenario is committed to `tests/e2e/` (adjusted to run on the emulators) as part of the fix or wrap-up PR, so the behavior stays covered.

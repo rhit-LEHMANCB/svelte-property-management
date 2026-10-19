@@ -107,9 +107,10 @@ Push the branch and open a PR into `develop` (use a PR template if present; end 
 ### 6. QA on the dev site, independent (unattended)
 Wait for the push-to-`develop` deploy (`gh run list --workflow firebase-hosting-merge.yml --branch develop`, or the MCP equivalent in the table) to succeed. If it fails, retry once; if it still fails, **halt** as a deploy problem, not a QA failure.
 
-Read `references/qa-guide.md`. Start a **new, independent QA agent** (Agent tool, `subagent_type: "general-purpose"`, `model: "sonnet"`). Give it only what the guide lists: the dev URL, the change's proposal and delta specs, and the guide. Do **not** give it the diff, design, tasks, review findings or `lifecycle.md`. It may read the repo's UI code only to find routes and selectors. It writes and runs Playwright specs, captures screenshots, and returns the report described in `references/qa-report-template.md`, including recommended human tests.
+Read `references/qa-guide.md`. Start a **new, independent QA agent** (Agent tool, `subagent_type: "general-purpose"`, `model: "sonnet"`). Give it only what the guide lists: the dev URL, the change's proposal and delta specs, the guide, and, if a design pass ran, the approved mockup images in `openspec/changes/<name>/design/` as a visual reference. Do **not** give it the diff, the technical `design.md`, `design-notes.md`, tasks, review findings or `lifecycle.md`. It may read the repo's UI code only to find routes and selectors. It writes and runs Playwright specs, captures screenshots, and returns the report described in `references/qa-report-template.md`, including recommended human tests.
 
 Triage the report:
+- `design deviation`: the QA agent lists where the deployed UI differs from the mockup. Fix every one that is not a deliberate deviation already recorded in `lifecycle.md` (treat it as an `app bug` below); a recorded deviation is listed in the report for the human at Gate B.
 - `app bug`: fix on a new branch, then stages 3 to 5 for the fix with one review round, then a fresh QA agent (cycle +1).
 - `test bug`: a fresh QA agent corrects its scripts (cycle +1).
 - `environment` (deploy, data, credentials): **halt**.
