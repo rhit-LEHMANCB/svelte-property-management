@@ -1,9 +1,9 @@
 ---
 name: dev-lifecycle
 description: Run a feature or fix through the full development lifecycle for this repo - interview, OpenSpec proposal (human approval), then unattended implementation, independent code review (max 5 rounds, every finding fixed in the run), merge to develop, independent agent-run Playwright QA on the dev site, and a production PR with a QA report for a human to verify and merge. Use when the user says "dev lifecycle", "lifecycle", "ship this end to end", or asks to take a change from idea to production with review and QA.
-allowed-tools: Bash(openspec:*), Bash(gh:*), Bash(git:*), Bash(npm:*), Bash(npx:*), mcp__github__get_me, mcp__github__create_pull_request, mcp__github__pull_request_read, mcp__github__merge_pull_request, mcp__github__actions_list, mcp__github__actions_run_trigger, mcp__github__issue_write, mcp__github__list_issues, mcp__github__search_pull_requests, mcp__claude-code-remote__subscribe_pr_activity, mcp__claude-code-remote__unsubscribe_pr_activity, mcp__claude-code-remote__send_later
+allowed-tools: Bash(openspec:*), Bash(gh:*), Bash(git:*), Bash(npm:*), Bash(npx:*), mcp__github__get_me, mcp__github__create_pull_request, mcp__github__pull_request_read, mcp__github__merge_pull_request, mcp__github__actions_list, mcp__github__actions_run_trigger, mcp__github__issue_write, mcp__github__list_issues, mcp__github__search_pull_requests, mcp__claude-code-remote__subscribe_pr_activity, mcp__claude-code-remote__unsubscribe_pr_activity, mcp__claude-code-remote__send_later, Artifact
 metadata:
-  version: "1.2"
+  version: "1.3"
 ---
 
 Take one change from idea to production through fixed stages and gates. State lives in `openspec/changes/<name>/lifecycle.md` so the run can resume in a new session. If the change already exists, read it first and continue from its recorded stage.
@@ -11,7 +11,7 @@ Take one change from idea to production through fixed stages and gates. State li
 ## Shape of a run
 
 ```
-1 Interview ──► 2 Propose + preflight ──► GATE A (human)
+1 Interview ──► 2 Propose + design pass (UI only) + preflight ──► GATE A (human)
                                               │
         ┌─────────────── unattended ──────────┴───────────┐
         │ 3 Implement ► 4 Review (≤5) ► 5 Ship to develop ► 6 QA (independent) │
@@ -71,10 +71,11 @@ Derive a kebab-case change name from the request. Create a branch from the lates
 ### 1. Interview
 Read `references/interview.md` and follow it. Ask in rounds of at most 4 questions with `AskUserQuestion`, grounded in the code and `openspec/specs/`, until nothing material is open. Write a one-page **interview summary** into `lifecycle.md`, show it, and continue only when the user confirms.
 
-### 2. Propose, preflight, then Gate A
+### 2. Propose, design pass, preflight, then Gate A
 1. Run the OpenSpec propose workflow (`openspec-propose`) using the interview summary as input. Run `openspec validate "<name>" --strict`.
-2. **Pull env files.** If `op` is installed and either `OP_SERVICE_ACCOUNT_TOKEN` is set or `op whoami` succeeds, run `bash scripts/pull-env.sh` (it skips files that already exist; never print their contents). The cloud setup script cannot do this because the token is not available there. If `op` or its auth is missing, continue; the preflight below reports what is absent.
-3. **Preflight.** Because stages 3 to 6 cannot ask for help, check now that they can finish, and show the results next to the proposal:
+2. **Design pass (only if the change adds or changes UI).** The change touches UI if the proposal, delta specs or tasks add or alter a page, route, form, dialog, navigation entry, component, or user-visible copy or layout. Pure backend, rules, CI or docs changes skip this step; record `Design pass: skipped (no UI change)` in `lifecycle.md`. Otherwise follow `references/design-pass.md`: it produces a private Claude design mockup of the affected screens, written from the proposal and the existing UI, which the human reviews at Gate A together with the proposal. Record the design link and the decisions it settles in `lifecycle.md` and in a `design-notes.md` in the change folder, so stages 3 to 6 can use them without asking.
+3. **Pull env files.** If `op` is installed and either `OP_SERVICE_ACCOUNT_TOKEN` is set or `op whoami` succeeds, run `bash scripts/pull-env.sh` (it skips files that already exist; never print their contents). The cloud setup script cannot do this because the token is not available there. If `op` or its auth is missing, continue; the preflight below reports what is absent.
+4. **Preflight.** Because stages 3 to 6 cannot ask for help, check now that they can finish, and show the results next to the proposal:
    - git can commit (author identity set or usable) and push to `origin`, and a GitHub backend is chosen (see "GitHub access"): `gh auth status` logged in with `repo` and `workflow` scopes, or in a cloud session the GitHub MCP tools with `get_me` working.
    - Merging a PR (`gh pr merge` or `merge_pull_request`) is expected to be permitted in this session. It cannot be tested without merging and is not a blocker: do not ask the user to confirm it or list it as a preflight gap.
    - Playwright is set up (`playwright.config.ts` with a `qa` project) and the browsers are installed. If the `add-test-suite` change has not landed, QA cannot run; say so.
@@ -82,18 +83,18 @@ Read `references/interview.md` and follow it. Ask in rounds of at most 4 questio
    - The dev deploy workflow (`firebase-hosting-merge.yml`) is passing on `develop` right now.
    - Local checks work: `nvm use`, `npm run lint`, `npm run check`, test scripts that exist, and Java if the tests need the emulators.
    - Any secrets or variables this change needs are already added to the GitHub `develop` environment (from the interview's rollout notes).
-4. Present the artifacts and the preflight table.
+5. Present the artifacts, the design link (if there is one) and the preflight table.
 
-**Gate A (human):** stop. The user approves the proposal, or asks for changes (revise with `openspec-update-change`, re-run preflight, re-present). A failing preflight item must be fixed or explicitly accepted by the user. Record the approval, its time, and any accepted preflight gaps in `lifecycle.md`. **Everything below runs unattended.**
+**Gate A (human):** stop. The user approves the proposal and the design, or asks for changes (revise with `openspec-update-change` and, for UI feedback, update the design per `references/design-pass.md`; re-run preflight, re-present). A failing preflight item must be fixed or explicitly accepted by the user. Record the approval, its time, and any accepted preflight gaps in `lifecycle.md`. **Everything below runs unattended.**
 
 ### 3. Implement (unattended)
-Run the OpenSpec apply workflow (`openspec-apply-change`). Tests are written with each task. Before leaving this stage, `npm run lint`, `npm run check`, the test scripts that exist, and `npm run build` must pass locally. Commit in small logical commits.
+Run the OpenSpec apply workflow (`openspec-apply-change`). If a design was approved, build the UI to match `design-notes.md` and the approved mockup, reusing existing components and the repo's styling; a deliberate deviation is recorded in `lifecycle.md`. Tests are written with each task. Before leaving this stage, `npm run lint`, `npm run check`, the test scripts that exist, and `npm run build` must pass locally. Commit in small logical commits.
 
 ### 4. Review loop, max 5 rounds (unattended)
 Round counter starts at 0. For each round:
 
 1. Start a **new** reviewer: Agent tool, `subagent_type: "Explore"` (read-only), `model: "sonnet"` (Sonnet 5.5). Never resume an earlier reviewer.
-2. Send only what `references/reviewer-prompt.md` lists: the diff against `origin/develop`, the change's proposal, specs and design, and the rubric. Not your reasoning, earlier findings or build notes.
+2. Send only what `references/reviewer-prompt.md` lists: the diff against `origin/develop`, the change's proposal, specs and design (including `design-notes.md` if present), and the rubric. Not your reasoning, earlier findings or build notes.
 3. Parse its findings (blocker, major, minor, nit).
 4. Fix every finding, minors and nits included. Nothing is deferred to a follow-up issue: small problems are fixed in this run. If you disagree with a finding, record the reason in `lifecycle.md` and do not fix it; the next reviewer sees only the code, so a real defect will come back.
 5. Re-run the local checks, commit, increment the counter.
