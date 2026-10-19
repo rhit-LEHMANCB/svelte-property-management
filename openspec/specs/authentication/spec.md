@@ -23,7 +23,7 @@ The system SHALL exchange a freshly issued Firebase ID token for an httpOnly, se
 
 #### Scenario: Invalid credentials
 - **WHEN** Firebase rejects the email or password
-- **THEN** the user sees an error toast "Your email or password is incorrect."
+- **THEN** the user sees "Your email or password is incorrect." in an error notice above the Sign in button, not under either field
 
 #### Scenario: Disabled account
 - **WHEN** the credentials belong to a disabled account
