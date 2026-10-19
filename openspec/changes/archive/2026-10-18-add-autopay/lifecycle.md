@@ -1,7 +1,7 @@
 # Lifecycle: add-autopay
 
 - Branch: `autopay-uopafj` (designated branch of the cloud session; `autopay` holds the same proposal commit)
-- Stage: 7 Production PR (Gate B: waiting on the human)
+- Stage: **complete (archived automatically on 2026-10-18 after the production release `82681f9`)**
 - Review round: 2 of 5
 - QA cycle: 1 of 3
 - Started: 2026-10-15
@@ -130,3 +130,6 @@ Ranked by risk. Use the dev site with Stripe test mode unless noted.
 
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
+
+## Archive
+Archived automatically on 2026-10-18 after the production release `82681f9` ([workflow run](https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/39145552594)). That marks this lifecycle complete.

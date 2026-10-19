@@ -164,7 +164,17 @@ test.describe.serial('autopay', () => {
 		await page.goto('/payment');
 		await page.waitForLoadState('networkidle');
 
-		await autopayBlock(page).getByLabel('Amount (optional)').fill('500');
+		// An amount that is not a whole number of cents is shown under the field and sends nothing.
+		const amount = autopayBlock(page).getByLabel('Amount (optional)');
+		await amount.fill('0.005');
+		await autopayBlock(page).getByRole('button', { name: 'Set up autopay' }).click();
+		await expect(amount).toHaveAccessibleDescription('The amount must be a multiple of 0.01');
+		await expect(amount).toHaveAttribute('aria-invalid', 'true');
+		await expect(page.locator('#fake-setup')).toHaveCount(0);
+		await expect(page).toHaveURL(/\/payment$/);
+
+		await amount.fill('500');
+		await expect(amount).not.toHaveAttribute('aria-invalid', 'true');
 		await autopayBlock(page).getByRole('button', { name: 'Set up autopay' }).click();
 
 		// The (fake) Stripe setup page; saving returns to /payment with the session id.
@@ -191,6 +201,15 @@ test.describe.serial('autopay', () => {
 
 		await autopayBlock(page).getByRole('button', { name: 'Change amount' }).click();
 		const dialog = page.getByRole('dialog');
+		// An invalid amount keeps the dialog open with the message under the input.
+		await dialog.getByRole('spinbutton').fill('0');
+		await dialog.getByRole('button', { name: 'Submit' }).click();
+		await expect(dialog).toBeVisible();
+		await expect(dialog.getByRole('spinbutton')).toHaveAccessibleDescription(
+			'The amount must be greater than 0'
+		);
+		await expect(autopayBlock(page)).toContainText('$500.00');
+
 		await dialog.getByRole('spinbutton').fill('');
 		await dialog.getByRole('button', { name: 'Submit' }).click();
 

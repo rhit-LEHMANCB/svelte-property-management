@@ -32,6 +32,11 @@ export type ModalSettings = {
 	buttonTextConfirm?: string;
 	buttonTextSubmit?: string;
 	component?: ModalComponent;
+	/**
+	 * Prompt only: checks the value on submit. A returned message keeps the dialog open and is shown
+	 * under the input; `undefined` lets the submit through.
+	 */
+	validate?: (value: string) => string | undefined;
 	/** Called with `true` or the prompt value on confirm, and `false` when the modal is dismissed. */
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	response?: (response: any) => void;
@@ -101,3 +106,12 @@ const stores = () => getContext<Stores>(STORES);
 export const getToastStore = () => stores().toast;
 export const getModalStore = () => stores().modal;
 export const getDrawerStore = () => stores().drawer;
+
+/** The message a prompt shows for `value`, or `undefined` when it may be submitted. */
+export function promptProblem(settings: ModalSettings, value: string): string | undefined {
+	if (settings.type !== 'prompt') return undefined;
+	if (settings.validate) return settings.validate(value);
+	// The dialog's form skips the browser's checks, so a required prompt is checked here.
+	if (settings.valueAttr?.required && value.trim() === '') return 'Please enter a value.';
+	return undefined;
+}

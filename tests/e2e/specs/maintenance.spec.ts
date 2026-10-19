@@ -21,7 +21,7 @@ test.describe('maintenance-requests', () => {
 		await tenant.waitForLoadState('networkidle');
 		await tenant.getByLabel('Subject').fill(subject);
 		await tenant.getByLabel('Description').fill(description);
-		await tenant.getByRole('button', { name: 'Add' }).click();
+		await tenant.getByRole('button', { name: 'Send request' }).click();
 		await expect(tenant.getByText('Successfully added maintenance request.')).toBeVisible();
 		const tenantOpen = tenant.getByRole('table', { name: 'open maintenance requests' });
 		const tenantRequest = tenantOpen.getByRole('row').filter({ hasText: subject });
@@ -43,6 +43,7 @@ test.describe('maintenance-requests', () => {
 		await dialog.getByRole('textbox').fill(workDone);
 		await dialog.getByRole('button', { name: 'Submit' }).click();
 		await expect(admin.getByText('Successfully closed request.')).toBeVisible();
+		await admin.getByRole('tab', { name: /^Closed/ }).click();
 		await expect(
 			admin
 				.getByRole('table', { name: 'closed maintenance requests' })
@@ -53,6 +54,7 @@ test.describe('maintenance-requests', () => {
 		// Tenant: the request now shows as closed, with the work done.
 		await tenant.goto('/maintenance');
 		await tenant.waitForLoadState('networkidle');
+		await tenant.getByRole('tab', { name: /^Closed/ }).click();
 		const tenantClosed = tenant
 			.getByRole('table', { name: 'closed maintenance requests' })
 			.getByRole('row')
@@ -70,15 +72,14 @@ test.describe('maintenance-requests', () => {
 		await page.waitForLoadState('networkidle');
 
 		await page.getByLabel('Description').fill('No subject given');
-		await page.getByRole('button', { name: 'Add' }).click();
+		await page.getByRole('button', { name: 'Send request' }).click();
 
 		// Wait for the app to react (the subject field is flagged invalid) before checking that nothing
 		// was submitted, so this cannot pass merely because the page had not responded yet.
-		await expect
-			.poll(() =>
-				page.getByLabel('Subject').evaluate((el) => (el as HTMLInputElement).validationMessage)
-			)
-			.toBe('Please provide a subject');
+		await expect(page.getByLabel('Subject')).toHaveAccessibleDescription(
+			'Please provide a subject'
+		);
+		await expect(page.getByLabel('Subject')).toHaveAttribute('aria-invalid', 'true');
 		await expect(page.getByText('Successfully added maintenance request.')).toHaveCount(0);
 		await expect(page.getByLabel('Description')).toHaveValue('No subject given');
 	});

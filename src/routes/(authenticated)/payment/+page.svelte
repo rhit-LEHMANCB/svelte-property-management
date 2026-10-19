@@ -3,6 +3,10 @@
 	import { getModalStore, getToastStore, type ModalSettings } from '$lib/ui';
 	import { z } from 'zod';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
+	import PageBody from '$lib/Components/Shell/PageBody.svelte';
+	import Card from '$lib/Components/Shell/Card.svelte';
+	import FormActions from '$lib/Components/Shell/FormActions.svelte';
+	import Field from '$lib/Components/Forms/Field.svelte';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
@@ -37,7 +41,7 @@
 			} | null;
 		};
 	};
-	export let data: { leases: LeaseBalance[] };
+	let { data }: { data: { leases: LeaseBalance[] } } = $props();
 
 	// The due date is a calendar day (YYYY-MM-DD); parse it as local so it is not shifted a day.
 	const dueDateOf = (lease: LeaseBalance) =>
@@ -52,29 +56,34 @@
 		new Date(`${day}T00:00:00`).toLocaleString('en-us', { dateStyle: 'short' });
 
 	/** The autopay amount typed for each lease that is not enrolled yet (blank: the full balance). */
-	let autopayAmounts: Record<string, string> = {};
-	let busy = false;
+	let autopayAmounts = $state<Record<string, string>>({});
+	/** The problem with each lease's typed autopay amount, shown under the field after a try. */
+	let autopayProblems = $state<Record<string, string | undefined>>({});
+	let busy = $state(false);
 
 	const amountSchema = z
 		.number()
 		.gt(0, 'The amount must be greater than 0')
 		.multipleOf(0.01, 'The amount must be a multiple of 0.01');
 
-	/** A typed amount as dollars, null for blank, or undefined (after a toast) when it is not valid. */
-	function parseAmount(value: string | undefined): number | null | undefined {
-		if (value === undefined || String(value).trim() === '') return null;
-		const amount = parseFloat(String(value));
-		const result = amountSchema.safeParse(amount);
-		if (!result.success) {
-			errorToast(result.error.issues[0].message, toastStore);
-			return undefined;
-		}
-		return amount;
+	const isBlank = (value: string | undefined) => value === undefined || String(value).trim() === '';
+
+	/** Why a typed amount cannot be used, or undefined when it is blank or valid. */
+	function amountProblem(value: string | undefined): string | undefined {
+		if (isBlank(value)) return undefined;
+		const result = amountSchema.safeParse(parseFloat(String(value)));
+		return result.success ? undefined : result.error.issues[0].message;
 	}
 
+	/** A checked amount as dollars, or null for blank (the full balance). */
+	const parseAmount = (value: string | undefined) =>
+		isBlank(value) ? null : parseFloat(String(value));
+
 	async function startAutopay(lease: LeaseBalance) {
+		const problem = amountProblem(autopayAmounts[lease.id]);
+		autopayProblems[lease.id] = problem;
+		if (problem || busy) return;
 		const amount = parseAmount(autopayAmounts[lease.id]);
-		if (amount === undefined || busy) return;
 		busy = true;
 		try {
 			const response = await fetch('/api/autopay/setup', {
@@ -100,10 +109,10 @@
 			body: 'The most autopay charges for each due date. Leave it blank to pay the full balance.',
 			value: current ? (current / 100).toFixed(2) : '',
 			valueAttr: { type: 'number', step: '0.01', min: '0.01' },
+			validate: amountProblem,
 			response: async (response: string | false) => {
 				if (response === false) return;
 				const amount = parseAmount(response);
-				if (amount === undefined) return;
 				const result = await fetch('/api/autopay', {
 					method: 'PATCH',
 					headers: { 'Content-Type': 'application/json' },
@@ -203,11 +212,13 @@
 	}
 </script>
 
-<div class="space-y-4 p-4 sm:p-6">
-	<PageHeader title="Payment" />
-	<div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-		<section class="card bg-surface-100-900 flex flex-col gap-4 p-4 sm:p-6">
-			<h2 class="h4">Your current balance</h2>
+<PageBody>
+	<PageHeader
+		title="Payment"
+		subtitle={data.leases.length === 1 ? data.leases[0].address : undefined}
+	/>
+	<div class="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+		<Card as="section" title="Balance">
 			{#if data.leases.length === 0}
 				<p role="status">
 					You have no lease to pay for. If you expect one, please contact your property manager.
@@ -215,7 +226,6 @@
 			{/if}
 			{#each data.leases as lease (lease.id)}
 				{@const dueDate = dueDateOf(lease)}
-				{@const autopay = lease.autopay}
 				<div class="flex flex-col gap-3" data-lease={lease.id}>
 					{#if data.leases.length > 1}
 						<h3 class="font-semibold">
@@ -278,92 +288,114 @@
 							aria-label={data.leases.length > 1
 								? `Make a Payment for ${lease.address}`
 								: undefined}
-							on:click={() => viewPaymentClicked(lease)}>Make a Payment</button
+							onclick={() => viewPaymentClicked(lease)}>Make a Payment</button
 						>
-					</div>
-					<div class="border-surface-300-700 flex flex-col gap-2 border-t pt-3" data-autopay>
-						<h3 class="font-semibold">Autopay</h3>
-						{#if autopay.enrollment}
-							<p>
-								Autopay is <strong>on</strong> with your
-								<strong>{autopay.enrollment.method}</strong>, paying
-								<strong
-									>{autopay.enrollment.amountCents === null
-										? 'Full balance'
-										: currency.format(autopay.enrollment.amountCents / 100)}</strong
-								> on each due date.
-							</p>
-							{#if autopay.enrollment.type === 'card'}
-								<p class="text-sm opacity-80">Card payments include a transaction fee of 3%.</p>
-							{/if}
-							<div class="flex flex-wrap items-center gap-2">
-								<button
-									data-needs-hydration
-									class="btn preset-tonal"
-									on:click={() => changeAutopayAmount(lease)}>Change amount</button
-								>
-								<button
-									data-needs-hydration
-									class="btn preset-tonal-error"
-									on:click={() => turnOffAutopay(lease)}>Turn off autopay</button
-								>
-							</div>
-						{:else}
-							<p class="text-sm opacity-80">
-								Save a card or bank account and we charge it on each due date. Bank accounts have no
-								fee; cards include a transaction fee of 3%.
-							</p>
-							<div class="flex flex-wrap items-end gap-2">
-								<label class="label w-48">
-									<span class="label-text">Amount (optional)</span>
-									<input
-										class="input"
-										type="number"
-										min="0.01"
-										step="0.01"
-										placeholder="Full balance"
-										bind:value={autopayAmounts[lease.id]}
-									/>
-								</label>
-								<button
-									data-needs-hydration
-									class="btn preset-tonal"
-									disabled={busy}
-									aria-label={data.leases.length > 1
-										? `Set up autopay for ${lease.address}`
-										: undefined}
-									on:click={() => startAutopay(lease)}>Set up autopay</button
-								>
-							</div>
-						{/if}
-						{#if autopay.charge?.state === 'pending' || autopay.charge?.state === 'claimed'}
-							<p class="text-sm" role="status">
-								An autopay payment of {currency.format(autopay.charge.amountCents / 100)} started on
-								{shortDate(autopay.charge.day)} is processing.
-							</p>
-						{:else if autopay.charge?.state === 'failed'}
-							<p class="text-error-700-300 text-sm" role="status">
-								Your autopay payment of {currency.format(autopay.charge.amountCents / 100)} on
-								{shortDate(autopay.charge.day)} did not go through. We will try again tomorrow.
-							</p>
-						{:else if autopay.charge?.state === 'gave-up'}
-							<p class="text-error-700-300 text-sm" role="status">
-								Autopay could not charge {currency.format(autopay.charge.amountCents / 100)} after several
-								tries (last on {shortDate(autopay.charge.day)}). Please make a payment.
-							</p>
-						{/if}
 					</div>
 				</div>
 			{/each}
-		</section>
-		<section class="card bg-surface-100-900 flex flex-col gap-4 p-4 sm:p-6">
-			<h2 class="h4">Transaction History</h2>
-			<p class="opacity-80">See past payments and manage payment methods in the Stripe portal.</p>
-			<div>
-				<button data-needs-hydration class="btn preset-tonal" on:click={startCustomerPortal}
-					>View Portal</button
-				>
-			</div>
-		</section>
+		</Card>
+		<div class="flex flex-col gap-4">
+			{#if data.leases.length > 0}
+				<Card as="section" title="Autopay">
+					{#each data.leases as lease (lease.id)}
+						{@const autopay = lease.autopay}
+						<div class="flex flex-col gap-2" data-autopay>
+							{#if data.leases.length > 1}<h3 class="font-semibold">{lease.address}</h3>{/if}
+							{#if autopay.enrollment}
+								<p>
+									Autopay is <strong>on</strong> with your
+									<strong>{autopay.enrollment.method}</strong>, paying
+									<strong
+										>{autopay.enrollment.amountCents === null
+											? 'Full balance'
+											: currency.format(autopay.enrollment.amountCents / 100)}</strong
+									> on each due date.
+								</p>
+								{#if autopay.enrollment.type === 'card'}
+									<p class="text-sm opacity-80">Card payments include a transaction fee of 3%.</p>
+								{/if}
+								<div class="flex flex-wrap items-center gap-2">
+									<button
+										data-needs-hydration
+										class="btn preset-tonal"
+										onclick={() => changeAutopayAmount(lease)}>Change amount</button
+									>
+									<button
+										data-needs-hydration
+										class="btn preset-tonal-error"
+										onclick={() => turnOffAutopay(lease)}>Turn off autopay</button
+									>
+								</div>
+							{:else}
+								<p class="text-sm opacity-80">
+									Save a card or bank account and we charge it on each due date. Bank accounts have
+									no fee; cards include a transaction fee of 3%.
+								</p>
+								<Field
+									label="Amount"
+									hint="(optional)"
+									errors={autopayProblems[lease.id] ? [autopayProblems[lease.id]!] : undefined}
+								>
+									{#snippet children({ attrs, invalid })}
+										<div class="flex flex-wrap items-center gap-2">
+											<input
+												{...attrs}
+												class="input w-48"
+												class:input-error={invalid}
+												type="number"
+												min="0.01"
+												step="0.01"
+												placeholder="Full balance"
+												bind:value={autopayAmounts[lease.id]}
+												oninput={() => {
+													// Once shown, the message follows what is typed.
+													if (autopayProblems[lease.id])
+														autopayProblems[lease.id] = amountProblem(autopayAmounts[lease.id]);
+												}}
+											/>
+											<button
+												data-needs-hydration
+												class="btn preset-tonal"
+												disabled={busy}
+												aria-label={data.leases.length > 1
+													? `Set up autopay for ${lease.address}`
+													: undefined}
+												onclick={() => startAutopay(lease)}>Set up autopay</button
+											>
+										</div>
+									{/snippet}
+								</Field>
+							{/if}
+							{#if autopay.charge?.state === 'pending' || autopay.charge?.state === 'claimed'}
+								<p class="text-sm" role="status">
+									An autopay payment of {currency.format(autopay.charge.amountCents / 100)} started on
+									{shortDate(autopay.charge.day)} is processing.
+								</p>
+							{:else if autopay.charge?.state === 'failed'}
+								<p class="text-error-700-300 text-sm" role="status">
+									Your autopay payment of {currency.format(autopay.charge.amountCents / 100)} on
+									{shortDate(autopay.charge.day)} did not go through. We will try again tomorrow.
+								</p>
+							{:else if autopay.charge?.state === 'gave-up'}
+								<p class="text-error-700-300 text-sm" role="status">
+									Autopay could not charge {currency.format(autopay.charge.amountCents / 100)} after several
+									tries (last on {shortDate(autopay.charge.day)}). Please make a payment.
+								</p>
+							{/if}
+						</div>
+					{/each}
+				</Card>
+			{/if}
+			<Card as="section" title="Payment history">
+				<p class="opacity-80">
+					See past payments and manage saved payment methods in the Stripe portal.
+				</p>
+				<FormActions>
+					<button data-needs-hydration class="btn preset-tonal" onclick={startCustomerPortal}
+						>Open the Stripe portal</button
+					>
+				</FormActions>
+			</Card>
+		</div>
 	</div>
-</div>
+</PageBody>

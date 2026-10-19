@@ -217,7 +217,7 @@ test.describe('ui-accessibility: notifications use the right live-region roles',
 		await signIn(page, TENANT);
 		await page.goto('/profile');
 		await page.waitForLoadState('networkidle');
-		const reset = page.getByRole('button', { name: 'Reset', exact: true });
+		const reset = page.getByRole('button', { name: 'Send reset link' });
 		await reset.click();
 
 		const toast = page
@@ -238,7 +238,7 @@ test.describe('ui-accessibility: notifications use the right live-region roles',
 		await signIn(page, TENANT);
 		await page.goto('/profile');
 		await page.waitForLoadState('networkidle');
-		await page.getByRole('button', { name: 'Reset', exact: true }).click();
+		await page.getByRole('button', { name: 'Send reset link' }).click();
 
 		const toast = page.getByRole('alert').filter({ hasText: 'Error sending reset email.' });
 		await expect(toast).toBeVisible();

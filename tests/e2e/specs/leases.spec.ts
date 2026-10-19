@@ -157,6 +157,9 @@ test.describe.serial('leases', () => {
 			.getByRole('alert')
 			.filter({ hasText: 'These dates overlap another lease at this property' });
 		await expect(warning).toContainText(`${monthStart()} to month to month`);
+		// page-layout "Warning that stops a save": an alert with the shared notice padding.
+		await expect(warning).toHaveAttribute('data-notice', 'warning');
+		expect(await warning.evaluate((el) => getComputedStyle(el).paddingTop)).toBe('16px');
 		expect(await leasesAt(LP)).toHaveLength(1);
 
 		await warning.getByRole('button', { name: 'Save anyway' }).click();
@@ -427,9 +430,8 @@ test.describe.serial('leases: form checks, statuses, edits and documents', () =>
 			});
 			await page.getByRole('button', { name: 'Save lease' }).click();
 
-			// The message is inside the field's label, next to its input.
-			const label = page.locator('label').filter({ has: page.getByLabel(c.field) });
-			await expect(label.getByText(c.error)).toBeVisible();
+			// The message is under the field and is its accessible description.
+			await expect(page.getByLabel(c.field)).toHaveAccessibleDescription(c.error);
 			await expect(page.getByLabel(c.field)).toHaveAttribute('aria-invalid', 'true');
 		}
 		expect(await leasesAt(LQ)).toHaveLength(0);

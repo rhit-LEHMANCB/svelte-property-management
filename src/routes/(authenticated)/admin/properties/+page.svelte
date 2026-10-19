@@ -16,6 +16,8 @@
 	import RowMenu from '$lib/Components/DataList/RowMenu.svelte';
 	import EmptyState from '$lib/Components/DataList/EmptyState.svelte';
 	import PageHeader from '$lib/Components/Shell/PageHeader.svelte';
+	import PageBody from '$lib/Components/Shell/PageBody.svelte';
+	import Card from '$lib/Components/Shell/Card.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -66,70 +68,73 @@
 	>
 {/snippet}
 
-<div class="space-y-4 p-4 sm:p-6">
-	<PageHeader title="Properties" />
-	<DataList
-		label="properties"
-		items={data.properties}
-		key={(property) => property.id}
-		{columns}
-		sortBy="title"
-		searchText={(property) => `${property.data.title ?? ''} ${address(property)}`}
-		toolbar={data.properties.length > 0 ? addButton : undefined}
-	>
-		{#snippet cell(property, column)}
-			{#if column.id === 'title'}
-				<a
-					href={`/admin/properties/${property.id}/edit`}
-					class="flex items-center gap-3 font-bold hover:underline"
-				>
-					{#if property.data.photos?.length}
-						<img
-							src={property.data.photos[0].photoUrl}
-							alt=""
-							class="rounded-base size-16 shrink-0 object-cover"
+<PageBody>
+	<PageHeader title="Properties" subtitle="Homes you rent out, with their leases and photos.">
+		{#if data.properties.length > 0}{@render addButton()}{/if}
+	</PageHeader>
+	<Card>
+		<DataList
+			label="properties"
+			items={data.properties}
+			key={(property) => property.id}
+			{columns}
+			sortBy="title"
+			searchText={(property) => `${property.data.title ?? ''} ${address(property)}`}
+		>
+			{#snippet cell(property, column)}
+				{#if column.id === 'title'}
+					<a
+						href={`/admin/properties/${property.id}/edit`}
+						class="flex items-center gap-3 font-bold hover:underline"
+					>
+						{#if property.data.photos?.length}
+							<img
+								src={property.data.photos[0].photoUrl}
+								alt=""
+								class="rounded-base size-16 shrink-0 object-cover"
+							/>
+						{:else}
+							<span
+								class="rounded-base bg-surface-200-800 flex size-16 shrink-0 items-center justify-center"
+							>
+								<IconPhotoCancel size={28} aria-hidden="true" />
+							</span>
+						{/if}
+						<span>{property.data.title}</span>
+					</a>
+				{:else if column.id === 'address'}
+					{address(property)}
+				{:else if column.id === 'rent'}
+					{Number.isFinite(Number(property.data.rent))
+						? currency.format(Number(property.data.rent))
+						: ''}
+				{:else if column.id === 'actions'}
+					<div class="flex justify-end">
+						<RowMenu
+							label="Actions for {property.data.title}"
+							actions={[
+								{
+									label: 'Edit',
+									icon: IconEdit,
+									run: () => goto(`/admin/properties/${property.id}/edit`)
+								},
+								{
+									label: 'Delete',
+									icon: IconHomeMinus,
+									danger: true,
+									run: () => confirmModal(property)
+								}
+							]}
 						/>
-					{:else}
-						<span
-							class="rounded-base bg-surface-200-800 flex size-16 shrink-0 items-center justify-center"
-						>
-							<IconPhotoCancel size={28} aria-hidden="true" />
-						</span>
-					{/if}
-					<span>{property.data.title}</span>
-				</a>
-			{:else if column.id === 'address'}
-				{address(property)}
-			{:else if column.id === 'rent'}
-				{Number.isFinite(Number(property.data.rent))
-					? currency.format(Number(property.data.rent))
-					: ''}
-			{:else if column.id === 'actions'}
-				<div class="flex justify-end">
-					<RowMenu
-						label="Actions for {property.data.title}"
-						actions={[
-							{
-								label: 'Edit',
-								icon: IconEdit,
-								run: () => goto(`/admin/properties/${property.id}/edit`)
-							},
-							{
-								label: 'Delete',
-								icon: IconHomeMinus,
-								danger: true,
-								run: () => confirmModal(property)
-							}
-						]}
-					/>
-				</div>
-			{/if}
-		{/snippet}
-		{#snippet empty()}
-			<EmptyState icon={IconBuildingEstate} title="No properties yet">
-				Add your first property to assign tenants and take rent payments.
-				{#snippet action()}{@render addButton()}{/snippet}
-			</EmptyState>
-		{/snippet}
-	</DataList>
-</div>
+					</div>
+				{/if}
+			{/snippet}
+			{#snippet empty()}
+				<EmptyState icon={IconBuildingEstate} title="No properties yet">
+					Add your first property to assign tenants and take rent payments.
+					{#snippet action()}{@render addButton()}{/snippet}
+				</EmptyState>
+			{/snippet}
+		</DataList>
+	</Card>
+</PageBody>

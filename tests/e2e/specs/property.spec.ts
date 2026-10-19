@@ -86,11 +86,9 @@ test.describe('property-management', () => {
 		await page.getByRole('button', { name: 'Save' }).click();
 
 		// Wait for the app to react (the zip field is flagged invalid) before checking nothing was created.
-		await expect
-			.poll(() =>
-				page.getByTitle('Zip Code').evaluate((el) => (el as HTMLInputElement).validationMessage)
-			)
-			.toBe('Please enter a valid zip code');
+		await expect(page.getByTitle('Zip Code')).toHaveAccessibleDescription(
+			'Please enter a valid zip code'
+		);
 		await expect(page).toHaveURL(/\/admin\/properties\/add$/);
 		await expect(page.getByText('Successfully created property')).toHaveCount(0);
 		expect(await findProperty(title)).toBeUndefined();

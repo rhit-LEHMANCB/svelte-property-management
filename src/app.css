@@ -20,9 +20,23 @@
 	}
 }
 
-/* Links: cerberus's light-mode link color is 4.4:1 on its card surface; one shade darker passes. */
+/*
+	Links: cerberus's link colors are just under 4.5:1 on its card surface (4.4:1 light, 4.48:1 dark);
+	one shade further from the surface passes in both modes.
+*/
 [data-theme='cerberus'] {
 	--typo-anchor--color-light: var(--color-primary-700);
+	--typo-anchor--color-dark: var(--color-primary-300);
+}
+
+/*
+	Skeleton 5 has no error style for fields. An invalid field gets an error-colored ring, kept while
+	it has focus so the user can see which field they are fixing.
+*/
+.input-error,
+.input-error:focus,
+.input-error:focus-within {
+	--tw-ring-color: var(--color-error-500);
 }
 
 html,

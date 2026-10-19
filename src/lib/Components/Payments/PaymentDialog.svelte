@@ -2,6 +2,7 @@
 	import { BANK_FEE_CENTS, cardFeeCents, oneTimeFeeCents, type OneTimeMethod } from '$lib/fees';
 	import { Dialog } from '@skeletonlabs/skeleton-svelte';
 	import { getModalStore } from '$lib/ui';
+	import Field from '$lib/Components/Forms/Field.svelte';
 
 	/**
 	 * "Make a Payment": the amount and how to pay, each method with its fee for that amount. Shown
@@ -36,20 +37,22 @@
 		amountCents === null ? null : amountCents + oneTimeFeeCents(method, amountCents)
 	);
 
+	/** Why the typed amount cannot be paid, or '' when it can. */
+	function check() {
+		const value = Number.parseFloat(amount);
+		if (!Number.isFinite(value) || value <= 0) return 'The amount must be greater than 0.';
+		if (amountCents === null) return 'The amount must be a multiple of 0.01.';
+		if (amountCents > payableCents)
+			return `The amount must be no more than ${format(payableCents)}.`;
+		return '';
+	}
+
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
-		const value = Number.parseFloat(amount);
-		if (!Number.isFinite(value) || value <= 0) {
-			problem = 'The amount must be greater than 0.';
-		} else if (amountCents === null) {
-			problem = 'The amount must be a multiple of 0.01.';
-		} else if (amountCents > payableCents) {
-			problem = `The amount must be no more than ${format(payableCents)}.`;
-		} else {
-			modalStore.close();
-			onSubmit(amountCents / 100, method);
-			return;
-		}
+		problem = check();
+		if (problem || amountCents === null) return;
+		modalStore.close();
+		onSubmit(amountCents / 100, method);
 	}
 </script>
 
@@ -60,24 +63,25 @@
 		{/snippet}
 	</Dialog.Title>
 	<p class="text-sm opacity-80">You can pay up to {format(payableCents)} now.</p>
-	<label class="label">
-		<span class="label-text">Amount</span>
-		<input
-			class="input"
-			type="number"
-			min="0.01"
-			step="0.01"
-			inputmode="decimal"
-			required
-			bind:value={amount}
-			aria-invalid={problem ? 'true' : undefined}
-			aria-describedby={problem ? 'payment-amount-problem' : undefined}
-			oninput={() => (problem = '')}
-		/>
-	</label>
-	{#if problem}
-		<p id="payment-amount-problem" class="text-error-700-300 text-sm" role="alert">{problem}</p>
-	{/if}
+	<Field label="Amount" id="payment-amount" errors={problem ? [problem] : undefined}>
+		{#snippet children({ attrs, invalid })}
+			<input
+				{...attrs}
+				class="input"
+				class:input-error={invalid}
+				type="number"
+				min="0.01"
+				step="0.01"
+				inputmode="decimal"
+				required
+				bind:value={amount}
+				oninput={() => {
+					// Once shown, the message follows what is typed.
+					if (problem) problem = check();
+				}}
+			/>
+		{/snippet}
+	</Field>
 	<fieldset class="space-y-2">
 		<legend class="label-text mb-1">Pay with</legend>
 		<label class="border-surface-300-700 flex cursor-pointer items-start gap-3 rounded border p-3">

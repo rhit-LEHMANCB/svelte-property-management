@@ -1,12 +1,19 @@
 <script lang="ts">
 	import { flip } from 'svelte/animate';
-	import { createEventDispatcher } from 'svelte';
+	import type { Snippet } from 'svelte';
 	import type { PhotoItem } from '../../app';
 
-	export let list: PhotoItem[];
-	let isOver: string | boolean = false;
-
-	const dispatch = createEventDispatcher();
+	let {
+		list,
+		onsort,
+		children
+	}: {
+		list: PhotoItem[];
+		/** Called with the reordered list after a drop. */
+		onsort: (list: PhotoItem[]) => void;
+		children: Snippet<[PhotoItem, number]>;
+	} = $props();
+	let isOver = $state<string | boolean>(false);
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	function getDraggedParent(node: any) {
 		if (!node.dataset.index) {
@@ -22,6 +29,7 @@
 	}
 
 	function onDragOver(e: DragEvent) {
+		e.preventDefault();
 		const dragged = getDraggedParent(e.target);
 		isOver = dragged?.id ?? false;
 	}
@@ -32,6 +40,7 @@
 	}
 
 	function onDrop(e: DragEvent) {
+		e.preventDefault();
 		isOver = false;
 		const dragged = getDraggedParent(e.target);
 		reorder({
@@ -45,7 +54,7 @@
 		const newList = [...list];
 		newList[from] = [newList[to], (newList[to] = newList[from])][0];
 
-		dispatch('sort', newList);
+		onsort(newList);
 	};
 </script>
 
@@ -59,13 +68,13 @@
 				data-index={index}
 				data-id={item.id}
 				draggable="true"
-				on:dragstart={onDragStart}
-				on:dragover|preventDefault={onDragOver}
-				on:dragleave={onDragLeave}
-				on:drop|preventDefault={onDrop}
+				ondragstart={onDragStart}
+				ondragover={onDragOver}
+				ondragleave={onDragLeave}
+				ondrop={onDrop}
 				animate:flip={{ duration: 300 }}
 			>
-				<slot {item} {index} />
+				{@render children(item, index)}
 			</li>
 		{/each}
 	</ul>
