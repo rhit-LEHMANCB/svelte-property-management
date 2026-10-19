@@ -17,6 +17,13 @@ For each **failure**: classification (`app bug`, `test bug`, `environment`), wha
 ## Screenshots
 A screenshot per scenario at the point that proves the result (after the action, showing the visible outcome), and one at the failure point for each failure. Name files `<capability>-<scenario-slug>.png`. Show the role used (admin or tenant) in the caption. No credentials, tokens or real personal data; crop or mask them.
 
+## Design comparison
+Only when a design pass ran. One row per mockup image; `match` or `deviation` (high | medium | low). Deviations the implementer recorded as deliberate are marked `deliberate`.
+
+| Screen / state / viewport | Mockup | Deployed | Result | Difference |
+|---|---|---|---|---|
+| <screen> / <state> / desktop | ![mockup](<link>) | ![deployed](<link>) | match / deviation (<severity>) | <what differs> |
+
 ## Observations outside the specs
 Problems noticed that no scenario covers (layout, wording, accessibility, slow pages, console errors), each with severity.
 
