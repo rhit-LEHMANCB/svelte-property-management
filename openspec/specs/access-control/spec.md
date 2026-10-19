@@ -35,7 +35,7 @@ The system SHALL give each non-admin user in the authenticated area at most one 
 #### Scenario: No property
 - **WHEN** a tenant has no current lease, because they were never added to one, their lease has not started, it has ended, or their property was deleted
 - **THEN** the layout loads without `userProperty` and without an error
-- **AND** the dashboard names the upcoming lease that starts next, with its start date and a link to `/payment` when money can be paid now, or, with no upcoming lease, shows that no property is assigned
+- **AND** the dashboard shows each upcoming lease in its "Your lease" card with its start date, with no separate notice repeating it, and the balance tile links to `/payment` when money can be paid now; with no upcoming lease it shows that no property is assigned
 - **AND** `/maintenance` stays on the page and explains why requests are not available, naming the upcoming lease and its start date when there is one
 - **AND** `/payment` lists their upcoming leases (with autopay setup) and any ended lease with money owed, and with none says there is no lease to pay for
 - **AND** `/profile` and `/insurance` load normally
