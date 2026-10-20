@@ -1,7 +1,7 @@
 # Lifecycle: protect-paid-leases-from-delete
 
 - Branch: `claude/pensive-lamport-i7b44a`
-- Stage: 7 Production PR (awaiting Gate B, human)
+- Stage: **complete (archived automatically on 2026-10-20 after the production release `148bb99`)**
 - Review round: 2 of 5
 - QA cycle: 1 of 3
 - Started: 2026-10-20
@@ -139,3 +139,6 @@ Ranked by risk. Use the dev site and test accounts, not production data, unless 
 ## Implementation notes
 - Local e2e could not run in this sandbox (the Firestore emulator jar cannot be downloaded); the e2e specs for this change are checked by the PR workflow. Lint, `check`, full vitest (791 tests) and build pass locally with `JOBS_SECRET` exported.
 - Storage cleanup of a lease's files during a property delete is done by `deleteLease`, which logs and continues on failure (a retry cannot find a lease that is already gone), so an outage can leave a deleted lease's private PDF orphaned.
+
+## Archive
+Archived automatically on 2026-10-20 after the production release `148bb99` ([workflow run](https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/39466598338)). That marks this lifecycle complete.
