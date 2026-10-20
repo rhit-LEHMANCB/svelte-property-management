@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Delete property
-The system SHALL let an admin delete a property and everything that hangs off it, and SHALL finish all of that cleanup before reporting success. The system SHALL refuse to delete a property when any of its leases has a recorded rent, deposit or late-fee payment, and SHALL remove nothing that holds payment history.
+The system SHALL let an admin delete a property and everything that hangs off it, and SHALL finish all of that cleanup before reporting success. The system SHALL refuse to delete a property when any of its leases has a recorded rent, deposit or late-fee payment, and SHALL NOT remove any lease's payment history.
 
 #### Scenario: Cascade
 - **WHEN** a property none of whose leases has a recorded payment is deleted

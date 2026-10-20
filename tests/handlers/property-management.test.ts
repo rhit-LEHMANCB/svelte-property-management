@@ -370,7 +370,7 @@ describe('property-management: delete property (DELETE /api/property/{id})', () 
 				const result = await remove();
 
 				expect(result.status).toBe(409);
-				expect(JSON.stringify(result)).toContain(PAID_MESSAGE);
+				expect(result.error).toBe(PAID_MESSAGE);
 				// The lease without payments is kept too: nothing is removed.
 				expect(db.peek('properties/prop-1')).toBeDefined();
 				expect(db.peek('leases/l0')).toBeDefined();
@@ -400,9 +400,37 @@ describe('property-management: delete property (DELETE /api/property/{id})', () 
 
 			expect(result.status).toBe(409);
 			expect(db.peek('properties/prop-1')).toBeDefined();
+			// l0 had no payments and was already removed; the paid lease and the rest are kept.
+			expect(db.peek('leases/l0')).toBeUndefined();
 			expect(db.peek('leases/l1')).toBeDefined();
 			expect(db.peek('leases/l1/payment_history/2026')).toBeDefined();
 			expect(db.peek('maintenance/m1')).toBeDefined();
+		});
+
+		it('Scenario: a Storage failure while removing lease files answers 500 and repeating the delete finishes it', async () => {
+			seedPaidProperty(() => undefined);
+			// The two lease deletes clean up their own files first; the failure is in the property's step.
+			services.storage.bucket.mockReturnValueOnce({ deleteFiles: async () => undefined });
+			services.storage.bucket.mockReturnValueOnce({ deleteFiles: async () => undefined });
+			services.storage.bucket.mockReturnValueOnce({
+				deleteFiles: async () => {
+					throw new Error('storage unavailable');
+				}
+			});
+
+			const failed = await remove();
+
+			expect(failed.status).toBe(500);
+			expect(db.peek('properties/prop-1')).toBeDefined();
+			expect(db.peek('leases/l1')).toBeUndefined();
+
+			const retried = await remove();
+
+			expect(retried.status).toBe(200);
+			expect(db.peek('properties/prop-1')).toBeUndefined();
+			expect(services.storage.log.deletedPrefixes).toEqual(
+				expect.arrayContaining(['leases/l0/', 'leases/l1/', 'properties/prop-1/'])
+			);
 		});
 
 		it('Scenario: a property whose leases have no payments still deletes, other properties untouched', async () => {
@@ -430,7 +458,7 @@ describe('property-management: delete property (DELETE /api/property/{id})', () 
 		});
 	});
 
-	it('Scenario: Large property with more than 500 lease history documents removes them all', async () => {
+	it('Scenario: Large property with more than 500 lease invoice documents removes them all', async () => {
 		seedAdmin('admin-1');
 		seedProperty('prop-1');
 		for (let i = 0; i < 3; i++) {

@@ -287,6 +287,35 @@ test.describe.serial('leases', () => {
 		await expect(page).toHaveURL(/\?tab=leases$/);
 		expect((await withoutPayments.ref.get()).exists).toBe(false);
 	});
+
+	test('Scenario: a lease whose only payment is toward the deposit cannot be deleted either', async ({
+		page
+	}) => {
+		const db = adminDb();
+		const property = 'e2e-deposit-only-property';
+		await db
+			.doc(`properties/${property}`)
+			.set(leaseProperty('E2E Deposit Only', '18 Deposit Dr', 900));
+		const lease = await db.collection('leases').add({
+			propertyId: property,
+			tenantIds: [],
+			rent: 900,
+			startDate: '2040-01-01',
+			endDate: null,
+			document: null
+		});
+		await lease.collection('deposit').doc('ledger').set({ paid: 100, transactions: [] });
+		await signIn(page, ADMIN);
+
+		await page.goto(`/admin/properties/${property}/leases/${lease.id}`);
+		await page.waitForLoadState('networkidle');
+		await expect(page.getByText(/Set an end date instead/).first()).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Delete lease' })).toBeDisabled();
+
+		await lease.collection('deposit').doc('ledger').delete();
+		await lease.delete();
+		await db.doc(`properties/${property}`).delete();
+	});
 });
 
 /** The month name a `YYYY-MM-DD` date falls in, as payment_history keys it. */

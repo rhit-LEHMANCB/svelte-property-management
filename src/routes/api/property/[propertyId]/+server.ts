@@ -1,4 +1,5 @@
 import { adminDB, adminStorage } from '$lib/server/admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { error, isHttpError, json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
@@ -26,10 +27,21 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		if (checks.some((check) => check.hasPayments)) throw error(409, PAID_LEASES_MESSAGE);
 		// ...and each lease is removed by the same transaction that deletes a single lease, which checks
 		// again, so a payment recorded since is kept with its lease. The leases that were already
-		// removed had no payments.
+		// removed had no payments. Their ids are kept on the property until their files are gone, so
+		// repeating a delete whose Storage cleanup failed still finds them.
+		const property = await propertyRef.get();
+		if (property.exists && leases.size > 0) {
+			await propertyRef.update({
+				leaseFilesToDelete: FieldValue.arrayUnion(...leases.docs.map((l) => l.id))
+			});
+		}
 		for (const lease of leases.docs) {
 			if ((await deleteLease(lease.id)) === 'has-payments') throw error(409, PAID_LEASES_MESSAGE);
 		}
+		const leaseIds = new Set<string>([
+			...((property.data()?.leaseFilesToDelete as string[] | undefined) ?? []),
+			...leases.docs.map((lease) => lease.id)
+		]);
 
 		const [junctions, maintenance, paymentHistory, recordedInvoices] = await Promise.all([
 			// Tenant links from before leases; kept by the lease migration until a later cleanup.
@@ -54,7 +66,9 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 					...recordedInvoices.docs
 				].map((d) => d.ref)
 			),
-			bucket.deleteFiles({ prefix: `properties/${params.propertyId}/` })
+			bucket.deleteFiles({ prefix: `properties/${params.propertyId}/` }),
+			// Also done by deleteLease, which only logs a failure; here it fails the request.
+			...[...leaseIds].map((id) => bucket.deleteFiles({ prefix: `leases/${id}/` }))
 		]);
 		await propertyRef.delete();
 
