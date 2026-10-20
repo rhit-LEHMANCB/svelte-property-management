@@ -13,6 +13,9 @@
 Approved: no
 Accepted preflight gaps: none
 
+## Design pass
+(stage 2; `skipped (no UI change)`, or the design link, date and decisions; see `references/design-pass.md`)
+
 ## Preflight
 (table of checks and results, from stage 2)
 

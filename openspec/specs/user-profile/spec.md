@@ -50,7 +50,7 @@ The system SHALL store one profile photo per user at `users/{uid}/profile/{times
 The system SHALL let a user trigger the reset email from the profile page.
 
 #### Scenario: Reset button
-- **WHEN** the user clicks Reset
+- **WHEN** the user clicks "Send reset link" in the Password card
 - **THEN** `PUT /api/signin/reset` is called and a success or error toast shows
 
 ## Known Gaps

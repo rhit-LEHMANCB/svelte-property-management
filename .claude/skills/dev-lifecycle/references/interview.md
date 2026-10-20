@@ -18,7 +18,7 @@ Goal: remove ambiguity before anything is proposed, without asking what the code
 - **Data:** new or changed Firestore collections or fields, who writes them, migrations for existing documents, storage paths, Stripe objects.
 - **Behavior and edge cases:** empty states, limits, concurrent edits, failure of Stripe, the email provider or Firebase calls, partial failures.
 - **Security and privacy:** access rules, what must not leak between tenants, secrets, email content.
-- **UI:** which pages, forms and navigation entries; reuse of existing components.
+- **UI:** which pages, forms and navigation entries; reuse of existing components. Note clearly whether the change touches UI: if it does, stage 2 includes a Claude design pass the human approves at Gate A.
 - **Acceptance:** concrete WHEN/THEN examples the user would check by hand.
 - **Rollout:** environment variables or secrets to add in GitHub environments `develop` and `production`, Stripe or Firebase console changes, anything that must happen before the production deploy.
 - **Conflicts:** anything that contradicts an existing spec, a Known Gap, or an open issue.
