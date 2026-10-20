@@ -28,6 +28,8 @@
 
 *Alternatives:* (a) one check then bulk delete as today, which leaves a window in which a webhook payment is deleted with its lease; (b) a Firestore transaction over everything, which exceeds the 500-write limit. A retry after a 409 or a 500 finds the remaining state by query and finishes, so the existing "repeat the delete" guarantee holds.
 
+**Retryable file cleanup.** `deleteLease` only logs a Storage failure, and a deleted lease can no longer be found by a retry. Before deleting the leases, the property delete records their ids in a `leaseFilesToDelete` array on the property document, and removes those `leases/<id>/` prefixes in the same step as the property's own files, which fails the request. The property document, and with it the array, is deleted last, so a repeated delete finishes the cleanup. A refused (409) delete leaves the array on the property; it is harmless and is cleaned up when the property is finally deleted.
+
 **Side effect:** `deleteLease` also removes a lease's `late_fees`, `deposit` ledger and `notices`, which the old property cascade left behind. That is a cleanup improvement and needs a test.
 
 **409 message.** "This property has leases with recorded payments, so it cannot be deleted. Set an end date on those leases instead." thrown with `error(409, …)`, as the lease endpoint does.
