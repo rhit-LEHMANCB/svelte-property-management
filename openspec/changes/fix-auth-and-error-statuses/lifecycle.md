@@ -1,13 +1,13 @@
 # Lifecycle: fix-auth-and-error-statuses
 
 - Branch: `fix-auth-and-error-statuses`
-- Stage: 1 Interview
+- Stage: 2 Propose (awaiting Gate A)
 - Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-20
 
 ## Interview summary
-(approved: pending)
+(approved: yes, 2026-10-20)
 
 **Goal:** fix three small status/markup bugs: #182, #183, #152.
 **Scope:**
@@ -30,10 +30,22 @@ Approved: no
 Accepted preflight gaps: none
 
 ## Design pass
-(stage 2; `skipped (no UI change)`, or the design link, date and decisions; see `references/design-pass.md`)
+Design pass: skipped (no UI change)
 
 ## Preflight
-(table of checks and results, from stage 2)
+GitHub backend: MCP (gh token fails in this cloud session).
+
+| Check | Result |
+| --- | --- |
+| git commit and push | ok (branch pushed) |
+| GitHub MCP `get_me` | ok (rhit-LEHMANCB) |
+| Playwright `qa` project, Chromium | ok |
+| QA_* credentials in `.env.qa` (mode 600, gitignored) | ok; trailing spaces trimmed (#190) |
+| Dev deploy on `develop` | latest run success |
+| lint, check | pass |
+| Unit/handler tests (`npm test`) | pass |
+| Emulator e2e | cannot run here (jar download blocked); runs in CI only |
+| Secrets/variables | none needed |
 
 ## Review rounds
 (none yet; one line per round: blockers, majors, minors, nits, fixed, rejected with reason)
