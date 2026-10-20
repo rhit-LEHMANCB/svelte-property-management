@@ -251,3 +251,27 @@ test.describe('property-management: Cascade', () => {
 		await expect(page.getByText('No property is assigned to your account yet.')).toBeVisible();
 	});
 });
+
+test('Scenario: a failed property delete without a refusal shows the generic message', async ({
+	page
+}) => {
+	await signIn(page, ADMIN);
+	await page.goto('/admin/properties');
+	await page.waitForLoadState('networkidle');
+	await page.route('**/api/property/*', (route) =>
+		route.fulfill({
+			status: 500,
+			contentType: 'application/json',
+			body: '{"message":"internal detail"}'
+		})
+	);
+	await page
+		.getByRole('button', { name: /^Actions for / })
+		.first()
+		.click();
+	await page.getByRole('menuitem', { name: 'Delete' }).click();
+	await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
+
+	await expect(page.getByText('Error removing property.')).toBeVisible();
+	await expect(page.getByText('internal detail')).toHaveCount(0);
+});

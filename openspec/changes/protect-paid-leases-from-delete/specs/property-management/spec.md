@@ -7,7 +7,7 @@ The system SHALL let an admin delete a property and everything that hangs off it
 
 #### Scenario: Cascade
 - **WHEN** a property none of whose leases has a recorded payment is deleted
-- **THEN** its document, its maintenance requests, its `payment_history` subcollections, its leases with their `payment_history` and `recorded_invoices` subcollections, its storage files and its leases' documents are removed
+- **THEN** its document, its maintenance requests, its `payment_history` subcollections, its leases with their `recorded_invoices`, `notices`, `late_fees` and `deposit` records, its storage files and its leases' documents are removed
 - **AND** the response is sent only after every removal has finished
 
 #### Scenario: Large property
@@ -34,6 +34,7 @@ The system SHALL let an admin delete a property and everything that hangs off it
 #### Scenario: A payment lands during the delete
 - **WHEN** a payment is recorded on one of the property's leases after the delete has started and before that lease is removed
 - **THEN** the response is 409 and the paid lease and its history are kept
+- **AND** leases without payments that were already removed stay removed
 
 #### Scenario: Payment history of other properties
 - **WHEN** a property is refused or deleted
@@ -54,12 +55,12 @@ The system SHALL remove a property's leases, and any `junction_user_property` ro
 ## ADDED Requirements
 
 ### Requirement: Property delete error shown to the admin
-The system SHALL show an admin who deletes a property from the properties list the reason the server gives when the delete is refused, and SHALL fall back to a generic message only when the server gives none.
+The system SHALL show an admin who deletes a property from the properties list the reason the server gives when the delete is refused (409), and SHALL show a generic message for any other failure.
 
 #### Scenario: Refused delete
 - **WHEN** an admin confirms the delete of a property that has a lease with payments
 - **THEN** an error toast shows that the property has leases with recorded payments, and the property stays in the list
 
 #### Scenario: Other failure
-- **WHEN** the delete fails and the response carries no message
+- **WHEN** the delete fails for any other reason, with or without a message in the response
 - **THEN** the toast reads "Error removing property."

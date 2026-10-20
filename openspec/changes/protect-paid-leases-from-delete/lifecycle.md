@@ -1,8 +1,8 @@
 # Lifecycle: protect-paid-leases-from-delete
 
 - Branch: `claude/pensive-lamport-i7b44a`
-- Stage: 4 Review
-- Review round: 1 of 5
+- Stage: 5 Ship to develop
+- Review round: 2 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-20
 - Issues: #172, #173
@@ -63,6 +63,8 @@ GitHub backend: GitHub MCP (`gh` token fails in this cloud session; `get_me` wor
 
 ## Review rounds
 - Round 1: blockers 0, majors 1, minors 5, nits 2. Fixed: (major) a Storage failure while cleaning a deleted lease's files could not be retried, so the property now records the removed lease ids in `leaseFilesToDelete` until their files are gone and deletes those prefixes in a step that fails the request, with a handler test; (minor) spec wording now says no lease's payment history is removed; race test now asserts l0 is removed and l1 kept; added an e2e deposit-only edit-page test on its own property; renamed the large-property test; the 409 message is asserted exactly. Not changed, with reasons: a lease created between the lease query and the property delete (pre-existing, not part of this change's scope, and the admin form cannot create a lease for a property while it is being deleted by the same admin in practice); a lease's bookkeeping removed in one transaction (accepted in design.md Risks; far above realistic size).
+
+- Round 2: blockers 0, majors 0, minors 5, nits 3 (exit). Fixed: the Storage-failure test now fails by prefix, not call order; added a handler test for a refused delete followed by a successful retry; added an e2e test for the generic toast; the deposit-only e2e cleans up in `finally`; the toast shows the server message only for 409 (spec updated); Cascade scenario and the race scenario wording updated. Not changed, with reasons: lease files of a property whose document does not exist (orphan leases only; recording the ids would need to create the property document, which is worse); sequential deleteLease plus a second deleteFiles (deliberate, in design); lifecycle.md is meant to be committed (the skill keeps state there and the archive workflow completes it).
 
 ## Out-of-scope observations
 (none yet)

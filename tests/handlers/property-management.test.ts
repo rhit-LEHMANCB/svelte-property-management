@@ -409,13 +409,16 @@ describe('property-management: delete property (DELETE /api/property/{id})', () 
 
 		it('Scenario: a Storage failure while removing lease files answers 500 and repeating the delete finishes it', async () => {
 			seedPaidProperty(() => undefined);
-			// The two lease deletes clean up their own files first; the failure is in the property's step.
-			services.storage.bucket.mockReturnValueOnce({ deleteFiles: async () => undefined });
-			services.storage.bucket.mockReturnValueOnce({ deleteFiles: async () => undefined });
-			services.storage.bucket.mockReturnValueOnce({
-				deleteFiles: async () => {
+			// The property's own step fails once; the lease deletes clean up their files on their own.
+			const bucket = services.storage.bucket();
+			const deleteFiles = bucket.deleteFiles.getMockImplementation()!;
+			let failedOnce = false;
+			bucket.deleteFiles.mockImplementation(async (options: { prefix: string }) => {
+				if (options.prefix === 'properties/prop-1/' && !failedOnce) {
+					failedOnce = true;
 					throw new Error('storage unavailable');
 				}
+				return deleteFiles(options);
 			});
 
 			const failed = await remove();
@@ -430,6 +433,23 @@ describe('property-management: delete property (DELETE /api/property/{id})', () 
 			expect(db.peek('properties/prop-1')).toBeUndefined();
 			expect(services.storage.log.deletedPrefixes).toEqual(
 				expect.arrayContaining(['leases/l0/', 'leases/l1/', 'properties/prop-1/'])
+			);
+		});
+
+		it('Scenario: after a refused delete the payment is gone, deleting again removes everything and cleans the lease files', async () => {
+			seedPaidProperty(() => undefined);
+			db.seed('leases/l1/payment_history/2026', { January: { remainingBalance: 0 } });
+			const refused = await remove();
+			expect(refused.status).toBe(409);
+			await db.doc('leases/l1/payment_history/2026').delete();
+
+			const retried = await remove();
+
+			expect(retried.status).toBe(200);
+			expect(db.peek('properties/prop-1')).toBeUndefined();
+			expect(db.peek('leases/l1')).toBeUndefined();
+			expect(services.storage.log.deletedPrefixes).toEqual(
+				expect.arrayContaining(['leases/l1/', 'properties/prop-1/'])
 			);
 		});
 

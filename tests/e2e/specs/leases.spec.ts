@@ -305,16 +305,18 @@ test.describe.serial('leases', () => {
 			document: null
 		});
 		await lease.collection('deposit').doc('ledger').set({ paid: 100, transactions: [] });
-		await signIn(page, ADMIN);
+		try {
+			await signIn(page, ADMIN);
 
-		await page.goto(`/admin/properties/${property}/leases/${lease.id}`);
-		await page.waitForLoadState('networkidle');
-		await expect(page.getByText(/Set an end date instead/).first()).toBeVisible();
-		await expect(page.getByRole('button', { name: 'Delete lease' })).toBeDisabled();
-
-		await lease.collection('deposit').doc('ledger').delete();
-		await lease.delete();
-		await db.doc(`properties/${property}`).delete();
+			await page.goto(`/admin/properties/${property}/leases/${lease.id}`);
+			await page.waitForLoadState('networkidle');
+			await expect(page.getByText(/Set an end date instead/).first()).toBeVisible();
+			await expect(page.getByRole('button', { name: 'Delete lease' })).toBeDisabled();
+		} finally {
+			await lease.collection('deposit').doc('ledger').delete();
+			await lease.delete();
+			await db.doc(`properties/${property}`).delete();
+		}
 	});
 });
 
