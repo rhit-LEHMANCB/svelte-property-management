@@ -61,6 +61,9 @@ GitHub backend: GitHub MCP (`gh` token fails in this cloud session; `get_me` wor
 | Java for emulators | pass |
 | Secrets/variables for the `develop` environment | none needed |
 
+## Ship
+PR into `develop`: https://github.com/rhit-LEHMANCB/svelte-property-management/pull/186. Waiting on: the required `tests` and `build_and_preview` checks, then a merge commit (`merge_pull_request`, `merge_method: merge`, `expectedHeadSha`), then the dev deploy run of `firebase-hosting-merge.yml` on `develop`, then stage 6 QA.
+
 ## Review rounds
 - Round 1: blockers 0, majors 1, minors 5, nits 2. Fixed: (major) a Storage failure while cleaning a deleted lease's files could not be retried, so the property now records the removed lease ids in `leaseFilesToDelete` until their files are gone and deletes those prefixes in a step that fails the request, with a handler test; (minor) spec wording now says no lease's payment history is removed; race test now asserts l0 is removed and l1 kept; added an e2e deposit-only edit-page test on its own property; renamed the large-property test; the 409 message is asserted exactly. Not changed, with reasons: a lease created between the lease query and the property delete (pre-existing, not part of this change's scope, and the admin form cannot create a lease for a property while it is being deleted by the same admin in practice); a lease's bookkeeping removed in one transaction (accepted in design.md Risks; far above realistic size).
 
