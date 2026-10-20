@@ -57,7 +57,12 @@
 			successToast('Property Successfully Removed.', toastStore);
 			refresh();
 		} else {
-			errorToast('Error removing property.', toastStore);
+			const body = await response.json().catch(() => undefined);
+			// Only a refusal carries a reason meant for the admin; other failures stay generic.
+			errorToast(
+				(response.status === 409 && body?.message) || 'Error removing property.',
+				toastStore
+			);
 		}
 	}
 </script>

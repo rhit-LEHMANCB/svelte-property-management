@@ -4,7 +4,7 @@ import { adminDB } from '$lib/server/admin';
 import { getAdminUserDataOrError, getUserIdOrError } from '$lib/server/authHelpers';
 import type { LeaseDoc } from '$lib/server/leaseDates';
 import { emptyLeaseForm, leaseFormAction } from '$lib/server/leaseForm';
-import { propertyAddress, summarizeLease } from '$lib/server/leases';
+import { propertyAddress, readLeasePayments, summarizeLease } from '$lib/server/leases';
 import { defaultLateFee } from '$lib/lateFee';
 
 export const load = (async ({ locals, params }) => {
@@ -20,9 +20,9 @@ export const load = (async ({ locals, params }) => {
 	if (!property) throw error(404, 'Property not found');
 	if (!lease || lease.propertyId !== params.propertyId) throw error(404, 'Lease not found');
 
-	const [summary, history] = await Promise.all([
+	const [summary, payments] = await Promise.all([
 		summarizeLease(leaseSnap.id, lease),
-		leaseSnap.ref.collection('payment_history').limit(1).get()
+		readLeasePayments(leaseSnap.ref)
 	]);
 	return {
 		form: await emptyLeaseForm({
@@ -40,7 +40,7 @@ export const load = (async ({ locals, params }) => {
 		lease: {
 			...summary,
 			documentName: lease.document?.fileName ?? null,
-			hasPayments: !history.empty,
+			hasPayments: payments.hasPayments,
 			// Ids with no user document cannot be shown as emails, so saving drops them.
 			missingTenants: lease.tenantIds.length - summary.tenants.length
 		}

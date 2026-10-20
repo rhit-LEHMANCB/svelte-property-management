@@ -79,13 +79,16 @@
 	/>
 	<Card title="Delete lease">
 		<div class="flex flex-wrap items-center justify-between gap-3">
-			<p class="max-w-prose opacity-80">
-				A lease with recorded payments cannot be deleted. Set an end date instead.
-			</p>
+			{#if data.lease.hasPayments}
+				<p class="max-w-prose opacity-80">
+					This lease has recorded payments, so it cannot be deleted. Set an end date instead.
+				</p>
+			{/if}
 			<button
 				data-needs-hydration
 				type="button"
 				class="btn preset-filled-error-500"
+				disabled={data.lease.hasPayments}
 				onclick={confirmDelete}><IconTrash size={18} aria-hidden="true" />Delete lease</button
 			>
 		</div>

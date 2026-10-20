@@ -657,6 +657,21 @@ describe('leases: saving races and stale records (review round 1)', () => {
 		expect((await load()).data.lease.hasPayments).toBe(true);
 	});
 
+	it('the edit page counts a deposit payment, or a paid late fee, as a recorded payment', async () => {
+		setup();
+		seedLease('lease-1', { tenantIds: ['tenant-1'], startDate: '2026-01-01' });
+		const load = () =>
+			call(editLoad, { userID: 'admin-1', params: { propertyId: 'prop-1', leaseId: 'lease-1' } });
+		db.seed('leases/lease-1/deposit/ledger', { paid: 0 });
+		db.seed('leases/lease-1/late_fees/2026-02', { amount: 50, paid: 0 });
+		expect((await load()).data.lease.hasPayments).toBe(false);
+		db.seed('leases/lease-1/deposit/ledger', { paid: 100, transactions: [] });
+		expect((await load()).data.lease.hasPayments).toBe(true);
+		db.seed('leases/lease-1/deposit/ledger', { paid: 0 });
+		db.seed('leases/lease-1/late_fees/2026-02', { amount: 50, paid: 50 });
+		expect((await load()).data.lease.hasPayments).toBe(true);
+	});
+
 	it('the edit page counts tenants whose account no longer exists', async () => {
 		setup();
 		seedLease('lease-1', { tenantIds: ['tenant-1', 'gone-user'], startDate: '2026-01-01' });

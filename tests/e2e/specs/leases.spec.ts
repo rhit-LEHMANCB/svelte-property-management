@@ -266,19 +266,57 @@ test.describe.serial('leases', () => {
 			.set({ January: { remainingBalance: 0 } });
 		await signIn(page, ADMIN);
 
+		// With payments the page says so and Delete is disabled; the server refuses it as well.
 		await page.goto(`/admin/properties/${LP}/leases/${withPayments.id}`);
 		await page.waitForLoadState('networkidle');
-		await page.getByRole('button', { name: 'Delete lease' }).click();
-		await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
 		await expect(page.getByText(/Set an end date instead/).first()).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Delete lease' })).toBeDisabled();
+		const refused = await page.evaluate(
+			async (url) => (await fetch(url, { method: 'DELETE' })).status,
+			`/api/lease/${withPayments.id}`
+		);
+		expect(refused).toBe(409);
 		expect((await withPayments.ref.get()).exists).toBe(true);
 
+		// Without payments there is no warning and Delete works.
 		await page.goto(`/admin/properties/${LP}/leases/${withoutPayments.id}`);
 		await page.waitForLoadState('networkidle');
+		await expect(page.getByText(/Set an end date instead/)).toHaveCount(0);
 		await page.getByRole('button', { name: 'Delete lease' }).click();
 		await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
 		await expect(page).toHaveURL(/\?tab=leases$/);
 		expect((await withoutPayments.ref.get()).exists).toBe(false);
+	});
+
+	test('Scenario: a lease whose only payment is toward the deposit cannot be deleted either', async ({
+		page
+	}) => {
+		const db = adminDb();
+		const property = 'e2e-deposit-only-property';
+		await db
+			.doc(`properties/${property}`)
+			.set(leaseProperty('E2E Deposit Only', '18 Deposit Dr', 900));
+		const lease = await db.collection('leases').add({
+			propertyId: property,
+			tenantIds: [],
+			rent: 900,
+			startDate: '2040-01-01',
+			endDate: null,
+			document: null
+		});
+		await lease.collection('deposit').doc('ledger').set({ paid: 100, transactions: [] });
+		try {
+			await signIn(page, ADMIN);
+
+			await page.goto(`/admin/properties/${property}/leases/${lease.id}`);
+			await page.waitForLoadState('networkidle');
+			await expect(page.getByText(/Set an end date instead/).first()).toBeVisible();
+			await expect(page.getByRole('button', { name: 'Delete lease' })).toBeDisabled();
+		} finally {
+			await lease.collection('deposit').doc('ledger').delete();
+			await lease.delete();
+			await db.doc(`properties/${property}`).delete();
+		}
 	});
 });
 
