@@ -89,4 +89,3 @@ The system SHALL show a tenant only the leases they are on, and SHALL NOT expose
 
 ## Known Gaps
 - `isFirstLogin` is read but never written anywhere, so the redirect never triggers for users created by `/api/user/add`.
-- The tenant home page is a stub reading "Manager page".
