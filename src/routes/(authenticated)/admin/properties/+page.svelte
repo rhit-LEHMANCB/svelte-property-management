@@ -57,7 +57,8 @@
 			successToast('Property Successfully Removed.', toastStore);
 			refresh();
 		} else {
-			errorToast('Error removing property.', toastStore);
+			const body = await response.json().catch(() => undefined);
+			errorToast(body?.message ?? 'Error removing property.', toastStore);
 		}
 	}
 </script>

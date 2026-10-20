@@ -1,7 +1,7 @@
 # Lifecycle: protect-paid-leases-from-delete
 
 - Branch: `claude/pensive-lamport-i7b44a`
-- Stage: 2 Propose + preflight (awaiting Gate A)
+- Stage: 4 Review (round 0 of 5 not yet run)
 - Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-20
@@ -39,8 +39,8 @@
 **Assumptions.** The 409 wording mirrors the lease one. No UI design pass is needed beyond a text change and a disabled button.
 
 ## Gate A
-Approved: no
-Accepted preflight gaps: none
+Approved: yes, 2026-10-20 (by the user, in chat)
+Accepted preflight gaps: `npm run check` needs `JOBS_SECRET`; a dummy value is exported in the shell for local `check` and `build`.
 
 ## Design pass
 Design pass: skipped (no UI change: one disabled button and a conditional line of text on the edit-lease page, and a toast message on the properties list).
@@ -75,3 +75,7 @@ GitHub backend: GitHub MCP (`gh` token fails in this cloud session; `get_me` wor
 
 ## Halted
 (only if the run halted)
+
+## Implementation notes
+- Local e2e could not run in this sandbox (the Firestore emulator jar cannot be downloaded); the e2e specs for this change are checked by the PR workflow. Lint, `check`, full vitest (791 tests) and build pass locally with `JOBS_SECRET` exported.
+- Storage cleanup of a lease's files during a property delete is done by `deleteLease`, which logs and continues on failure (a retry cannot find a lease that is already gone), so an outage can leave a deleted lease's private PDF orphaned.

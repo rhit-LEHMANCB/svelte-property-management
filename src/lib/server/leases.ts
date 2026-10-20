@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import type { DocumentData } from 'firebase-admin/firestore';
+import type { DocumentData, DocumentReference, Query, Transaction } from 'firebase-admin/firestore';
 import { PUBLIC_FB_STORAGE_BUCKET } from '$env/static/public';
 import { normalizeEmails, type LeaseInput } from '$lib/schemas';
 import { adminAuth, adminDB, adminStorage } from './admin';
@@ -549,6 +549,28 @@ export async function saveLease(options: {
 }
 
 /**
+ * What a lease has been paid: rent history, late fees and the deposit ledger. A lease "has payments"
+ * when rent history exists, a late fee has been paid toward, or the deposit has been paid toward.
+ * Pass a transaction to read inside it.
+ */
+export async function readLeasePayments(leaseRef: DocumentReference, tx?: Transaction) {
+	const getDoc = (ref: DocumentReference) => (tx ? tx.get(ref) : ref.get());
+	const getQuery = (query: Query) => (tx ? tx.get(query) : query.get());
+	const [history, lateFees, deposit] = await Promise.all([
+		getQuery(leaseRef.collection('payment_history').limit(1)),
+		getQuery(leaseRef.collection('late_fees')),
+		getDoc(depositRef(leaseRef))
+	]);
+	const paid = (record: { paid?: number } | undefined) => toCents(record?.paid ?? 0) > 0;
+	return {
+		lateFees,
+		deposit,
+		hasPayments:
+			!history.empty || lateFees.docs.some((doc) => paid(doc.data())) || paid(deposit.data())
+	};
+}
+
+/**
  * Deletes a lease with no recorded rent, deposit or late-fee payments, with its document; refuses one
  * that has any.
  */
@@ -561,17 +583,12 @@ export async function deleteLease(
 	// the lease gone.
 	const outcome = await adminDB.runTransaction(async (tx) => {
 		if (!(await tx.get(leaseRef)).exists) return 'missing' as const;
-		const [history, lateFees, deposit, invoices, notices] = await Promise.all([
-			tx.get(leaseRef.collection('payment_history').limit(1)),
-			tx.get(leaseRef.collection('late_fees')),
-			tx.get(depositRef(leaseRef)),
+		const [{ hasPayments, lateFees, deposit }, invoices, notices] = await Promise.all([
+			readLeasePayments(leaseRef, tx),
 			tx.get(leaseRef.collection('recorded_invoices')),
 			tx.get(leaseRef.collection('notices'))
 		]);
-		const paid = (record: { paid?: number } | undefined) => toCents(record?.paid ?? 0) > 0;
-		if (!history.empty || lateFees.docs.some((doc) => paid(doc.data())) || paid(deposit.data())) {
-			return 'has-payments' as const;
-		}
+		if (hasPayments) return 'has-payments' as const;
 		// What is left is bookkeeping only: unpaid or waived late fees, an empty deposit ledger, handled
 		// invoices and sent-email records.
 		[...lateFees.docs, ...invoices.docs, ...notices.docs].forEach((doc) => tx.delete(doc.ref));

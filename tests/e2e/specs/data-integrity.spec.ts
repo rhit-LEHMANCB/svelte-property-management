@@ -118,7 +118,7 @@ test.describe('leases: a tenant cannot be on two overlapping leases', () => {
 test.describe('property-management: delete removes leases, tenant links and payment history', () => {
 	const DELETE_PROPERTY = 'e2e-di-delete-property';
 
-	test('Scenario: Deleted property with tenants leaves no lease, junction or payment history', async ({
+	test('Scenario: Deleted property with tenants leaves no lease, junction or property payment history', async ({
 		page
 	}) => {
 		const db = adminDb();
@@ -139,9 +139,7 @@ test.describe('property-management: delete removes leases, tenant links and paym
 			endDate: null,
 			document: null
 		});
-		await db
-			.doc('leases/e2e-di-delete-lease/payment_history/2026')
-			.set({ August: { remainingBalance: 0 } });
+		await db.doc('leases/e2e-di-delete-lease/recorded_invoices/in_di').set({ recordedAt: 'x' });
 		await signIn(page, ADMIN);
 
 		await page.goto('/admin');
@@ -160,7 +158,7 @@ test.describe('property-management: delete removes leases, tenant links and paym
 			false
 		);
 		expect((await db.doc('leases/e2e-di-delete-lease').get()).exists).toBe(false);
-		expect((await db.doc('leases/e2e-di-delete-lease/payment_history/2026').get()).exists).toBe(
+		expect((await db.doc('leases/e2e-di-delete-lease/recorded_invoices/in_di').get()).exists).toBe(
 			false
 		);
 	});

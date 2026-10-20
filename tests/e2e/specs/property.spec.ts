@@ -213,19 +213,32 @@ test.describe('property-management: Cascade', () => {
 		await db.doc(`leases/${LEASE}/recorded_invoices/in_cascade`).set({ recordedAt: '2026-01-15' });
 	});
 
-	test('Scenario: Cascade: deleting a property with a paid lease removes the lease, its document and its records, and the tenant still loads the app', async ({
+	test('Scenario: a property with a paid lease is refused, and once the payment is gone the cascade removes the lease, its document and its records, and the tenant still loads the app', async ({
 		page
 	}) => {
+		const db = adminDb();
 		await signIn(page, ADMIN);
 		await page.goto('/admin/properties');
 		await page.waitForLoadState('networkidle');
 		await page.getByRole('searchbox', { name: 'Search properties' }).fill(TITLE);
-		await page.getByRole('button', { name: `Actions for ${TITLE}` }).click();
-		await page.getByRole('menuitem', { name: 'Delete' }).click();
-		await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
+		const deleteProperty = async () => {
+			await page.getByRole('button', { name: `Actions for ${TITLE}` }).click();
+			await page.getByRole('menuitem', { name: 'Delete' }).click();
+			await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
+		};
+
+		await deleteProperty();
+		await expect(page.getByText(/This property has leases with recorded payments/)).toBeVisible();
+		expect((await db.doc(`properties/${PROPERTY_ID}`).get()).exists).toBe(true);
+		expect((await db.doc(`leases/${LEASE}`).get()).exists).toBe(true);
+		expect((await db.doc(`leases/${LEASE}/payment_history/2026`).get()).exists).toBe(true);
+		expect(await storageFileExists(DOCUMENT)).toBe(true);
+		await expect(page.getByRole('button', { name: `Actions for ${TITLE}` })).toBeVisible();
+
+		await db.doc(`leases/${LEASE}/payment_history/2026`).delete();
+		await deleteProperty();
 		await expect(page.getByText('Property Successfully Removed.')).toBeVisible();
 
-		const db = adminDb();
 		expect((await db.doc(`properties/${PROPERTY_ID}`).get()).exists).toBe(false);
 		expect((await db.doc(`leases/${LEASE}`).get()).exists).toBe(false);
 		expect((await db.doc(`leases/${LEASE}/payment_history/2026`).get()).exists).toBe(false);

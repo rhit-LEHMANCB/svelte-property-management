@@ -295,15 +295,20 @@ describe('property-management: delete property (DELETE /api/property/{id})', () 
 		expect(db.peek('properties/prop-2/payment_history/2026')).toBeDefined();
 	});
 
-	it("Scenario: Cascade removes the property's leases with their history, invoices and documents", async () => {
+	it("Scenario: Cascade removes the property's unpaid leases with their bookkeeping and documents", async () => {
 		seedAdmin('admin-1');
 		seedTenant('tenant-1');
 		seedProperty('prop-1');
 		seedProperty('prop-2');
 		seedLease('l1', { propertyId: 'prop-1', tenantIds: ['tenant-1'], startDate: '2026-01-01' });
 		seedLease('l2', { propertyId: 'prop-2', tenantIds: ['tenant-1'], startDate: '2025-01-01' });
-		db.seed('leases/l1/payment_history/2026', { January: { remainingBalance: 0 } });
+		// Bookkeeping only: handled invoices, sent notices, an unpaid and a waived late fee and an empty
+		// deposit ledger. None of it is a payment.
 		db.seed('leases/l1/recorded_invoices/in_1', { recordedAt: 'x' });
+		db.seed('leases/l1/notices/n_1', { sentAt: 'x' });
+		db.seed('leases/l1/late_fees/2026-02', { amount: 50, paid: 0 });
+		db.seed('leases/l1/late_fees/2026-03', { amount: 50, paid: 0, waivedAt: 'x' });
+		db.seed('leases/l1/deposit/ledger', { paid: 0 });
 		db.seed('properties/prop-1/recorded_invoices/in_0', { recordedAt: 'x' });
 
 		const result = await call(deleteProperty, {
@@ -314,13 +319,115 @@ describe('property-management: delete property (DELETE /api/property/{id})', () 
 
 		expect(result.status).toBe(200);
 		expect(db.peek('leases/l1')).toBeUndefined();
-		expect(db.peek('leases/l1/payment_history/2026')).toBeUndefined();
 		expect(db.peek('leases/l1/recorded_invoices/in_1')).toBeUndefined();
+		expect(db.peek('leases/l1/notices/n_1')).toBeUndefined();
+		expect(db.peek('leases/l1/late_fees/2026-02')).toBeUndefined();
+		expect(db.peek('leases/l1/late_fees/2026-03')).toBeUndefined();
+		expect(db.peek('leases/l1/deposit/ledger')).toBeUndefined();
 		expect(db.peek('properties/prop-1/recorded_invoices/in_0')).toBeUndefined();
 		expect(services.storage.log.deletedPrefixes).toContain('leases/l1/');
 		// Other properties keep their leases.
 		expect(db.peek('leases/l2')).toBeDefined();
 		expect(services.storage.log.deletedPrefixes).not.toContain('leases/l2/');
+	});
+
+	describe('a lease with recorded payments', () => {
+		const PAID_MESSAGE =
+			'This property has leases with recorded payments, so it cannot be deleted. Set an end date on those leases instead.';
+		const paid: Record<string, () => void> = {
+			'rent history': () =>
+				db.seed('leases/l1/payment_history/2026', { January: { remainingBalance: 0 } }),
+			'a deposit payment': () =>
+				db.seed('leases/l1/deposit/ledger', { paid: 100, transactions: [] }),
+			'a paid late fee': () => db.seed('leases/l1/late_fees/2026-02', { amount: 50, paid: 50 })
+		};
+
+		const seedPaidProperty = (payment: () => void) => {
+			seedAdmin('admin-1');
+			seedTenant('tenant-1');
+			seedProperty('prop-1');
+			seedProperty('prop-2');
+			linkTenant('tenant-1', 'prop-1');
+			seedLease('l0', { propertyId: 'prop-1', tenantIds: [], startDate: '2024-01-01' });
+			seedLease('l1', { propertyId: 'prop-1', tenantIds: ['tenant-1'], startDate: '2026-01-01' });
+			seedLease('l2', { propertyId: 'prop-2', tenantIds: [], startDate: '2025-01-01' });
+			db.seed('maintenance/m1', { propertyId: 'prop-1', status: 'Open' });
+			db.seed('properties/prop-1/payment_history/2025', { May: { remainingBalance: 0 } });
+			db.seed('leases/l2/payment_history/2026', { January: { remainingBalance: 0 } });
+			payment();
+		};
+		const remove = () =>
+			call(deleteProperty, {
+				method: 'DELETE',
+				userID: 'admin-1',
+				params: { propertyId: 'prop-1' }
+			});
+
+		for (const [name, payment] of Object.entries(paid)) {
+			it(`Scenario: ${name} on a lease refuses the delete with 409 and removes nothing`, async () => {
+				seedPaidProperty(payment);
+
+				const result = await remove();
+
+				expect(result.status).toBe(409);
+				expect(JSON.stringify(result)).toContain(PAID_MESSAGE);
+				// The lease without payments is kept too: nothing is removed.
+				expect(db.peek('properties/prop-1')).toBeDefined();
+				expect(db.peek('leases/l0')).toBeDefined();
+				expect(db.peek('leases/l1')).toBeDefined();
+				expect(db.peek('maintenance/m1')).toBeDefined();
+				expect(db.peek('junction_user_property/tenant-1_prop-1')).toBeDefined();
+				expect(db.peek('properties/prop-1/payment_history/2025')).toBeDefined();
+				expect(services.storage.log.deletedPrefixes).toEqual([]);
+				// Other properties keep their leases and history.
+				expect(db.peek('leases/l2')).toBeDefined();
+				expect(db.peek('leases/l2/payment_history/2026')).toBeDefined();
+			});
+		}
+
+		it('Scenario: a payment recorded after the check keeps the paid lease and answers 409', async () => {
+			seedPaidProperty(() => undefined);
+			// The webhook records a payment on l1 after the property delete has checked it and before
+			// the lease is removed: the lease delete's own transaction sees it.
+			const realTransaction = db.runTransaction.bind(db);
+			db.runTransaction = ((fn: Parameters<typeof db.runTransaction>[0]) => {
+				db.seed('leases/l1/payment_history/2026', { January: { remainingBalance: 0 } });
+				db.runTransaction = realTransaction;
+				return realTransaction(fn);
+			}) as typeof db.runTransaction;
+
+			const result = await remove();
+
+			expect(result.status).toBe(409);
+			expect(db.peek('properties/prop-1')).toBeDefined();
+			expect(db.peek('leases/l1')).toBeDefined();
+			expect(db.peek('leases/l1/payment_history/2026')).toBeDefined();
+			expect(db.peek('maintenance/m1')).toBeDefined();
+		});
+
+		it('Scenario: a property whose leases have no payments still deletes, other properties untouched', async () => {
+			seedPaidProperty(() => undefined);
+
+			const result = await remove();
+
+			expect(result).toMatchObject({ status: 200, json: { status: 'Property Deleted' } });
+			expect(db.peek('properties/prop-1')).toBeUndefined();
+			expect(db.peek('leases/l0')).toBeUndefined();
+			expect(db.peek('leases/l1')).toBeUndefined();
+			expect(db.peek('junction_user_property/tenant-1_prop-1')).toBeUndefined();
+			expect(db.peek('properties/prop-2')).toBeDefined();
+			expect(db.peek('leases/l2')).toBeDefined();
+			expect(db.peek('leases/l2/payment_history/2026')).toBeDefined();
+		});
+
+		it('Scenario: legacy property-level payment history does not block the delete', async () => {
+			seedPaidProperty(() => undefined);
+
+			const result = await remove();
+
+			expect(result.status).toBe(200);
+			expect(db.peek('properties/prop-1/payment_history/2025')).toBeUndefined();
+		});
 	});
 
 	it('Scenario: Large property with more than 500 lease history documents removes them all', async () => {

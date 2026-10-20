@@ -266,15 +266,22 @@ test.describe.serial('leases', () => {
 			.set({ January: { remainingBalance: 0 } });
 		await signIn(page, ADMIN);
 
+		// With payments the page says so and Delete is disabled; the server refuses it as well.
 		await page.goto(`/admin/properties/${LP}/leases/${withPayments.id}`);
 		await page.waitForLoadState('networkidle');
-		await page.getByRole('button', { name: 'Delete lease' }).click();
-		await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
 		await expect(page.getByText(/Set an end date instead/).first()).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Delete lease' })).toBeDisabled();
+		const refused = await page.evaluate(
+			async (url) => (await fetch(url, { method: 'DELETE' })).status,
+			`/api/lease/${withPayments.id}`
+		);
+		expect(refused).toBe(409);
 		expect((await withPayments.ref.get()).exists).toBe(true);
 
+		// Without payments there is no warning and Delete works.
 		await page.goto(`/admin/properties/${LP}/leases/${withoutPayments.id}`);
 		await page.waitForLoadState('networkidle');
+		await expect(page.getByText(/Set an end date instead/)).toHaveCount(0);
 		await page.getByRole('button', { name: 'Delete lease' }).click();
 		await page.getByRole('dialog').getByRole('button', { name: 'Confirm' }).click();
 		await expect(page).toHaveURL(/\?tab=leases$/);
