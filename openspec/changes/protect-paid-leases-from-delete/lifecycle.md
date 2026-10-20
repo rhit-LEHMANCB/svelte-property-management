@@ -1,14 +1,14 @@
 # Lifecycle: protect-paid-leases-from-delete
 
 - Branch: `claude/pensive-lamport-i7b44a`
-- Stage: 1 Interview (awaiting confirmation of the summary)
+- Stage: 2 Propose + preflight (awaiting Gate A)
 - Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-20
 - Issues: #172, #173
 
 ## Interview summary
-(approved: no)
+(approved: yes, 2026-10-20)
 
 **Goal.** Deleting a property must not destroy payment history, and the edit-lease page must warn about payments only when the lease has them.
 
@@ -43,10 +43,23 @@ Approved: no
 Accepted preflight gaps: none
 
 ## Design pass
-(stage 2; `skipped (no UI change)`, or the design link, date and decisions)
+Design pass: skipped (no UI change: one disabled button and a conditional line of text on the edit-lease page, and a toast message on the properties list).
 
 ## Preflight
-(stage 2)
+GitHub backend: GitHub MCP (`gh` token fails in this cloud session; `get_me` works).
+
+| Check | Result |
+| --- | --- |
+| git commit and push to `origin` | pass (change branch pushed) |
+| GitHub backend | pass: MCP (`get_me` returns rhit-LEHMANCB) |
+| Playwright `qa` project and browsers | pass (`playwright.config.ts` has `qa`; Chromium in /opt/pw-browsers) |
+| QA credentials (dev project) | pass: pulled from 1Password into gitignored `.env.qa` (mode 600, untracked); all four variables set |
+| Dev deploy on `develop` | pass (run 39345662759 succeeded on cef66b1) |
+| `npm run lint` | pass |
+| `npm run test` (full) | pass (handler suites for this change: 81 tests) |
+| `npm run check` | GAP: 1 error, `JOBS_SECRET` is not exported from `$env/static/private` because the pulled `.env` lacks it (CI supplies it as a secret). Local fix for the run: export `JOBS_SECRET=local-check` in the shell for `check` and `build`; nothing is committed. |
+| Java for emulators | pass |
+| Secrets/variables for the `develop` environment | none needed |
 
 ## Review rounds
 (none yet)
