@@ -47,6 +47,8 @@ GitHub backend: MCP (gh token fails in this cloud session).
 | Emulator e2e | cannot run here (jar download blocked); runs in CI only |
 | Secrets/variables | none needed |
 
+Stage 5: PR #192 into develop opened; waiting on `tests` and `build_and_preview` checks (subscribed to PR activity; resume from here when the check-suite event arrives).
+
 ## Review rounds
 Round 1: 0 blockers, 2 majors, 2 minors, 1 nit. All fixed: token-error codes only map to 401 (others stay 500) with tests; Enter-key mismatch e2e; `method="POST"` on the reset form; `submitting` guard.
 Round 2: 0 blockers, 0 majors, 3 minors, 1 nit. Fixed: `submitting` set before validation; `it.each` over the four token codes; added a no-JavaScript submit e2e check. Nit (main spec still says 500) not changed: the archive workflow syncs the delta spec. Exit.
