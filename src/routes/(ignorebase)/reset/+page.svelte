@@ -37,15 +37,16 @@
 		// Before anything else, so a submit before hydration never posts the passwords.
 		event.preventDefault();
 		if (submitting) return;
+		submitting = true;
 		markSubmitted();
 
 		const result = await validateForm({ update: true });
 
 		if (!result.valid) {
+			submitting = false;
 			return;
 		}
 
-		submitting = true;
 		verifyPasswordResetCode(auth, actionCode)
 			.then(() => {
 				const newPassword = $form.newPassword;

@@ -1,8 +1,8 @@
 # Lifecycle: fix-auth-and-error-statuses
 
 - Branch: `fix-auth-and-error-statuses`
-- Stage: 4 Review
-- Review round: 1 of 5
+- Stage: 5 Ship to develop
+- Review round: 2 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-20
 
@@ -49,6 +49,7 @@ GitHub backend: MCP (gh token fails in this cloud session).
 
 ## Review rounds
 Round 1: 0 blockers, 2 majors, 2 minors, 1 nit. All fixed: token-error codes only map to 401 (others stay 500) with tests; Enter-key mismatch e2e; `method="POST"` on the reset form; `submitting` guard.
+Round 2: 0 blockers, 0 majors, 3 minors, 1 nit. Fixed: `submitting` set before validation; `it.each` over the four token codes; added a no-JavaScript submit e2e check. Nit (main spec still says 500) not changed: the archive workflow syncs the delta spec. Exit.
 
 ## Out-of-scope observations
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)
