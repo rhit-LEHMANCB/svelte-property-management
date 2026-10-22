@@ -1,7 +1,7 @@
 # Lifecycle: fix-auth-and-error-statuses
 
 - Branch: `fix-auth-and-error-statuses`
-- Stage: 7 Production PR (awaiting Gate B)
+- Stage: **complete (archived automatically on 2026-10-22 after the production release `c394477`)**
 - Review round: 2 of 5
 - QA cycle: 1 of 3
 - Started: 2026-10-20
@@ -89,3 +89,6 @@ Not covered by automation: a real password reset (needs an emailed `oobCode`), a
 
 ## Halted
 (only if the run halted: stage, reason, evidence, next step for a human)
+
+## Archive
+Archived automatically on 2026-10-22 after the production release `c394477` ([workflow run](https://github.com/rhit-LEHMANCB/svelte-property-management/actions/runs/39827819535)). That marks this lifecycle complete.

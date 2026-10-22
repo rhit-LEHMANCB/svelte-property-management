@@ -184,6 +184,13 @@ The system SHALL provide a public `/forgot` page, linked as "Forgot password?" f
 - **WHEN** the reset email cannot be sent for an existing account
 - **THEN** the page shows "We couldn't send the email right now. Please try again." and keeps the email
 
+### Requirement: Malformed ID token
+The system SHALL reject an ID token that is not a valid Firebase token as a client error, not a server error.
+
+#### Scenario: Malformed ID token
+- **WHEN** `POST /api/signin` receives an ID token that Firebase cannot verify
+- **THEN** it responds 401 "Invalid ID token" and sets no cookie
+
 ## Known Gaps
 - There is no sign-in rate limiting beyond Firebase's own.
 - The session cookie is set with `maxAge` in milliseconds where SvelteKit expects seconds, so the browser keeps it for about 13.7 years; the underlying Firebase session still expires after 5 days (#54).
