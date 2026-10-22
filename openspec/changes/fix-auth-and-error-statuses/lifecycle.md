@@ -1,7 +1,7 @@
 # Lifecycle: fix-auth-and-error-statuses
 
 - Branch: `fix-auth-and-error-statuses`
-- Stage: 5 Ship to develop
+- Stage: 6 QA (waiting on dev deploy)
 - Review round: 2 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-20
@@ -47,7 +47,7 @@ GitHub backend: MCP (gh token fails in this cloud session).
 | Emulator e2e | cannot run here (jar download blocked); runs in CI only |
 | Secrets/variables | none needed |
 
-Stage 5: PR #192 into develop opened; waiting on `tests` and `build_and_preview` checks (subscribed to PR activity; resume from here when the check-suite event arrives).
+Stage 5: PR #192 checks green (tests, build_and_preview, CodeQL); merged into develop as 2a7a6a8 on 2026-10-22. Next: wait for the firebase-hosting-merge.yml run on develop, then start the independent QA agent (cycle 1).
 
 ## Review rounds
 Round 1: 0 blockers, 2 majors, 2 minors, 1 nit. All fixed: token-error codes only map to 401 (others stay 500) with tests; Enter-key mismatch e2e; `method="POST"` on the reset form; `submitting` guard.
