@@ -17,7 +17,7 @@
 	// svelte-ignore state_referenced_locally
 	const { markSubmitted, shown: gate } = errorsAfterSubmit(data.form.posted);
 	// svelte-ignore state_referenced_locally
-	const { form, errors, validateForm, enhance } = superForm(data.form, {
+	const { form, errors, validateForm } = superForm(data.form, {
 		validators: zodClient(passwordChangeSchema),
 		// Never ask "Leave site?": the form is done with once the password has changed.
 		taintedMessage: false
@@ -31,13 +31,19 @@
 	// svelte-ignore state_referenced_locally
 	const actionCode = data.oobCode;
 
+	let submitting = false;
+
 	async function handleVerifyPasswordReset(event: Event) {
+		// Before anything else, so a submit before hydration never posts the passwords.
 		event.preventDefault();
+		if (submitting) return;
+		submitting = true;
 		markSubmitted();
 
 		const result = await validateForm({ update: true });
 
 		if (!result.valid) {
+			submitting = false;
 			return;
 		}
 
@@ -59,10 +65,12 @@
 						modalStore.trigger(modal);
 					})
 					.catch(() => {
+						submitting = false;
 						errorToast('Error resetting password. Please try again.', toastStore);
 					});
 			})
 			.catch(() => {
+				submitting = false;
 				errorToast('Error resetting password. Please try again.', toastStore);
 			});
 	}
@@ -70,7 +78,7 @@
 
 <div class="flex h-full items-center justify-center overflow-y-auto p-4">
 	<AuthCard>
-		<form use:enhance class="space-y-4" novalidate>
+		<form method="POST" onsubmit={handleVerifyPasswordReset} class="space-y-4" novalidate>
 			<div>
 				<h1 class="h3">Lehman Family LLC</h1>
 				<p class="opacity-80">Please fill out the information below to create your new password.</p>
@@ -111,10 +119,8 @@
 				{/snippet}
 			</Field>
 			<FormActions>
-				<button
-					data-needs-hydration
-					onclick={(event) => handleVerifyPasswordReset(event)}
-					class="btn preset-filled-primary-500 w-full">Change Password</button
+				<button type="submit" data-needs-hydration class="btn preset-filled-primary-500 w-full"
+					>Change Password</button
 				>
 			</FormActions>
 		</form>
