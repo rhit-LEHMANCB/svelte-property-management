@@ -31,8 +31,12 @@
 	// svelte-ignore state_referenced_locally
 	const actionCode = data.oobCode;
 
+	let submitting = false;
+
 	async function handleVerifyPasswordReset(event: Event) {
+		// Before anything else, so a submit before hydration never posts the passwords.
 		event.preventDefault();
+		if (submitting) return;
 		markSubmitted();
 
 		const result = await validateForm({ update: true });
@@ -41,6 +45,7 @@
 			return;
 		}
 
+		submitting = true;
 		verifyPasswordResetCode(auth, actionCode)
 			.then(() => {
 				const newPassword = $form.newPassword;
@@ -59,10 +64,12 @@
 						modalStore.trigger(modal);
 					})
 					.catch(() => {
+						submitting = false;
 						errorToast('Error resetting password. Please try again.', toastStore);
 					});
 			})
 			.catch(() => {
+				submitting = false;
 				errorToast('Error resetting password. Please try again.', toastStore);
 			});
 	}
@@ -70,7 +77,7 @@
 
 <div class="flex h-full items-center justify-center overflow-y-auto p-4">
 	<AuthCard>
-		<form onsubmit={handleVerifyPasswordReset} class="space-y-4" novalidate>
+		<form method="POST" onsubmit={handleVerifyPasswordReset} class="space-y-4" novalidate>
 			<div>
 				<h1 class="h3">Lehman Family LLC</h1>
 				<p class="opacity-80">Please fill out the information below to create your new password.</p>

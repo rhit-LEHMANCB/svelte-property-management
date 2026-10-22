@@ -12,10 +12,11 @@ See proposal.md. `setSessionCookie` calls `adminAuth.verifyIdToken`, which throw
 
 ## Decisions
 
-- #182: wrap only `verifyIdToken` in try/catch and `throw error(401, 'Invalid ID token')`. The stale-token check and `createSessionCookie` stay as they are, so genuine server failures still answer 500.
+- #182: wrap only `verifyIdToken` and map token errors (`auth/argument-error`, `auth/invalid-id-token`, `auth/id-token-expired`, `auth/id-token-revoked`) to `error(401, 'Invalid ID token')`; any other rejection is rethrown. The stale-token check and `createSessionCookie` stay as they are, so genuine server failures still answer 500.
 - #183: move the handler to the form's `onsubmit` (keep `preventDefault` and the Firebase calls), set `type="submit"` on the button, and drop the button's `onclick`. Keep `data-needs-hydration`.
 - #152: `throw error(404, 'Property not found')`, the same message as `leases/new`.
 
 ## Risks / Trade-offs
 
-- With `use:enhance` on the form, a submit before hydration would post natively. The handler runs on `onsubmit` after hydration, as the button's onclick did, and `data-needs-hydration` keeps tests waiting for it.
+- The form has `method="POST"` so a submit before hydration never puts the passwords in the URL, and a `submitting` flag ignores a repeated submit while the Firebase calls run.
+- Formerly with `use:enhance` on the form, a submit before hydration would post natively. The handler runs on `onsubmit` after hydration, as the button's onclick did, and `data-needs-hydration` keeps tests waiting for it.

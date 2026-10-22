@@ -43,13 +43,31 @@ describe('authentication: session establishment (POST /api/signin)', () => {
 	});
 
 	it('Scenario: Malformed ID token responds 401 "Invalid ID token" and sets no cookie', async () => {
-		services.auth.verifyIdToken.mockRejectedValue(new Error('Decoding Firebase ID token failed'));
+		services.auth.verifyIdToken.mockRejectedValue(
+			Object.assign(new Error('Decoding Firebase ID token failed'), { code: 'auth/argument-error' })
+		);
 
 		const result = await call(POST, { body: { idToken: 'not-a-token' } });
 
 		expect(result).toMatchObject({ status: 401, error: 'Invalid ID token' });
 		expect(result.cookies.calls.set).toHaveLength(0);
 		expect(services.auth.createSessionCookie).not.toHaveBeenCalled();
+	});
+
+	it('a verification failure that is not the token (certificate fetch) stays a server error', async () => {
+		services.auth.verifyIdToken.mockRejectedValue(
+			Object.assign(new Error('network'), { code: 'app/network-error' })
+		);
+
+		// Not an HTTP error, so SvelteKit would answer 500.
+		await expect(call(POST, { body: { idToken: 'fine-token' } })).rejects.toThrow('network');
+		expect(services.auth.createSessionCookie).not.toHaveBeenCalled();
+	});
+
+	it('a session cookie creation failure stays a server error', async () => {
+		services.auth.createSessionCookie.mockRejectedValue(new Error('boom'));
+
+		await expect(call(POST, { body: { idToken: 't' } })).rejects.toThrow('boom');
 	});
 
 	it('Scenario: a token just under 5 minutes old is still accepted', async () => {

@@ -1,8 +1,8 @@
 # Lifecycle: fix-auth-and-error-statuses
 
 - Branch: `fix-auth-and-error-statuses`
-- Stage: 3 Implement
-- Review round: 0 of 5
+- Stage: 4 Review
+- Review round: 1 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-20
 
@@ -48,7 +48,7 @@ GitHub backend: MCP (gh token fails in this cloud session).
 | Secrets/variables | none needed |
 
 ## Review rounds
-(none yet; one line per round: blockers, majors, minors, nits, fixed, rejected with reason)
+Round 1: 0 blockers, 2 majors, 2 minors, 1 nit. All fixed: token-error codes only map to 401 (others stay 500) with tests; Enter-key mismatch e2e; `method="POST"` on the reset form; `submitting` guard.
 
 ## Out-of-scope observations
 (only QA observations outside this change's scope, to turn into issues at wrap-up; review findings are fixed, never listed here)
