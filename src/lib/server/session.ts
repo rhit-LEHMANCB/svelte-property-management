@@ -5,7 +5,9 @@ const EXPIRES_IN = 60 * 60 * 24 * 5 * 1000; // 5 days
 
 /** Exchanges a freshly issued Firebase ID token for the httpOnly `__session` cookie. */
 export const setSessionCookie = async (cookies: Cookies, idToken: string) => {
-	const decodedIdToken = await adminAuth.verifyIdToken(idToken);
+	const decodedIdToken = await adminAuth.verifyIdToken(idToken).catch(() => {
+		throw error(401, 'Invalid ID token');
+	});
 
 	if (new Date().getTime() / 1000 - decodedIdToken.auth_time >= 5 * 60) {
 		throw error(401, 'Recent sign in required!');

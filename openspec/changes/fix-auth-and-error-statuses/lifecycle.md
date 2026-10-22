@@ -1,7 +1,7 @@
 # Lifecycle: fix-auth-and-error-statuses
 
 - Branch: `fix-auth-and-error-statuses`
-- Stage: 2 Propose (awaiting Gate A)
+- Stage: 3 Implement
 - Review round: 0 of 5
 - QA cycle: 0 of 3
 - Started: 2026-10-20
@@ -26,8 +26,8 @@
 **Assumptions:** the edit page's actions are unchanged.
 
 ## Gate A
-Approved: no
-Accepted preflight gaps: none
+Approved: yes, 2026-10-22 (user, interactive)
+Accepted preflight gaps: emulator e2e runs in CI only
 
 ## Design pass
 Design pass: skipped (no UI change)

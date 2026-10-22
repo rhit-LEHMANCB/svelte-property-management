@@ -47,6 +47,23 @@ test.describe('authentication: password reset completion', () => {
 		await expect(dialog.getByRole('button', { name: 'Continue' })).toBeVisible();
 	});
 
+	test('Scenario: Pressing Enter in the form submits it and changes the password', async ({
+		page
+	}) => {
+		const unique = `${Date.now()}-${test.info().retry}`;
+		const email = `reset-enter-${unique}@e2e.test`;
+		const url = await resetLink(email, 'Old-Passw0rd1', `e2e-reset-enter-${unique}`);
+
+		await page.goto(url);
+		await page.waitForLoadState('networkidle');
+		await page.getByTitle('New Password').fill('New-Passw0rd2');
+		await page.getByTitle('Verify Password').fill('New-Passw0rd2');
+		await page.getByTitle('Verify Password').press('Enter');
+
+		await expect(page.getByRole('dialog').getByText('Success!')).toBeVisible();
+		expect(await signInStatus(email, 'New-Passw0rd2')).toBe(200);
+	});
+
 	test('Scenario: Mismatch is flagged on the verify field and the password is not changed', async ({
 		page
 	}) => {

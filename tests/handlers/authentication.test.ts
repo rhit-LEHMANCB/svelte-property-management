@@ -42,6 +42,16 @@ describe('authentication: session establishment (POST /api/signin)', () => {
 		expect(services.auth.createSessionCookie).not.toHaveBeenCalled();
 	});
 
+	it('Scenario: Malformed ID token responds 401 "Invalid ID token" and sets no cookie', async () => {
+		services.auth.verifyIdToken.mockRejectedValue(new Error('Decoding Firebase ID token failed'));
+
+		const result = await call(POST, { body: { idToken: 'not-a-token' } });
+
+		expect(result).toMatchObject({ status: 401, error: 'Invalid ID token' });
+		expect(result.cookies.calls.set).toHaveLength(0);
+		expect(services.auth.createSessionCookie).not.toHaveBeenCalled();
+	});
+
 	it('Scenario: a token just under 5 minutes old is still accepted', async () => {
 		services.auth.verifyIdToken.mockResolvedValue({ uid: 'u1', auth_time: nowSeconds() - 4 * 60 });
 
