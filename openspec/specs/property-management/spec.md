@@ -27,7 +27,7 @@ The system SHALL let an admin update basic info for an existing property.
 
 #### Scenario: Unknown property
 - **WHEN** the property id does not exist
-- **THEN** the page fails with 500 "Error retrieving property"
+- **THEN** the page fails with 404 "Property not found" and the app's not-found page is shown
 
 ### Requirement: Property photos
 The system SHALL store photos at `properties/{id}/images/{index}-{timestamp}.{ext}`, record `{id, photoUrl}` entries on the property, and keep their order.
