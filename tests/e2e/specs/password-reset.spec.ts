@@ -47,6 +47,63 @@ test.describe('authentication: password reset completion', () => {
 		await expect(dialog.getByRole('button', { name: 'Continue' })).toBeVisible();
 	});
 
+	test('Scenario: Pressing Enter in the form submits it and changes the password', async ({
+		page
+	}) => {
+		const unique = `${Date.now()}-${test.info().retry}`;
+		const email = `reset-enter-${unique}@e2e.test`;
+		const url = await resetLink(email, 'Old-Passw0rd1', `e2e-reset-enter-${unique}`);
+
+		await page.goto(url);
+		await page.waitForLoadState('networkidle');
+		await page.getByTitle('New Password').fill('New-Passw0rd2');
+		await page.getByTitle('Verify Password').fill('New-Passw0rd2');
+		await page.getByTitle('Verify Password').press('Enter');
+
+		await expect(page.getByRole('dialog').getByText('Success!')).toBeVisible();
+		expect(await signInStatus(email, 'New-Passw0rd2')).toBe(200);
+	});
+
+	test('Scenario: Enter with mismatched passwords shows the error and does not post the form', async ({
+		page
+	}) => {
+		const unique = `${Date.now()}-${test.info().retry}`;
+		const email = `reset-enter-bad-${unique}@e2e.test`;
+		const url = await resetLink(email, 'Old-Passw0rd1', `e2e-reset-enter-bad-${unique}`);
+
+		await page.goto(url);
+		await page.waitForLoadState('networkidle');
+		await page.getByTitle('New Password').fill('New-Passw0rd2');
+		await page.getByTitle('Verify Password').fill('Different-Passw0rd3');
+		await page.getByTitle('Verify Password').press('Enter');
+
+		await expect
+			.poll(() => page.getByTitle('Verify Password').getAttribute('aria-invalid'))
+			.toBe('true');
+		expect(page.url()).not.toContain('Passw0rd');
+		expect(await signInStatus(email, 'Old-Passw0rd1')).toBe(200);
+	});
+
+	test('Scenario: Submitting before the page is interactive does not put the passwords in the URL', async ({
+		browser
+	}) => {
+		const unique = `${Date.now()}-${test.info().retry}`;
+		const email = `reset-nojs-${unique}@e2e.test`;
+		const url = await resetLink(email, 'Old-Passw0rd1', `e2e-reset-nojs-${unique}`);
+		const context = await browser.newContext({ javaScriptEnabled: false });
+		const page = await context.newPage();
+
+		await page.goto(url);
+		await page.getByTitle('New Password').fill('New-Passw0rd2');
+		await page.getByTitle('Verify Password').fill('New-Passw0rd2');
+		await page.getByTitle('Verify Password').press('Enter');
+		await page.waitForLoadState('load');
+
+		expect(page.url()).not.toContain('Passw0rd');
+		expect(await signInStatus(email, 'Old-Passw0rd1')).toBe(200);
+		await context.close();
+	});
+
 	test('Scenario: Mismatch is flagged on the verify field and the password is not changed', async ({
 		page
 	}) => {

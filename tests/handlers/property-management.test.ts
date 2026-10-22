@@ -107,12 +107,12 @@ describe('property-management: edit property (edit page action)', () => {
 		expect(db.peek('properties/prop-1')?.title).toBe('Maple Court');
 	});
 
-	it('Scenario: Unknown property fails the page load with 500 "Error retrieving property"', async () => {
+	it('Scenario: Unknown property fails the page load with 404 "Property not found"', async () => {
 		seedAdmin('admin-1');
 
 		const result = await call(editLoad, { userID: 'admin-1', params: { propertyId: 'nope' } });
 
-		expect(result).toMatchObject({ status: 500, error: 'Error retrieving property' });
+		expect(result).toMatchObject({ status: 404, error: 'Property not found' });
 	});
 });
 

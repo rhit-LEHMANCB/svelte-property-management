@@ -20,7 +20,7 @@ export const load = (async (event) => {
 	).data();
 
 	if (!propertyData) {
-		throw error(500, 'Error retrieving property');
+		throw error(404, 'Property not found');
 	}
 
 	const form = await superValidate(propertyData, zod(propertySchema));
